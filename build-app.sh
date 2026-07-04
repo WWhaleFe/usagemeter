@@ -1,11 +1,11 @@
 #!/bin/bash
-# UsageMeter를 더블클릭 실행 가능한 .app 번들로 패키징한다. (v1.0.0)
+# UsageMeter를 더블클릭 실행 가능한 .app 번들로 패키징한다. (v1.0.1)
 # 사용: ./build-app.sh  → UsageMeter.app 생성 (앱 아이콘 = icon.png)
 set -e
 cd "$(dirname "$0")"
 
-VERSION="1.0.0"
-BUILD="1"
+VERSION="1.0.1"
+BUILD="2"
 
 echo "▶ 릴리즈 빌드…"
 swift build -c release

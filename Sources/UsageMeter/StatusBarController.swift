@@ -550,11 +550,11 @@ final class StatusBarController: NSObject {
         button.attributedTitle = str
     }
 
-    /// 호버 정보: 로그인된 모든 AI의 사용량.
+    /// 호버 정보: 로그인된 모든 AI의 사용량(설정 언어에 맞춤).
     private func updateHoverInfo() {
         let active = manager.active
-        hoverInfo.infoText = active.isEmpty ? "로그인된 AI 없음 — 메뉴에서 로그인하세요"
-            : active.map { $0.spec.name + " · " + Self.describe($0.snap) }.joined(separator: "\n")
+        hoverInfo.infoText = active.isEmpty ? settings.t("hover.noAI")
+            : active.map { $0.spec.name + " · " + describe($0.snap) }.joined(separator: "\n")
     }
 
     /// 잔여율만큼 채워지는 원형 링 아이콘.
@@ -588,17 +588,17 @@ final class StatusBarController: NSObject {
         return img
     }
 
-    /// 스냅샷을 사람이 읽는 한 줄로.
-    private static func describe(_ s: UsageSnapshot) -> String {
+    /// 스냅샷을 사람이 읽는 한 줄로(설정 언어에 맞춤).
+    private func describe(_ s: UsageSnapshot) -> String {
         switch s.status {
-        case .authExpired: return "로그인이 필요합니다"
-        case .unavailable(let why): return "사용량을 못 읽음 (\(why))"
+        case .authExpired: return settings.t("hover.authExpired")
+        case .unavailable(let why): return settings.tf("hover.unavailable", why)
         case .stale, .ok:
             let five = Int((s.remainingRatio * 100).rounded())
-            let week = s.secondaryRatio.map { Int(($0 * 100).rounded()) }
-            let weekStr = week.map { " · 주간 \($0)%" } ?? ""
-            let reset = s.resetAt.map { " · 리셋 " + Self.timeFmt.string(from: $0) } ?? ""
-            return "5시간 \(five)%\(weekStr)\(reset)"
+            var out = settings.t("menu.line5h") + " \(five)%"
+            if let w = s.secondaryRatio { out += " · " + settings.t("menu.lineWeekly") + " \(Int((w * 100).rounded()))%" }
+            if let r = s.resetAt { out += " · " + settings.t("menu.lineReset") + " " + Self.timeFmt.string(from: r) }
+            return out
         }
     }
 

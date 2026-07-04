@@ -126,6 +126,11 @@ enum Loc {
         "notch.innerRight":   ("우·안쪽(아래)", "Right·inner(bottom)", "右・内(下)"),
         "notch.outerRight":   ("우·바깥(위)", "Right·outer(top)", "右・外(上)"),
 
+        // 테두리 호버 정보
+        "hover.noAI":        ("로그인된 AI 없음 — 메뉴에서 로그인하세요", "No AI logged in — log in from the menu", "ログイン済みAIなし — メニューからログイン"),
+        "hover.authExpired": ("로그인이 필요합니다", "Login required", "ログインが必要です"),
+        "hover.unavailable": ("사용량을 못 읽음 (%@)", "Can't read usage (%@)", "使用量を取得できません（%@）"),
+
         // 메뉴바 드롭다운
         "menu.noAI":        ("로그인된 AI 없음 — 아래에서 로그인하세요", "No AI logged in — log in below", "ログイン済みAIなし — 下からログイン"),
         "menu.experimental": (" (실험적)", " (experimental)", "（実験的）"),
