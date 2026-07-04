@@ -1,4 +1,5 @@
 import SwiftUI
+import ServiceManagement
 
 /// 전체 설정을 한 화면에서 보고 조절하는 설정 창 내용.
 /// 각 값은 슬라이더 + 숫자 입력칸 + 화살표(Stepper)로 조절할 수 있고,
@@ -7,6 +8,15 @@ struct SettingsView: View {
     @ObservedObject var settings: OverlaySettings
     @State private var newPresetName: String = ""
     @State private var tab: String = "presets"
+    /// Mac 로그인 시 자동 실행 상태(SMAppService가 진실의 원천 — 시스템이 관리).
+    @State private var launchAtLogin: Bool = SettingsView.isLaunchAtLoginEnabled()
+    /// 자동 실행은 번들 앱(.app)에서만 가능(swift run은 번들 ID 없음).
+    private let launchAtLoginAvailable = Bundle.main.bundleIdentifier != nil
+
+    static func isLaunchAtLoginEnabled() -> Bool {
+        guard Bundle.main.bundleIdentifier != nil else { return false }
+        return SMAppService.mainApp.status == .enabled
+    }
 
     private static let fmt: NumberFormatter = {
         let f = NumberFormatter()
@@ -21,7 +31,16 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 baseStateSection
                 section(settings.t("sec.login")) {
-                    Toggle(settings.t("login.keep"), isOn: $settings.keepLoggedIn)
+                    HStack(spacing: 24) {
+                        Toggle(settings.t("login.keep"), isOn: $settings.keepLoggedIn)
+                        Toggle(settings.t("login.autostart"), isOn: launchAtLoginBinding)
+                            .disabled(!launchAtLoginAvailable)
+                            .help(launchAtLoginAvailable ? "" : settings.t("login.autostartNote"))
+                    }
+                    if !launchAtLoginAvailable {
+                        Text(settings.t("login.autostartNote"))
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
             }
             .padding(.horizontal, 18)
@@ -157,6 +176,21 @@ struct SettingsView: View {
                 Toggle(settings.t(items[i].0), isOn: items[i].1)
             }
         }
+    }
+
+    /// Mac 로그인 시 자동 실행 토글 — SMAppService 등록/해제(시스템 로그인 항목).
+    private var launchAtLoginBinding: Binding<Bool> {
+        Binding(get: { launchAtLogin },
+                set: { on in
+                    guard launchAtLoginAvailable else { return }
+                    do {
+                        if on { try SMAppService.mainApp.register() }
+                        else { try SMAppService.mainApp.unregister() }
+                    } catch {
+                        // 등록 실패(권한 등) 시 실제 상태로 되돌림.
+                    }
+                    launchAtLogin = Self.isLaunchAtLoginEnabled()
+                })
     }
 
     /// 임계치 알림 대상에 이 사용률이 포함되는지 토글.

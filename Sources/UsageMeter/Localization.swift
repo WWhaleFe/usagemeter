@@ -70,6 +70,8 @@ enum Loc {
 
         // 로그인
         "login.keep": ("로그인 유지 (재실행해도 자동 로그인)", "Stay logged in (auto-login on restart)", "ログイン維持（再起動時も自動ログイン）"),
+        "login.autostart": ("Mac 로그인 시 자동 실행", "Launch at login", "Macログイン時に自動起動"),
+        "login.autostartNote": ("패키징된 앱(.app)에서만 적용됩니다.", "Applies only to the packaged app (.app).", "パッケージ版アプリ（.app）でのみ有効です。"),
 
         // 프리셋
         "preset.newName": ("새 프리셋 이름", "New preset name", "新しいプリセット名"),
