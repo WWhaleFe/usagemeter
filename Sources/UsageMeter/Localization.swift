@@ -87,8 +87,33 @@ enum Loc {
                              "選択したAIの残量%を各色で表示します。順序は両方選択時に適用されます。"),
         "info.5h":      ("5시간 잔여", "5-hour remaining", "5時間の残量"),
         "info.weekly":  ("주간 잔여", "Weekly remaining", "週間の残量"),
+        "info.opus":    ("Opus 주간 잔여", "Opus weekly remaining", "Opus週間の残量"),
         "info.reset":   ("리셋 시각", "Reset time", "リセット時刻"),
+        "info.countdown": ("리셋까지 남은 시간", "Time until reset", "リセットまでの時間"),
+        "info.pace":    ("소진 예측", "Depletion forecast", "消費予測"),
+        "info.chart":   ("24시간 미니 차트", "24-hour mini chart", "24時間ミニチャート"),
         "info.updated": ("마지막 갱신 시각", "Last updated", "最終更新時刻"),
+
+        // 카운트다운/소진예측
+        "cd.afterFmt":   ("%@ 후", "in %@", "%@後"),
+        "cd.hour":       ("시간", "h", "時間"),
+        "cd.min":        ("분", "m", "分"),
+        "cd.now":        ("곧", "soon", "まもなく"),
+        "pace.depleteFmt": ("%@ 후 소진 예상", "empty in %@", "%@後に枯渇予想"),
+        "pace.warnReset":  ("· 리셋 전 ⚠", "· before reset ⚠", "· リセット前 ⚠"),
+        "pace.okReset":    ("· 리셋 후 여유", "· after reset (safe)", "· リセット後（安全）"),
+
+        // 미니 차트
+        "chart.title":   ("최근 24시간 잔여율(%)", "Remaining % (last 24h)", "残量%（直近24時間）"),
+        "chart.collecting": ("차트 데이터 수집 중…", "Collecting chart data…", "チャートデータ収集中…"),
+
+        // 임계치 알림
+        "sec.notify":    ("임계치 알림", "Threshold Alerts", "しきい値アラート"),
+        "notify.enable": ("사용량 임계치 알림 켜기", "Enable usage threshold alerts", "使用量しきい値アラートを有効化"),
+        "notify.thFmt":  ("%d%% 사용 시 알림", "Alert at %d%% used", "%d%%使用時にアラート"),
+        "notify.desc":   ("선택한 사용률에 도달하면 macOS 알림을 보냅니다 (리셋 주기당 1회).", "Sends a macOS notification when usage reaches the selected level (once per reset cycle).", "選択した使用率に達するとmacOS通知を送ります（リセット周期ごとに1回）。"),
+        "notify.title":  ("AI 사용량 경고", "AI usage warning", "AI使用量の警告"),
+        "notify.body":   ("%@ 사용량이 %d% 도달", "%@ usage reached %d%", "%@ の使用量が %d% に到達"),
 
         // 선
         "line.thickness": ("굵기", "Thickness", "太さ"),

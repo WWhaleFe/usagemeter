@@ -9,6 +9,7 @@ final class StatusBarController: NSObject {
     private let statusItem: NSStatusItem
     private let settings: OverlaySettings
     private let manager: ProviderManager
+    private let history: HistoryStore
 
     /// 드롭다운 메뉴(열 때마다 정보 섹션을 다시 채운다).
     private let mainMenu = NSMenu()
@@ -36,9 +37,10 @@ final class StatusBarController: NSObject {
 
     private var cancellables: Set<AnyCancellable> = []
 
-    init(settings: OverlaySettings, manager: ProviderManager) {
+    init(settings: OverlaySettings, manager: ProviderManager, history: HistoryStore) {
         self.settings = settings
         self.manager = manager
+        self.history = history
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         hoverInfo = HoverInfoController(settings: settings)
         super.init()
@@ -78,11 +80,16 @@ final class StatusBarController: NSObject {
                                  .foregroundColor: NSColor(settings.color(forProvider: a.spec.id))])
                 head.isEnabled = false
                 menu.addItem(head)
-                for line in infoLines(a.snap) {
+                for line in infoLines(a) {
                     let li = NSMenuItem(title: "    " + line, action: nil, keyEquivalent: "")
                     li.isEnabled = false
                     menu.addItem(li)
                 }
+            }
+            // 24시간 미니 차트(#2순위)
+            if settings.menuShowChart, let chart = buildChartItem() {
+                menu.addItem(.separator())
+                menu.addItem(chart)
             }
         }
         menu.addItem(.separator())
@@ -124,23 +131,76 @@ final class StatusBarController: NSObject {
     }
 
     /// 드롭다운에 표시할 AI 정보 줄들(표시 옵션에 따라).
-    private func infoLines(_ s: UsageSnapshot) -> [String] {
+    private func infoLines(_ a: (spec: ProviderSpec, snap: UsageSnapshot)) -> [String] {
+        let s = a.snap
         var lines: [String] = []
+        // 리셋 시각 + 카운트다운을 붙이는 헬퍼.
+        func resetSuffix(_ date: Date?) -> String {
+            guard let r = date else { return "" }
+            var out = ""
+            if settings.menuShowReset { out += "   ·   " + settings.t("menu.lineReset") + " " + Self.timeFmt.string(from: r) }
+            if settings.menuShowCountdown { out += "   ·   " + countdownString(to: r) }
+            return out
+        }
         if settings.menuShow5h {
-            var l = settings.t("menu.line5h") + "  \(Int((s.remainingRatio * 100).rounded()))%"
-            if settings.menuShowReset, let r = s.resetAt { l += "   ·   " + settings.t("menu.lineReset") + " " + Self.timeFmt.string(from: r) }
-            lines.append(l)
+            lines.append(settings.t("menu.line5h") + "  \(Int((s.remainingRatio * 100).rounded()))%" + resetSuffix(s.resetAt))
         }
         if settings.menuShowWeekly, let w = s.secondaryRatio {
-            var l = settings.t("menu.lineWeekly") + "  \(Int((w * 100).rounded()))%"
-            if settings.menuShowReset, let r = s.secondaryResetAt { l += "   ·   " + settings.t("menu.lineReset") + " " + Self.timeFmt.string(from: r) }
-            lines.append(l)
+            lines.append(settings.t("menu.lineWeekly") + "  \(Int((w * 100).rounded()))%" + resetSuffix(s.secondaryResetAt))
+        }
+        if settings.menuShowOpus, let o = s.opusRatio {
+            lines.append(settings.t("info.opus") + "  \(Int((o * 100).rounded()))%" + resetSuffix(s.opusResetAt))
+        }
+        if settings.menuShowPace, let p = history.pace(for: a.spec.id) {
+            lines.append(paceString(p, resetAt: s.resetAt))
         }
         if settings.menuShowUpdated {
             lines.append(settings.t("menu.lineUpdated") + "  " + Self.timeFmt.string(from: s.lastUpdated))
         }
         if lines.isEmpty { lines.append(settings.t("menu.pickInfo")) }
         return lines
+    }
+
+    /// "N시간 M분 후" 카운트다운 문자열.
+    private func countdownString(to date: Date) -> String {
+        let secs = Int(date.timeIntervalSinceNow)
+        if secs <= 0 { return settings.t("cd.now") }
+        let h = secs / 3600, m = (secs % 3600) / 60
+        let hm = h > 0 ? "\(h)\(settings.t("cd.hour")) \(m)\(settings.t("cd.min"))" : "\(m)\(settings.t("cd.min"))"
+        return settings.tf("cd.afterFmt", hm)
+    }
+
+    /// 소진 예측 문자열.
+    private func paceString(_ p: PaceInfo, resetAt: Date?) -> String {
+        let inStr = settings.tf("pace.depleteFmt", countdownBare(to: p.depletion))
+        var out = settings.t("info.pace") + ": " + inStr
+        if let r = resetAt {
+            out += " " + (p.depletion < r ? settings.t("pace.warnReset") : settings.t("pace.okReset"))
+        }
+        return out
+    }
+    /// 카운트다운에서 "후/in" 없이 시간 부분만.
+    private func countdownBare(to date: Date) -> String {
+        let secs = max(0, Int(date.timeIntervalSinceNow))
+        let h = secs / 3600, m = (secs % 3600) / 60
+        return h > 0 ? "\(h)\(settings.t("cd.hour")) \(m)\(settings.t("cd.min"))" : "\(m)\(settings.t("cd.min"))"
+    }
+
+    /// 24시간 미니 차트를 담은 메뉴 항목(데이터 있으면).
+    private func buildChartItem() -> NSMenuItem? {
+        var lines: [MiniChartView.Line] = []
+        for a in manager.active {
+            let pts = history.series(for: a.spec.id, hours: 24)
+            if pts.count >= 2 {
+                lines.append(.init(id: a.spec.id, name: a.spec.name,
+                                   color: settings.color(forProvider: a.spec.id), points: pts))
+            }
+        }
+        guard !lines.isEmpty else { return nil }
+        let host = NSHostingView(rootView: MiniChartView(title: settings.t("chart.title"), lines: lines))
+        host.frame = NSRect(x: 0, y: 0, width: 296, height: 118)
+        let item = NSMenuItem(); item.view = host
+        return item
     }
 
     /// '표시 정보' 서브메뉴: 어떤 정보를 드롭다운에 보일지 체크박스로.
@@ -153,14 +213,22 @@ final class StatusBarController: NSObject {
         }
         add(settings.t("info.5h"), settings.menuShow5h, #selector(toggleShow5h))
         add(settings.t("info.weekly"), settings.menuShowWeekly, #selector(toggleShowWeekly))
+        add(settings.t("info.opus"), settings.menuShowOpus, #selector(toggleShowOpus))
         add(settings.t("info.reset"), settings.menuShowReset, #selector(toggleShowReset))
+        add(settings.t("info.countdown"), settings.menuShowCountdown, #selector(toggleShowCountdown))
+        add(settings.t("info.pace"), settings.menuShowPace, #selector(toggleShowPace))
+        add(settings.t("info.chart"), settings.menuShowChart, #selector(toggleShowChart))
         add(settings.t("info.updated"), settings.menuShowUpdated, #selector(toggleShowUpdated))
         return m
     }
 
     @objc private func toggleShow5h() { settings.menuShow5h.toggle() }
     @objc private func toggleShowWeekly() { settings.menuShowWeekly.toggle() }
+    @objc private func toggleShowOpus() { settings.menuShowOpus.toggle() }
     @objc private func toggleShowReset() { settings.menuShowReset.toggle() }
+    @objc private func toggleShowCountdown() { settings.menuShowCountdown.toggle() }
+    @objc private func toggleShowPace() { settings.menuShowPace.toggle() }
+    @objc private func toggleShowChart() { settings.menuShowChart.toggle() }
     @objc private func toggleShowUpdated() { settings.menuShowUpdated.toggle() }
 
     /// '자동 갱신 주기' 서브메뉴: 프리셋 분 + 사용자 설정(#4).

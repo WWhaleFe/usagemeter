@@ -31,11 +31,17 @@ struct UsageSnapshot: Equatable {
     /// 보조 잔여 비율 0.0~1.0 (없으면 nil). Claude 기본값 = 주간 한도의 잔여.
     let secondaryRatio: Double?
 
+    /// Opus 주간 잔여 비율 0.0~1.0 (Claude, 없으면 nil).
+    let opusRatio: Double?
+
     /// 주 한도가 리셋되는 시각(UTC). "임박 경고"와 카운트다운 표시에 쓴다.
     let resetAt: Date?
 
     /// 보조 한도 리셋 시각(UTC, 없으면 nil).
     let secondaryResetAt: Date?
+
+    /// Opus 주간 리셋 시각(UTC, 없으면 nil).
+    let opusResetAt: Date?
 
     /// 조회 상태.
     let status: UsageStatus

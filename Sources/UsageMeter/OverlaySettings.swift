@@ -132,6 +132,12 @@ struct SettingsSnapshot: Codable {
     var refreshPresetMinutes: Int?
     var refreshUseCustom: Bool?
     var refreshCustomMinutes: Int?
+    var menuShowOpus: Bool?
+    var menuShowCountdown: Bool?
+    var menuShowPace: Bool?
+    var menuShowChart: Bool?
+    var notifyEnabled: Bool?
+    var notifyThresholds: [Int]?
 }
 
 /// 이름이 붙은 저장 프리셋.
@@ -254,6 +260,21 @@ final class OverlaySettings: ObservableObject {
     @Published var menuShowWeekly: Bool = true
     @Published var menuShowReset: Bool = true
     @Published var menuShowUpdated: Bool = false
+    /// Opus 주간 잔여 표시(Claude).
+    @Published var menuShowOpus: Bool = true
+    /// 리셋까지 남은 시간(카운트다운) 표시.
+    @Published var menuShowCountdown: Bool = true
+    /// 소진 예측(pace) 표시.
+    @Published var menuShowPace: Bool = false
+    /// 드롭다운에 24시간 미니 차트 표시.
+    @Published var menuShowChart: Bool = false
+
+    // MARK: - 임계치 알림
+
+    /// 임계치 알림 켜기.
+    @Published var notifyEnabled: Bool = false
+    /// 알림을 보낼 사용률(%) 임계치(잔여 = 100 - 이 값).
+    @Published var notifyThresholds: Set<Int> = [75, 90, 95]
 
     // MARK: - AI별 겹치지 않게 보기
 
@@ -450,7 +471,13 @@ final class OverlaySettings: ObservableObject {
             language: language.rawValue,
             refreshPresetMinutes: refreshPresetMinutes,
             refreshUseCustom: refreshUseCustom,
-            refreshCustomMinutes: refreshCustomMinutes
+            refreshCustomMinutes: refreshCustomMinutes,
+            menuShowOpus: menuShowOpus,
+            menuShowCountdown: menuShowCountdown,
+            menuShowPace: menuShowPace,
+            menuShowChart: menuShowChart,
+            notifyEnabled: notifyEnabled,
+            notifyThresholds: Array(notifyThresholds)
         )
     }
 
@@ -500,6 +527,12 @@ final class OverlaySettings: ObservableObject {
         refreshPresetMinutes = s.refreshPresetMinutes ?? 5
         refreshUseCustom = s.refreshUseCustom ?? false
         refreshCustomMinutes = s.refreshCustomMinutes ?? 5
+        menuShowOpus = s.menuShowOpus ?? true
+        menuShowCountdown = s.menuShowCountdown ?? true
+        menuShowPace = s.menuShowPace ?? false
+        menuShowChart = s.menuShowChart ?? false
+        notifyEnabled = s.notifyEnabled ?? false
+        if let t = s.notifyThresholds { notifyThresholds = Set(t) }
     }
 
     /// 현재 설정을 이름으로 저장(최대 maxPresets).

@@ -39,7 +39,7 @@ struct ProviderSpec: Identifiable {
           if (usageRes.status !== 200) return {ok:false, reason:'usage_failed', status: usageRes.status};
           const u = await usageRes.json();
           const pick = (x) => (x && typeof x.utilization === 'number') ? {utilization: x.utilization, resets_at: x.resets_at || null} : null;
-          return {ok:true, five_hour: pick(u.five_hour), seven_day: pick(u.seven_day)};
+          return {ok:true, five_hour: pick(u.five_hour), seven_day: pick(u.seven_day), seven_day_opus: pick(u.seven_day_opus)};
         } catch (e) { return {ok:false, reason:'exception', message: String(e)}; }
         """,
         defaultColor: Color(red: 0.85, green: 0.47, blue: 0.34)   // Anthropic 코랄

@@ -123,11 +123,49 @@ struct SettingsView: View {
                 .font(.caption).foregroundStyle(.secondary)
         }
         section(settings.t("sec.dropdownInfo")) {
-            Toggle(settings.t("info.5h"), isOn: $settings.menuShow5h)
-            Toggle(settings.t("info.weekly"), isOn: $settings.menuShowWeekly)
-            Toggle(settings.t("info.reset"), isOn: $settings.menuShowReset)
-            Toggle(settings.t("info.updated"), isOn: $settings.menuShowUpdated)
+            checkGrid([
+                ("info.5h", $settings.menuShow5h),
+                ("info.weekly", $settings.menuShowWeekly),
+                ("info.opus", $settings.menuShowOpus),
+                ("info.reset", $settings.menuShowReset),
+                ("info.countdown", $settings.menuShowCountdown),
+                ("info.pace", $settings.menuShowPace),
+                ("info.chart", $settings.menuShowChart),
+                ("info.updated", $settings.menuShowUpdated),
+            ])
         }
+        section(settings.t("sec.notify")) {
+            Toggle(settings.t("notify.enable"), isOn: $settings.notifyEnabled)
+            HStack(spacing: 20) {
+                ForEach([75, 90, 95], id: \.self) { th in
+                    Toggle(settings.tn("notify.thFmt", th), isOn: notifyThresholdBinding(th))
+                        .disabled(!settings.notifyEnabled)
+                }
+            }
+            Text(settings.t("notify.desc"))
+                .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    /// 체크박스 항목들을 2열 그리드로 배치(세로로만 길어지는 것 방지).
+    @ViewBuilder
+    private func checkGrid(_ items: [(String, Binding<Bool>)]) -> some View {
+        let cols = [GridItem(.flexible(), alignment: .leading),
+                    GridItem(.flexible(), alignment: .leading)]
+        LazyVGrid(columns: cols, alignment: .leading, spacing: 6) {
+            ForEach(items.indices, id: \.self) { i in
+                Toggle(settings.t(items[i].0), isOn: items[i].1)
+            }
+        }
+    }
+
+    /// 임계치 알림 대상에 이 사용률이 포함되는지 토글.
+    private func notifyThresholdBinding(_ th: Int) -> Binding<Bool> {
+        Binding(get: { settings.notifyThresholds.contains(th) },
+                set: { on in
+                    if on { settings.notifyThresholds.insert(th) }
+                    else { settings.notifyThresholds.remove(th) }
+                })
     }
 
     @ViewBuilder private var intervalTab: some View {

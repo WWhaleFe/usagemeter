@@ -159,9 +159,12 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         }
         let five = raw["five_hour"] as? [String: Any]
         let week = raw["seven_day"] as? [String: Any]
+        let opus = raw["seven_day_opus"] as? [String: Any]
         return UsageSnapshot(
             id: spec.id, remainingRatio: remaining(five), secondaryRatio: week.map(remaining),
+            opusRatio: opus.map(remaining),
             resetAt: resetDate(five), secondaryResetAt: resetDate(week),
+            opusResetAt: resetDate(opus),
             status: .ok, lastUpdated: now
         )
     }
@@ -188,7 +191,7 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         return f.date(from: s) ?? { f.formatOptions = [.withInternetDateTime]; return f.date(from: s) }()
     }
     private func snapshot(_ status: UsageStatus, _ now: Date) -> UsageSnapshot {
-        UsageSnapshot(id: spec.id, remainingRatio: 0, secondaryRatio: nil,
-                      resetAt: nil, secondaryResetAt: nil, status: status, lastUpdated: now)
+        UsageSnapshot(id: spec.id, remainingRatio: 0, secondaryRatio: nil, opusRatio: nil,
+                      resetAt: nil, secondaryResetAt: nil, opusResetAt: nil, status: status, lastUpdated: now)
     }
 }
