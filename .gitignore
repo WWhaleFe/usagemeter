@@ -20,3 +20,6 @@ AppIcon.iconset/
 스크린샷*.png
 *_screenshot*.png
 minimalist-*.png
+
+# 릴리스 zip (Releases에만 업로드)
+UsageMeter*.zip

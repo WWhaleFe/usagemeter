@@ -5,6 +5,12 @@
 
 > A macOS menu-bar overlay that shows your remaining Claude / Gemini usage as colored bands along the screen edges.
 
+## ⬇️ 다운로드
+
+**[최신 릴리스 받기 (Releases)](https://github.com/WWhaleFe/usagemeter/releases/latest)** — `UsageMeter-vX.X.X.zip` 다운로드 → 압축 해제 → 응용 프로그램으로 이동.
+
+> ⚠️ 미공증 앱이라 첫 실행 시 **우클릭 → 열기**가 필요합니다. 안 열리면 시스템 설정 → 개인정보 보호 및 보안에서 "그래도 열기".
+
 <br>
 
 ## ✨ 주요 기능
