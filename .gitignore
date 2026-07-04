@@ -1,0 +1,22 @@
+# Swift / SwiftPM
+.build/
+*.xcodeproj
+*.xcworkspace
+.swiftpm/
+
+# 빌드 산출물 (build-app.sh 로 재생성)
+UsageMeter.app/
+AppIcon.icns
+AppIcon.iconset/
+
+# macOS
+.DS_Store
+
+# 에디터 / 도구
+.claude/
+*.swp
+
+# 스크린샷·임시 이미지 (아이콘 원본 icon.png 는 커밋)
+스크린샷*.png
+*_screenshot*.png
+minimalist-*.png
