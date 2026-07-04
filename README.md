@@ -70,13 +70,6 @@ usagemeter/
 - claude.ai / gemini 의 비공식 엔드포인트·DOM에 의존하므로, 상대가 구조를 바꾸면 조회가 깨질 수 있다.
 - ChatGPT는 잔여 사용량을 노출하지 않아 지원하지 않는다.
 
-## 🙌 후원
-
-무료·오픈소스입니다. 도움이 되었다면 후원으로 응원해 주세요.
-
-> 🚧 후원 채널 준비 중 — 계정이 열리면 이 자리에 링크(Ko-fi / Buy Me a Coffee / 토스 등)가 추가됩니다.
-> 준비 템플릿은 [`.github/FUNDING.yml`](.github/FUNDING.yml) 에 있습니다.
-
 ## 📄 라이선스
 
 [MIT](LICENSE)
