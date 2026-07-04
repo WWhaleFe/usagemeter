@@ -6,6 +6,7 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var settings: OverlaySettings
     @State private var newPresetName: String = ""
+    @State private var tab: String = "presets"
 
     private static let fmt: NumberFormatter = {
         let f = NumberFormatter()
@@ -26,18 +27,29 @@ struct SettingsView: View {
             .padding(.horizontal, 18)
             .padding(.top, 14)
 
-            TabView {
-                tabScroll { presetTab }.tabItem { Label(settings.t("tab.presets"), systemImage: "square.stack.3d.up") }
-                tabScroll { displayTab }.tabItem { Label(settings.t("tab.display"), systemImage: "menubar.rectangle") }
-                tabScroll { lineTab }.tabItem { Label(settings.t("tab.line"), systemImage: "paintbrush") }
-                tabScroll { layoutTab }.tabItem { Label(settings.t("tab.layout"), systemImage: "square.dashed") }
-                tabScroll { cornerTab }.tabItem { Label(settings.t("tab.corner"), systemImage: "rectangle.roundedtop") }
-                tabScroll { notchTab }.tabItem { Label(settings.t("tab.notch"), systemImage: "rectangle.tophalf.inset.filled") }
+            TabView(selection: $tab) {
+                tabScroll { presetTab }.tabItem { Label(settings.t("tab.presets"), systemImage: "square.stack.3d.up") }.tag("presets")
+                tabScroll { displayTab }.tabItem { Label(settings.t("tab.display"), systemImage: "menubar.rectangle") }.tag("display")
+                tabScroll { intervalTab }.tabItem { Label(settings.t("tab.interval"), systemImage: "arrow.clockwise") }.tag("interval")
+                tabScroll { lineTab }.tabItem { Label(settings.t("tab.line"), systemImage: "paintbrush") }.tag("line")
+                tabScroll { layoutTab }.tabItem { Label(settings.t("tab.layout"), systemImage: "square.dashed") }.tag("layout")
+                tabScroll { cornerTab }.tabItem { Label(settings.t("tab.corner"), systemImage: "rectangle.roundedtop") }.tag("corner")
+                tabScroll { notchTab }.tabItem { Label(settings.t("tab.notch"), systemImage: "rectangle.tophalf.inset.filled") }.tag("notch")
             }
             .padding(.horizontal, 10)
             .padding(.bottom, 10)
         }
         .frame(width: 640, height: 740)
+        .onAppear { consumeRequestedTab() }
+        .onChange(of: settings.requestedTab) { _, _ in consumeRequestedTab() }
+    }
+
+    /// 메뉴에서 특정 탭 열기 요청이 있으면 반영(#5).
+    private func consumeRequestedTab() {
+        if let r = settings.requestedTab {
+            tab = r
+            settings.requestedTab = nil
+        }
     }
 
     /// 각 탭 내용을 스크롤 + 여백으로 감싼다(대개는 스크롤 없이 다 보이는 높이).
@@ -115,6 +127,23 @@ struct SettingsView: View {
             Toggle(settings.t("info.weekly"), isOn: $settings.menuShowWeekly)
             Toggle(settings.t("info.reset"), isOn: $settings.menuShowReset)
             Toggle(settings.t("info.updated"), isOn: $settings.menuShowUpdated)
+        }
+    }
+
+    @ViewBuilder private var intervalTab: some View {
+        section(settings.t("sec.interval")) {
+            Picker(settings.t("interval.preset"), selection: $settings.refreshPresetMinutes) {
+                ForEach(OverlaySettings.refreshPresets, id: \.self) { m in
+                    Text(settings.tn("interval.minutesFmt", m)).tag(m)
+                }
+            }
+            .disabled(settings.refreshUseCustom)
+            Divider().padding(.vertical, 2)
+            Toggle(settings.t("interval.useCustom"), isOn: $settings.refreshUseCustom)
+            sliderRow(settings.t("interval.customMin"), value: customMinutesBinding, range: 1...180, step: 1)
+                .disabled(!settings.refreshUseCustom)
+            Text(settings.tn("interval.currentFmt", settings.effectiveRefreshMinutes))
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -315,6 +344,11 @@ struct SettingsView: View {
     private func clampedDouble(_ v: Binding<CGFloat>, _ range: ClosedRange<CGFloat>) -> Binding<Double> {
         Binding(get: { Double(v.wrappedValue) },
                 set: { v.wrappedValue = min(range.upperBound, max(range.lowerBound, CGFloat($0))) })
+    }
+    /// 사용자 설정 주기(분) Int ↔ 슬라이더용 CGFloat.
+    private var customMinutesBinding: Binding<CGFloat> {
+        Binding(get: { CGFloat(settings.refreshCustomMinutes) },
+                set: { settings.refreshCustomMinutes = min(180, max(1, Int($0.rounded()))) })
     }
     /// 0~20(%) 그라데이션 길이 ↔ fadeFraction(0~0.2).
     private var fadeBinding: Binding<CGFloat> {

@@ -32,6 +32,17 @@ enum Loc {
         // 언어
         "lang.title": ("언어", "Language", "言語"),
 
+        // 자동 갱신 주기
+        "tab.interval":        ("주기", "Interval", "更新間隔"),
+        "sec.interval":        ("자동 갱신 주기", "Auto-refresh Interval", "自動更新の間隔"),
+        "interval.minutesFmt": ("%d분", "%d min", "%d分"),
+        "interval.preset":     ("갱신 주기", "Refresh interval", "更新間隔"),
+        "interval.useCustom":  ("사용자 설정 (직접 분 입력)", "Custom (enter minutes)", "カスタム（分を直接入力）"),
+        "interval.customMin":  ("직접 주기 (분)", "Custom interval (min)", "カスタム間隔（分）"),
+        "interval.currentFmt": ("현재 %d분마다 자동으로 사용량을 갱신합니다.", "Auto-refreshes usage every %d minutes.", "%d分ごとに使用量を自動更新します。"),
+        "menu.interval":       ("자동 갱신 주기", "Auto-refresh interval", "自動更新の間隔"),
+        "menu.intervalCustom": ("사용자 설정…", "Custom…", "カスタム…"),
+
         // 탭
         "tab.presets": ("저장 불러오기", "Save & Load", "保存・読み込み"),
         "tab.display": ("표시", "Display", "表示"),

@@ -91,6 +91,16 @@ final class StatusBarController: NSObject {
         let infoItem = NSMenuItem(title: settings.t("menu.showInfo"), action: nil, keyEquivalent: "")
         infoItem.submenu = buildInfoToggleMenu()
         menu.addItem(infoItem)
+
+        // 자동 갱신 주기(#4)
+        let intervalItem = NSMenuItem(title: settings.t("menu.interval"), action: nil, keyEquivalent: "")
+        intervalItem.submenu = buildIntervalMenu()
+        menu.addItem(intervalItem)
+
+        // 언어(#6)
+        let langItem = NSMenuItem(title: settings.t("lang.title"), action: nil, keyEquivalent: "")
+        langItem.submenu = buildLanguageMenu()
+        menu.addItem(langItem)
         menu.addItem(.separator())
 
         // 2) AI 로그인/로그아웃, 새로고침
@@ -152,6 +162,52 @@ final class StatusBarController: NSObject {
     @objc private func toggleShowWeekly() { settings.menuShowWeekly.toggle() }
     @objc private func toggleShowReset() { settings.menuShowReset.toggle() }
     @objc private func toggleShowUpdated() { settings.menuShowUpdated.toggle() }
+
+    /// '자동 갱신 주기' 서브메뉴: 프리셋 분 + 사용자 설정(#4).
+    private func buildIntervalMenu() -> NSMenu {
+        let m = NSMenu(); m.autoenablesItems = false
+        for mins in OverlaySettings.refreshPresets {
+            let it = NSMenuItem(title: settings.tn("interval.minutesFmt", mins), action: #selector(pickInterval(_:)), keyEquivalent: "")
+            it.tag = mins; it.target = self
+            it.state = (!settings.refreshUseCustom && settings.refreshPresetMinutes == mins) ? .on : .off
+            m.addItem(it)
+        }
+        m.addItem(.separator())
+        let custom = NSMenuItem(title: settings.t("menu.intervalCustom"), action: #selector(pickIntervalCustom), keyEquivalent: "")
+        custom.target = self
+        custom.state = settings.refreshUseCustom ? .on : .off
+        m.addItem(custom)
+        return m
+    }
+
+    @objc private func pickInterval(_ sender: NSMenuItem) {
+        settings.refreshUseCustom = false
+        settings.refreshPresetMinutes = sender.tag
+    }
+
+    /// 사용자 설정 클릭(#5): 설정 창의 '주기' 탭을 열고 사용자 설정 자동 체크.
+    @objc private func pickIntervalCustom() {
+        settings.refreshUseCustom = true
+        settings.requestedTab = "interval"
+        openSettings()
+    }
+
+    /// '언어' 서브메뉴(#6).
+    private func buildLanguageMenu() -> NSMenu {
+        let m = NSMenu(); m.autoenablesItems = false
+        for lang in AppLanguage.allCases {
+            let it = NSMenuItem(title: lang.displayName, action: #selector(pickLanguage(_:)), keyEquivalent: "")
+            it.representedObject = lang.rawValue; it.target = self
+            it.state = (settings.language == lang) ? .on : .off
+            m.addItem(it)
+        }
+        return m
+    }
+
+    @objc private func pickLanguage(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let lang = AppLanguage(rawValue: raw) else { return }
+        settings.language = lang
+    }
 
     /// 변(면) 선택 서브메뉴: 4변 개별 토글 + 자주 쓰는 조합 프리셋.
     private func buildEdgesMenu() -> NSMenu {

@@ -129,6 +129,9 @@ struct SettingsSnapshot: Codable {
     var menuShowReset: Bool?
     var menuShowUpdated: Bool?
     var language: String?
+    var refreshPresetMinutes: Int?
+    var refreshUseCustom: Bool?
+    var refreshCustomMinutes: Int?
 }
 
 /// 이름이 붙은 저장 프리셋.
@@ -214,13 +217,29 @@ final class OverlaySettings: ObservableObject {
     @Published var keepLoggedIn: Bool = true
 
     /// UI 언어(한국어/영어/일본어). 바뀌면 설정 창·메뉴 문자열이 즉시 갱신.
-    @Published var language: AppLanguage = .korean
+    @Published var language: AppLanguage = .english   // 처음 설치 시 영문 기본
     /// 현재 언어로 문자열 조회.
     func t(_ key: String) -> String { Loc.tr(key, language) }
     /// %@ 를 인자로 치환.
     func tf(_ key: String, _ arg: String) -> String { t(key).replacingOccurrences(of: "%@", with: arg) }
     /// %d 를 숫자로 치환.
     func tn(_ key: String, _ n: Int) -> String { t(key).replacingOccurrences(of: "%d", with: String(n)) }
+
+    // MARK: - 자동 갱신 주기
+
+    /// 선택 가능한 프리셋 주기(분).
+    static let refreshPresets: [Int] = [1, 2, 3, 4, 5, 10, 15, 20, 30, 60, 120]
+    /// 프리셋 주기(분). 기본 5분.
+    @Published var refreshPresetMinutes: Int = 5
+    /// 사용자 설정(직접 분 입력) 사용 여부.
+    @Published var refreshUseCustom: Bool = false
+    /// 사용자 설정 주기(분).
+    @Published var refreshCustomMinutes: Int = 5
+    /// 실제 적용되는 갱신 주기(분).
+    var effectiveRefreshMinutes: Int { max(1, refreshUseCustom ? refreshCustomMinutes : refreshPresetMinutes) }
+
+    /// 설정 창에서 열 탭 요청(메뉴에서 트리거). 처리 후 nil로 되돌린다. 영속화 안 함.
+    @Published var requestedTab: String? = nil
 
     // MARK: - 메뉴바/드롭다운 표시
 
@@ -303,7 +322,7 @@ final class OverlaySettings: ObservableObject {
     init() {
         loadSavedPresets()
         // 설정 스키마 버전이 오르면 저장된 라이브 설정을 1회 초기화(프리셋은 유지).
-        let version = 10
+        let version = 11
         if UserDefaults.standard.integer(forKey: "usagemeter.settingsVersion") < version {
             UserDefaults.standard.removeObject(forKey: Self.currentKey)
             UserDefaults.standard.set(version, forKey: "usagemeter.settingsVersion")
@@ -428,7 +447,10 @@ final class OverlaySettings: ObservableObject {
             menuBarPercentFirstID: menuBarPercentFirstID,
             menuShow5h: menuShow5h, menuShowWeekly: menuShowWeekly,
             menuShowReset: menuShowReset, menuShowUpdated: menuShowUpdated,
-            language: language.rawValue
+            language: language.rawValue,
+            refreshPresetMinutes: refreshPresetMinutes,
+            refreshUseCustom: refreshUseCustom,
+            refreshCustomMinutes: refreshCustomMinutes
         )
     }
 
@@ -475,6 +497,9 @@ final class OverlaySettings: ObservableObject {
         menuShowReset = s.menuShowReset ?? true
         menuShowUpdated = s.menuShowUpdated ?? false
         if let l = s.language, let lang = AppLanguage(rawValue: l) { language = lang }
+        refreshPresetMinutes = s.refreshPresetMinutes ?? 5
+        refreshUseCustom = s.refreshUseCustom ?? false
+        refreshCustomMinutes = s.refreshCustomMinutes ?? 5
     }
 
     /// 현재 설정을 이름으로 저장(최대 maxPresets).
