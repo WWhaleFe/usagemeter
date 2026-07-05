@@ -52,7 +52,7 @@ struct SettingsView: View {
             .padding(.horizontal, 10)
             .padding(.bottom, 10)
         }
-        .frame(width: 720, height: 800)
+        .frame(width: 680, height: 880)
         .onAppear { consumeRequestedTab() }
         .onChange(of: settings.requestedTab) { _, _ in consumeRequestedTab() }
     }
@@ -335,25 +335,37 @@ struct SettingsView: View {
     }
 
     @ViewBuilder private var layoutTab: some View {
-        section(settings.t("sec.layout")) {
-            // 겹치는 선 없음: 켜는 순간 기존 겹침을 정리하고(#요청3,4) 이후 겹침을 차단한다.
-            Toggle(settings.t("lay.noOverlap"), isOn: Binding(
-                get: { settings.noOverlapLines },
-                set: { on in
-                    settings.noOverlapLines = on
-                    if on { settings.enforceNoOverlap() }
-                }))
-            // 항상 AI별 선택(#요청1) — 겹쳐도 된다.
-            ForEach(ProviderSpec.all) { spec in
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(spec.name).font(.subheadline).bold()
-                    segmentEditor(id: spec.id)
-                }
-                .padding(8)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: Self.boxRadius).fill(Color.primary.opacity(0.05)))
-            }
+        // 헤더 없는 박스(#섹션 제목 줄 제거 — 스크롤 축소): 겹치는 선 없음 체크박스만.
+        Toggle(settings.t("lay.noOverlap"), isOn: Binding(
+            get: { settings.noOverlapLines },
+            set: { on in
+                settings.noOverlapLines = on
+                if on { settings.enforceNoOverlap() }
+            }))
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: Self.boxRadius).fill(Color(nsColor: .controlBackgroundColor)))
+        // AI별 박스: 우측 블록(프리셋+다이어그램)이 제목 줄 높이에서 시작해 박스를 압축(#올리기).
+        ForEach(ProviderSpec.all) { spec in
+            aiLayoutBox(spec)
         }
+    }
+
+    /// AI 배치 박스: 좌측 = 제목+옵션, 우측 = 프리셋(2×2)+다이어그램(제목과 같은 높이에서 시작).
+    @ViewBuilder
+    private func aiLayoutBox(_ spec: ProviderSpec) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(spec.name).font(.headline)
+                segmentEditor(id: spec.id)
+            }
+            .frame(width: 370, alignment: .leading)
+            segmentPresetsAndDiagram(id: spec.id)
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: Self.boxRadius).fill(Color(nsColor: .controlBackgroundColor)))
     }
 
     /// 모서리 곡률 탭(분리 복원): 영역별 꼭짓점 곡률.
@@ -434,25 +446,8 @@ struct SettingsView: View {
     private func segmentEditor(id: String?) -> some View {
         let menuOn = settings.menuLineEnabled, dockOn = settings.dockLineEnabled
         let segs = currentSegs(id)
-        HStack(alignment: .top, spacing: 14) {
-            // 좌측: 모양 프리셋 + 끝 모서리 + 차감 방향 반전.
-            VStack(alignment: .leading, spacing: 10) {
-                // 모양 프리셋(빠른 선택 통합 #요청6): 영역 둘레 + 어울리는 캡을 한 번에 적용.
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(settings.t("lay.presets")).font(.caption).foregroundStyle(.secondary)
-                    HStack(spacing: 5) {
-                        presetButton(id, "lay.zoneAll", zones: Set(ScreenZone.allCases), caps: [:])
-                        presetButton(id, "zone.menuBar", zones: [.menuBar],
-                                     caps: [OverlaySettings.hCapKey(.hMenu, right: false): .down,
-                                            OverlaySettings.hCapKey(.hMenu, right: true): .down])
-                            .disabled(!settings.menuLineEnabled)
-                        presetButton(id, "zone.main", zones: [.main], caps: [:])
-                        presetButton(id, "zone.dock", zones: [.dock],
-                                     caps: [OverlaySettings.hCapKey(.hDock, right: false): .up,
-                                            OverlaySettings.hCapKey(.hDock, right: true): .up])
-                            .disabled(!settings.dockLineEnabled)
-                    }
-                }
+        // 좌측: 끝 모서리 + 차감 방향 반전 (프리셋·다이어그램은 우측 블록 #올리기).
+        VStack(alignment: .leading, spacing: 8) {
                 // 가로선 끝 위/아래 둥글게 — 세로선이 붙어 있어도, 고리여도 항상 설정 가능.
                 let hsSel = [SegPart.hTop, .hMenu, .hDock, .hBottom].filter { segs.contains($0) }
                 if !hsSel.isEmpty {
@@ -475,24 +470,39 @@ struct SettingsView: View {
                     case .scoop: anchorSideRow(side: anchorSideBinding(id), scoop: true)
                     }
                 }
-                Spacer(minLength: 0)
                 // 더블 클릭 안내(#요청3).
                 Text(settings.t("lay.dblHint"))
                     .font(.caption2).foregroundStyle(.secondary)
-            }
-            .frame(width: 380, alignment: .leading)
-            Spacer(minLength: 8)
-            // 우측: 인터랙티브 화면 다이어그램 — 선분을 직접 클릭해 토글(세로 가운데 정렬 #요청7).
-            VStack {
-                Spacer(minLength: 0)
-                segDiagram(id: id)
-                Spacer(minLength: 0)
-            }
-            .padding(.trailing, 6)
         }
-        // 옵션 수가 변해도 박스 크기 고정(#요청4).
-        .frame(height: 268, alignment: .top)
     }
+
+    /// 우측 블록: 프리셋(2×2, 다이어그램 폭에 정확히 정렬 #라인 맞추기) + 다이어그램.
+    @ViewBuilder
+    private func segmentPresetsAndDiagram(id: String?) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 5) {
+                presetButton(id, "lay.zoneAll", zones: Set(ScreenZone.allCases), caps: [:])
+                presetButton(id, "zone.menuBar", zones: [.menuBar],
+                             caps: [OverlaySettings.hCapKey(.hMenu, right: false): .down,
+                                    OverlaySettings.hCapKey(.hMenu, right: true): .down])
+                    .disabled(!settings.menuLineEnabled)
+            }
+            .frame(width: Self.diagW)
+            HStack(spacing: 5) {
+                presetButton(id, "zone.main", zones: [.main], caps: [:])
+                presetButton(id, "zone.dock", zones: [.dock],
+                             caps: [OverlaySettings.hCapKey(.hDock, right: false): .up,
+                                    OverlaySettings.hCapKey(.hDock, right: true): .up])
+                    .disabled(!settings.dockLineEnabled)
+            }
+            .frame(width: Self.diagW)
+            segDiagram(id: id)
+        }
+    }
+
+    /// 다이어그램 크기(프리셋 폭 정렬 기준).
+    static let diagW: CGFloat = 209
+    static let diagH: CGFloat = 133
 
     /// 모양 프리셋 버튼: 영역 둘레 + 끝 캡 묶음을 한 번에 적용.
     private func presetButton(_ id: String?, _ key: String,
@@ -503,7 +513,8 @@ struct SettingsView: View {
             let segs = OverlaySettings.zonePerimeter(zones, menuOn: menuOn, dockOn: dockOn)
             guard settings.canUseSegments(id, segs) else { return }
             mutateLayout(id) { $0.zones = zones; $0.segments = segs; $0.hCaps = caps }
-        } label: { Text(settings.t(key)).frame(width: 52) }
+        } label: { Text(settings.t(key)).frame(maxWidth: .infinity) }
+            .controlSize(.small)
     }
 
     /// 한 가로선의 좌/우 끝 위/아래 둥글게 행. 불가능한 방향(상단↑, 하단↓)만 비활성화.
@@ -552,7 +563,7 @@ struct SettingsView: View {
     @ViewBuilder
     private func segDiagram(id: String?) -> some View {
         let menuOn = settings.menuLineEnabled, dockOn = settings.dockLineEnabled
-        let W: CGFloat = 250, H: CGFloat = 160
+        let W = Self.diagW, H = Self.diagH
         let color = id.map { settings.color(forProvider: $0) } ?? .accentColor
         let frames = diagramFrames(menuOn: menuOn, dockOn: dockOn, W: W, H: H)
         ZStack(alignment: .topLeading) {
