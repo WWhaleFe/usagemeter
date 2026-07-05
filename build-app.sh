@@ -1,17 +1,32 @@
 #!/bin/bash
-# UsageMeter를 더블클릭 실행 가능한 .app 번들로 패키징한다. (v1.0.4)
+# UsageMeter를 더블클릭 실행 가능한 .app 번들로 패키징한다. (v1.1.0)
 # 사용: ./build-app.sh  → UsageMeter.app 생성 (앱 아이콘 = icon.png)
 set -e
 cd "$(dirname "$0")"
 
-VERSION="1.0.4"
-BUILD="5"
+VERSION="1.1.0"
+BUILD="6"
 
-echo "▶ 릴리즈 빌드…"
-swift build -c release
+DEPLOY_TARGET="14.0"
+
+# 유니버설(arm64 + x86_64) 바이너리를 만든다.
+# `swift build --arch a --arch b` 방식은 전체 Xcode(xcbuild)가 필요하므로,
+# Command Line Tools만으로도 되도록 아키텍처별로 따로 빌드 후 lipo로 합친다.
+echo "▶ 릴리즈 빌드 (arm64 — 애플실리콘)…"
+swift build -c release --triple "arm64-apple-macosx${DEPLOY_TARGET}"
+ARM_BIN="$(swift build -c release --triple "arm64-apple-macosx${DEPLOY_TARGET}" --show-bin-path)/UsageMeter"
+
+echo "▶ 릴리즈 빌드 (x86_64 — 인텔)…"
+swift build -c release --triple "x86_64-apple-macosx${DEPLOY_TARGET}"
+X86_BIN="$(swift build -c release --triple "x86_64-apple-macosx${DEPLOY_TARGET}" --show-bin-path)/UsageMeter"
+
+echo "▶ lipo로 유니버설 바이너리 결합…"
+mkdir -p .build/universal
+BIN=".build/universal/UsageMeter"
+lipo -create -output "$BIN" "$ARM_BIN" "$X86_BIN"
+lipo -info "$BIN"
 
 APP="UsageMeter.app"
-BIN=".build/release/UsageMeter"
 
 echo "▶ 앱 아이콘(icon.png → AppIcon.icns) 생성…"
 if [ -f icon.png ]; then

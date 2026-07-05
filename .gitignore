@@ -20,6 +20,9 @@ AppIcon.iconset/
 스크린샷*.png
 *_screenshot*.png
 minimalist-*.png
+# 디자인 참고용 캡처(한글 파일명 작업 이미지)는 커밋하지 않는다
+/*.png
+!icon.png
 
 # 릴리스 zip (Releases에만 업로드)
 UsageMeter*.zip

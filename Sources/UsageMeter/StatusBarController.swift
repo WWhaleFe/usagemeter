@@ -15,7 +15,6 @@ final class StatusBarController: NSObject {
     private let mainMenu = NSMenu()
 
     /// 변(면) 토글 메뉴 항목 — 메뉴 열 때 체크 상태를 갱신하기 위해 참조 보관.
-    private var edgeToggleItems: [BorderEdge: NSMenuItem] = [:]
 
     /// 트랙 배경 표시 토글 항목.
     private let trackItem = NSMenuItem(title: "트랙 배경 표시", action: nil, keyEquivalent: "")
@@ -27,7 +26,7 @@ final class StatusBarController: NSObject {
     private let aiSubmenu = NSMenu()
 
     /// 설정 창 컨트롤러(지연 생성).
-    private lazy var settingsWC = SettingsWindowController(settings: settings)
+    private lazy var settingsWC = SettingsWindowController(settings: settings, manager: manager)
 
     /// 커서를 테두리에 올리면 현재 정보를 보여주는 컨트롤러.
     private let hoverInfo: HoverInfoController
@@ -198,7 +197,9 @@ final class StatusBarController: NSObject {
         }
         guard !lines.isEmpty else { return nil }
         let host = NSHostingView(rootView: MiniChartView(title: settings.t("chart.title"), lines: lines))
-        host.frame = NSRect(x: 0, y: 0, width: 296, height: 118)
+        // 메뉴 폭에 맞춰 늘어나도록(#차트 꽉 채움): 기본 폭 + 가로 자동 리사이즈.
+        host.frame = NSRect(x: 0, y: 0, width: 340, height: 118)
+        host.autoresizingMask = [.width]
         let item = NSMenuItem(); item.view = host
         return item
     }
@@ -275,26 +276,6 @@ final class StatusBarController: NSObject {
     @objc private func pickLanguage(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let lang = AppLanguage(rawValue: raw) else { return }
         settings.language = lang
-    }
-
-    /// 변(면) 선택 서브메뉴: 4변 개별 토글 + 자주 쓰는 조합 프리셋.
-    private func buildEdgesMenu() -> NSMenu {
-        let sub = NSMenu()
-        for edge in BorderEdge.allCases {
-            let item = NSMenuItem(title: edge.label + "변", action: #selector(toggleEdge(_:)), keyEquivalent: "")
-            item.representedObject = edge.rawValue
-            item.target = self
-            edgeToggleItems[edge] = item
-            sub.addItem(item)
-        }
-        sub.addItem(.separator())
-        for (i, preset) in OverlaySettings.presetEdgeSets.enumerated() {
-            let item = NSMenuItem(title: preset.0, action: #selector(pickEdgePreset(_:)), keyEquivalent: "")
-            item.tag = i
-            item.target = self
-            sub.addItem(item)
-        }
-        return sub
     }
 
     /// 모서리 곡률 서브메뉴: 전체 동일 프리셋 + 모서리별 세부 조정.
@@ -452,17 +433,6 @@ final class StatusBarController: NSObject {
 
     @objc private func colorPanelChanged(_ sender: NSColorPanel) {
         settings.color = Color(nsColor: sender.color)
-    }
-
-    @objc private func toggleEdge(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String,
-              let edge = BorderEdge(rawValue: raw), settings.canToggleEdge(edge) else { return }
-        if settings.edges.contains(edge) { settings.edges.remove(edge) }
-        else { settings.edges.insert(edge) }
-    }
-
-    @objc private func pickEdgePreset(_ sender: NSMenuItem) {
-        settings.edges = OverlaySettings.presetEdgeSets[sender.tag].1
     }
 
     @objc private func pickAllCorners(_ sender: NSMenuItem) {

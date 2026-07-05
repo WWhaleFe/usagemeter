@@ -80,20 +80,71 @@ enum NotchCorner: String, CaseIterable {
     }
 }
 
-/// AI별 "겹치지 않게 보기"에서 각 AI가 쓸 변·시작지점·방향·선 끝 마감.
+/// 화면을 가로 경계선으로 나눈 영역(파티션). 메뉴바 띠 / 본문 / Dock 띠.
+/// 경계선이 꺼져 있으면 그 영역은 이웃 영역과 자동으로 합쳐진 것과 같다.
+enum ScreenZone: String, CaseIterable, Codable {
+    case menuBar, main, dock
+
+    func label(_ lang: AppLanguage) -> String {
+        switch self {
+        case .menuBar: return Loc.tr("zone.menuBar", lang)
+        case .main: return Loc.tr("zone.main", lang)
+        case .dock: return Loc.tr("zone.dock", lang)
+        }
+    }
+}
+
+/// 화면 골격의 선분(세그먼트). 가로 4개(상단/메뉴바선/Dock선/하단) +
+/// 세로 좌·우 각 3구간(메뉴바/본문/Dock). 경계선이 꺼져 있으면 관련 세그먼트는 선택 불가.
+enum SegPart: String, CaseIterable, Codable {
+    case hTop, hMenu, hDock, hBottom          // 가로선 4개(#요청1)
+    case lMenuBar, lMain, lDock               // 좌변 3구간(#요청2)
+    case rMenuBar, rMain, rDock               // 우변 3구간
+
+    var isHorizontal: Bool {
+        self == .hTop || self == .hMenu || self == .hDock || self == .hBottom
+    }
+    func label(_ lang: AppLanguage) -> String { Loc.tr("seg.\(rawValue)", lang) }
+}
+
+/// 세그먼트 그래프의 노드: (좌/우) × (가로 레벨 0=상단 1=메뉴바선 2=Dock선 3=하단).
+struct SegNode: Hashable, Comparable {
+    let right: Bool
+    let level: Int
+    static func < (a: SegNode, b: SegNode) -> Bool {
+        (a.level, a.right ? 1 : 0) < (b.level, b.right ? 1 : 0)
+    }
+}
+
+/// 열린 체인 끝의 모서리 캡 방향.
+enum SegCap: String, Codable, CaseIterable {
+    case none      // 캡 없음(직각 끝)
+    case up        // 가로선 끝: 위로 둥글게
+    case down      // 가로선 끝: 아래로 둥글게
+    case include   // 세로선 끝: 모서리 포함(가로 방향으로 둥글게)
+}
+
+/// AI별 배치: 세그먼트 조합(현행 모델) + 시작 꼭짓점·방향 + 가로선 끝 캡.
+/// edges/zones/extend*/cap* 필드는 구버전 저장 데이터 디코딩 호환용 — 로드 시
+/// 세그먼트로 1회 변환(materialize)된 뒤로는 쓰지 않는다(#스키마 일원화).
 struct ProviderLayout: Codable {
-    var edges: Set<BorderEdge>
+    var edges: Set<BorderEdge>?          // (구버전) 변 선택
     var anchorCorner: BorderCorner
     var anchorSide: AnchorSide
     var clockwise: Bool
-    // 선 끝 마감(구버전 호환 위해 옵셔널). nil = 기본(false).
-    var extendStart: Bool?
+    var extendStart: Bool?               // (구버전) 선 끝 마감
     var extendEnd: Bool?
-    var noCurveExtend: Bool?    // 곡선을 이웃 변으로 안 뻗기(= 기존 startCornerAbove)
+    var noCurveExtend: Bool?
+    var zones: Set<ScreenZone>?          // (구버전) 영역 선택 — 변환 소스로만 사용
+    /// 이 AI가 그릴 세그먼트 조합(현행 모델).
+    var segments: Set<SegPart>?
+    var capStart: SegCap?                // (구버전) 체인 끝 캡
+    var capEnd: SegCap?
+    /// 가로선 좌/우 끝의 위/아래 둥글게. 키 = "hMenu.L" 등. 세로선이 붙어 있거나
+    /// 고리여도 유지된다. 값이 없으면 .none(자연스러운 꺾임).
+    var hCaps: [String: SegCap]?
 
-    var xStart: Bool { extendStart ?? false }
-    var xEnd: Bool { extendEnd ?? false }
-    var xNoCurve: Bool { noCurveExtend ?? false }
+    var zoneSet: Set<ScreenZone> { zones ?? Set(ScreenZone.allCases) }
 }
 
 /// 저장 프리셋에 담기는 설정 스냅샷(잔여율 등 실시간 값은 제외). 영속화용 Codable.
@@ -138,6 +189,23 @@ struct SettingsSnapshot: Codable {
     var menuShowChart: Bool?
     var notifyEnabled: Bool?
     var notifyThresholds: [Int]?
+    // 화면 분할(파티션) — 가로 경계선.
+    var menuLineEnabled: Bool?
+    var menuLineHeight: Double?
+    var dockLineEnabled: Bool?
+    var dockLineHeight: Double?
+    var globalZones: [String]?
+    // 영역별 모서리 곡률(본문은 기존 cornerRadii 재사용).
+    var menuZoneRadii: [String: Double]?
+    var dockZoneRadii: [String: Double]?
+    // 세그먼트 신모델(전역).
+    var globalSegments: [String]?
+    var segCapStart: String?
+    var segCapEnd: String?
+    var noOverlapLines: Bool?
+    var splitOverlapLines: Bool?
+    var linkMenuMainRadii: Bool?
+    var linkMainDockRadii: Bool?
 }
 
 /// 이름이 붙은 저장 프리셋.
@@ -169,15 +237,87 @@ final class OverlaySettings: ObservableObject {
     /// 추가한 시작 곡률 모서리에서 시작점을 곡률 위(true)/아래(false) 접점으로(#2).
     @Published var startCornerAbove: Bool = false
 
-    /// 그릴 변(면)들. 기본값은 4변 전체. 바뀌면 시작 꼭짓점 유효성 보정.
-    @Published var edges: Set<BorderEdge> = Set(BorderEdge.allCases) {
-        didSet { clampAnchorCorner() }
-    }
+    /// (구버전) 전역 변 선택 — 세그먼트 모델로 대체됨. 저장 호환용으로만 유지.
+    @Published var edges: Set<BorderEdge> = Set(BorderEdge.allCases)
 
-    /// 모서리별 곡률 반경(pt). 0이면 직각. 기본: 위(좌상·우상)만 22, 아래는 0.
+    /// 본문(main) 영역의 모서리별 곡률 반경(pt). 0이면 직각. 기본: 위(좌상·우상)만 22.
+    /// 파티션이 없으면 화면 전체가 본문 영역이므로 이것이 전체 곡률이다.
     @Published var cornerRadii: [BorderCorner: CGFloat] = [
         .topLeft: 22, .topRight: 22, .bottomRight: 0, .bottomLeft: 0,
     ]
+    /// 메뉴바 영역의 모서리별 곡률(영역별 개별 설정 — #요청3,4).
+    @Published var menuZoneRadii: [BorderCorner: CGFloat] = [
+        .topLeft: 22, .topRight: 22, .bottomRight: 0, .bottomLeft: 0,
+    ]
+    /// Dock 영역의 모서리별 곡률.
+    @Published var dockZoneRadii: [BorderCorner: CGFloat] = [
+        .topLeft: 12, .topRight: 12, .bottomRight: 0, .bottomLeft: 0,
+    ]
+
+    /// 해당 영역의 곡률 사전.
+    func zoneRadiiDict(_ z: ScreenZone) -> [BorderCorner: CGFloat] {
+        switch z {
+        case .menuBar: return menuZoneRadii
+        case .main: return cornerRadii
+        case .dock: return dockZoneRadii
+        }
+    }
+    /// 곡률 연결(#연결): 켜면 경계선을 공유하는 두 영역의 맞닿은 꼭짓점이 함께 움직인다.
+    /// (예: 메뉴바 좌하 ↔ 본문 좌상). 꺼져 있으면 각각 독립적으로 설정.
+    @Published var linkMenuMainRadii: Bool = true
+    @Published var linkMainDockRadii: Bool = true
+
+    /// 영역 곡률 쓰기(+연결 미러링).
+    func setZoneRadius(_ z: ScreenZone, _ c: BorderCorner, _ v: CGFloat) {
+        switch z {
+        case .menuBar: menuZoneRadii[c] = v
+        case .main: cornerRadii[c] = v
+        case .dock: dockZoneRadii[c] = v
+        }
+        // 메뉴바선 경계: 메뉴바 아래 꼭짓점 ↔ 본문 위 꼭짓점.
+        if linkMenuMainRadii {
+            if z == .menuBar, c == .bottomLeft { cornerRadii[.topLeft] = v }
+            if z == .menuBar, c == .bottomRight { cornerRadii[.topRight] = v }
+            if z == .main, c == .topLeft { menuZoneRadii[.bottomLeft] = v }
+            if z == .main, c == .topRight { menuZoneRadii[.bottomRight] = v }
+        }
+        // Dock선 경계: 본문 아래 꼭짓점 ↔ Dock 위 꼭짓점.
+        if linkMainDockRadii {
+            if z == .main, c == .bottomLeft { dockZoneRadii[.topLeft] = v }
+            if z == .main, c == .bottomRight { dockZoneRadii[.topRight] = v }
+            if z == .dock, c == .topLeft { cornerRadii[.bottomLeft] = v }
+            if z == .dock, c == .topRight { cornerRadii[.bottomRight] = v }
+        }
+    }
+
+    /// 겹치는 선 없음(#요청2): 켜면 서로 다른 AI가 같은 세그먼트를 고를 수 없다.
+    @Published var noOverlapLines: Bool = false
+
+    /// 겹침 구간 굵기 분할(#겹침 규칙3): 완전히 같은 모양끼리 겹칠 때도
+    /// 굵기를 나눠 나란히 표시한다. (부분 겹침은 옵션과 무관하게 항상 분할 — 규칙2.)
+    @Published var splitOverlapLines: Bool = false
+
+    /// '겹치는 선 없음'을 켜는 순간 기존 겹침을 정리한다(#요청3,4).
+    /// 앞선 AI(스펙 순서)가 세그먼트를 갖고, 뒤 AI에서 겹치는 것을 제거한다.
+    /// 제거로 선이 끊어지면(한 줄 아님) 전부 해제하고 비어 있는 임의의 세그먼트 하나를 준다.
+    func enforceNoOverlap() {
+        let menuOn = menuLineEnabled, dockOn = dockLineEnabled
+        var used: Set<SegPart> = []
+        for spec in ProviderSpec.all {
+            var mine = segs(for: spec.id)
+            mine.subtract(used)
+            if mine.isEmpty || !Self.isValidSegments(mine, menuOn: menuOn, dockOn: dockOn) {
+                let free = SegPart.allCases.first {
+                    Self.segAvailable($0, menuOn: menuOn, dockOn: dockOn) && !used.contains($0)
+                }
+                mine = free.map { [$0] } ?? []
+            }
+            var l = layout(for: spec.id)
+            l.segments = mine
+            providerLayouts[spec.id] = l
+            used.formUnion(mine)
+        }
+    }
 
     /// 잔여율 0.0~1.0. 이 비율만큼만 색 띠가 채워진다. 로그인 전엔 1(가득).
     @Published var ratio: Double = 1
@@ -276,6 +416,266 @@ final class OverlaySettings: ObservableObject {
     /// 알림을 보낼 사용률(%) 임계치(잔여 = 100 - 이 값).
     @Published var notifyThresholds: Set<Int> = [75, 90, 95]
 
+    // MARK: - 화면 분할(파티션) — 가로 경계선
+
+    /// 메뉴바 아래 가로 경계선 켜기. 켜면 화면이 '메뉴바 띠'와 '본문'으로 나뉜다.
+    @Published var menuLineEnabled: Bool = false
+    /// 메뉴바 경계선의 위치(화면 위에서부터 pt).
+    @Published var menuLineHeight: CGFloat = 25
+
+    /// Dock 위 가로 경계선 켜기. 켜면 화면 하단이 'Dock 띠'로 나뉜다.
+    @Published var dockLineEnabled: Bool = false
+    /// Dock 경계선의 높이(화면 아래에서부터 pt) — Dock 크기에 맞게 조절.
+    @Published var dockLineHeight: CGFloat = 70
+
+    /// 전역(겹침 모드)에서 띠가 감쌀 영역(파티션). 기본 = 전체.
+    @Published var zones: Set<ScreenZone> = Set(ScreenZone.allCases)
+
+    /// 전역(겹침 모드)에서 그릴 세그먼트 조합(신모델). 기본 = 화면 전체 둘레.
+    @Published var segParts: Set<SegPart> = [.hTop, .hBottom, .lMain, .rMain]
+    /// 전역 열린 체인 끝 모서리 캡(정렬 첫/마지막 끝).
+    @Published var segCapStart: SegCap = .none
+    @Published var segCapEnd: SegCap = .none
+
+    /// 이 AI의 세그먼트 조합(없으면 구버전 변+영역 설정에서 변환).
+    func segs(for id: String) -> Set<SegPart> {
+        let l = layout(for: id)
+        if let s = l.segments { return s }
+        return Self.migrateToSegments(edges: l.edges ?? Set(BorderEdge.allCases), zones: l.zoneSet,
+                                      menuOn: menuLineEnabled, dockOn: dockLineEnabled)
+    }
+
+    /// 가로선 캡 딕셔너리 키: "hMenu.L" / "hMenu.R" 형태.
+    static func hCapKey(_ s: SegPart, right: Bool) -> String { "\(s.rawValue).\(right ? "R" : "L")" }
+
+    /// 이 AI의 특정 가로선 좌/우 끝 캡.
+    func hCap(_ id: String, _ s: SegPart, right: Bool) -> SegCap {
+        layout(for: id).hCaps?[Self.hCapKey(s, right: right)] ?? SegCap.none
+    }
+
+    /// 체인 끝(노드+세그먼트)의 교차 AI 보정(#모서리 반씩 양분).
+    /// - 내 가로선 끝에 캡이 있고, 다른 AI의 세로선이 캡 방향으로 그 노드에 붙어 있으면 → 내 캡은 반쪽 아크.
+    /// - 내 세로선 끝에서, 다른 AI 가로선의 캡이 내 쪽을 향하면 → 나도 반쪽 아크를 자동으로 그린다.
+    /// 반환: (half: 반쪽 여부, autoArc: 세로 끝 자동 아크 여부)
+    func endOverride(for id: String, node: SegNode, seg: SegPart) -> (half: Bool, autoArc: Bool) {
+        let menuOn = menuLineEnabled, dockOn = dockLineEnabled
+        if seg.isHorizontal {
+            let cap = hCap(id, seg, right: node.right)
+            guard cap == .up || cap == .down else { return (false, false) }
+            for spec in ProviderSpec.all where spec.id != id {
+                for s in segs(for: spec.id) where !s.isHorizontal {
+                    let (a, b) = Self.segEnds(s, menuOn: menuOn, dockOn: dockOn)
+                    guard a == node || b == node else { continue }
+                    let otherLevel = (a == node) ? b.level : a.level
+                    if (cap == .down && otherLevel > node.level) ||
+                       (cap == .up && otherLevel < node.level) { return (true, false) }
+                }
+            }
+            return (false, false)
+        } else {
+            let (a, b) = Self.segEnds(seg, menuOn: menuOn, dockOn: dockOn)
+            guard a == node || b == node else { return (false, false) }
+            let otherEnd = (a == node) ? b : a
+            let myDown = otherEnd.level > node.level     // 내 세로선이 이 노드에서 아래로 뻗는가
+            for spec in ProviderSpec.all where spec.id != id {
+                for s in segs(for: spec.id) where s.isHorizontal {
+                    let (ha, hb) = Self.segEnds(s, menuOn: menuOn, dockOn: dockOn)
+                    guard ha == node || hb == node else { continue }
+                    let cap = hCap(spec.id, s, right: node.right)
+                    if (cap == .down && myDown) || (cap == .up && !myDown) { return (true, true) }
+                }
+            }
+            return (false, false)
+        }
+    }
+
+    /// 이 AI가 세그먼트 조합을 쓸 수 있는지: 한 줄로 이어져야 하고(#요청4),
+    /// '겹치는 선 없음'이 켜져 있으면 다른 AI가 쓰는 세그먼트와 겹칠 수 없다(#요청2).
+    /// (꺼져 있으면 완전히 같은 조합도 허용 — 선 겹침 OK #요청1.)
+    func canUseSegments(_ id: String, _ set: Set<SegPart>) -> Bool {
+        guard Self.isValidSegments(set, menuOn: menuLineEnabled, dockOn: dockLineEnabled) else { return false }
+        if noOverlapLines {
+            for spec in ProviderSpec.all where spec.id != id {
+                if !segs(for: spec.id).isDisjoint(with: set) { return false }
+            }
+        }
+        return true
+    }
+
+    /// 이 영역 꼭짓점 곡률이 현재 어느 선택에서든 실제로 쓰이는지(#요청6 — 안 쓰면 비활성화).
+    /// 쓰임 = 그 꼭짓점에서 가로+세로 세그먼트가 꺾이거나, 체인 끝 캡이 그 꼭짓점을 향함.
+    func cornerUsed(_ zone: ScreenZone, _ corner: BorderCorner) -> Bool {
+        let menuOn = menuLineEnabled, dockOn = dockLineEnabled
+        func topLevel(_ z: ScreenZone) -> Int {
+            switch z { case .menuBar: return 0; case .main: return menuOn ? 1 : 0; case .dock: return 2 }
+        }
+        func bottomLevel(_ z: ScreenZone) -> Int {
+            switch z { case .menuBar: return 1; case .main: return dockOn ? 2 : 3; case .dock: return 3 }
+        }
+        // 영역이 병합돼 없으면(경계선 꺼짐) 그 영역 곡률은 안 쓰인다(본문 것만 쓰임).
+        if zone == .menuBar && !menuOn { return false }
+        if zone == .dock && !dockOn { return false }
+        let isTop = (corner == .topLeft || corner == .topRight)
+        let level = isTop ? topLevel(zone) : bottomLevel(zone)
+        let right = (corner == .topRight || corner == .bottomRight)
+        let vSeg: SegPart = {
+            switch zone {
+            case .menuBar: return right ? .rMenuBar : .lMenuBar
+            case .main: return right ? .rMain : .lMain
+            case .dock: return right ? .rDock : .lDock
+            }
+        }()
+        let hSeg: SegPart = {
+            switch level { case 0: return .hTop; case 1: return .hMenu; case 2: return .hDock; default: return .hBottom }
+        }()
+        // 모든 AI(항상 AI별 선택)에서: 이 노드의 꺾임 또는 이 꼭짓점을 향하는 가로선 캡이 있으면 사용 중.
+        for spec in ProviderSpec.all {
+            let set = segs(for: spec.id)
+            // 꺾임: 이 노드에서 가로+세로가 모두 선택됨.
+            if set.contains(vSeg) && set.contains(hSeg) { return true }
+            // 가로선 캡: 이 가로선의 이 쪽 끝 캡이 이 영역 꼭짓점을 향함.
+            if set.contains(hSeg) {
+                let cap = hCap(spec.id, hSeg, right: right)
+                if cap == .up && !isTop && bottomLevel(zone) == level { return true }
+                if cap == .down && isTop && topLevel(zone) == level { return true }
+            }
+        }
+        return false
+    }
+
+    /// 영역 조합이 유효한지: 비어있지 않고, 서로 붙어 있어야 한다(메뉴바+Dock만은 불가).
+    static func isValidZones(_ z: Set<ScreenZone>) -> Bool {
+        guard !z.isEmpty else { return false }
+        if z.contains(.menuBar) && z.contains(.dock) && !z.contains(.main) { return false }
+        return true
+    }
+
+    /// 영역 z를 토글해도 되는지(전역 zones 기준).
+    func canToggleZone(_ z: ScreenZone) -> Bool {
+        var s = zones
+        if s.contains(z) { s.remove(z) } else { s.insert(z) }
+        return Self.isValidZones(s)
+    }
+
+    // MARK: - 세그먼트 그래프(#요청1,2,4)
+
+    /// 이 세그먼트가 현재 경계선 설정에서 존재하는지.
+    static func segAvailable(_ s: SegPart, menuOn: Bool, dockOn: Bool) -> Bool {
+        switch s {
+        case .hMenu, .lMenuBar, .rMenuBar: return menuOn
+        case .hDock, .lDock, .rDock: return dockOn
+        default: return true
+        }
+    }
+
+    /// 세그먼트의 양 끝 노드. (본문 세로선은 경계선 유무에 따라 늘어난다.)
+    static func segEnds(_ s: SegPart, menuOn: Bool, dockOn: Bool) -> (SegNode, SegNode) {
+        let mainTop = menuOn ? 1 : 0
+        let mainBot = dockOn ? 2 : 3
+        switch s {
+        case .hTop:    return (SegNode(right: false, level: 0), SegNode(right: true, level: 0))
+        case .hMenu:   return (SegNode(right: false, level: 1), SegNode(right: true, level: 1))
+        case .hDock:   return (SegNode(right: false, level: 2), SegNode(right: true, level: 2))
+        case .hBottom: return (SegNode(right: false, level: 3), SegNode(right: true, level: 3))
+        case .lMenuBar: return (SegNode(right: false, level: 0), SegNode(right: false, level: 1))
+        case .lMain:    return (SegNode(right: false, level: mainTop), SegNode(right: false, level: mainBot))
+        case .lDock:    return (SegNode(right: false, level: 2), SegNode(right: false, level: 3))
+        case .rMenuBar: return (SegNode(right: true, level: 0), SegNode(right: true, level: 1))
+        case .rMain:    return (SegNode(right: true, level: mainTop), SegNode(right: true, level: mainBot))
+        case .rDock:    return (SegNode(right: true, level: 2), SegNode(right: true, level: 3))
+        }
+    }
+
+    /// 노드 → 인접 세그먼트 목록.
+    static func segAdjacency(_ set: Set<SegPart>, menuOn: Bool, dockOn: Bool) -> [SegNode: [SegPart]] {
+        var adj: [SegNode: [SegPart]] = [:]
+        for s in set {
+            let (a, b) = segEnds(s, menuOn: menuOn, dockOn: dockOn)
+            adj[a, default: []].append(s)
+            adj[b, default: []].append(s)
+        }
+        return adj
+    }
+
+    /// 선택이 '한 줄로 이어진 선(체인 또는 고리)'인지(#요청4,10).
+    /// 조건: 전부 존재하는 세그먼트, 노드 차수 ≤ 2, 전체 연결, 끝점 0개(고리) 또는 2개(체인).
+    static func isValidSegments(_ set: Set<SegPart>, menuOn: Bool, dockOn: Bool) -> Bool {
+        guard !set.isEmpty else { return false }
+        guard set.allSatisfy({ segAvailable($0, menuOn: menuOn, dockOn: dockOn) }) else { return false }
+        let adj = segAdjacency(set, menuOn: menuOn, dockOn: dockOn)
+        guard adj.values.allSatisfy({ $0.count <= 2 }) else { return false }
+        let ends = adj.values.filter { $0.count == 1 }.count
+        guard ends == 0 || ends == 2 else { return false }
+        // 연결성: 아무 세그먼트에서 BFS로 전부 도달해야 함.
+        var visited: Set<SegPart> = []
+        var queue: [SegPart] = [set.first!]
+        while let s = queue.popLast() {
+            guard visited.insert(s).inserted else { continue }
+            let (a, b) = segEnds(s, menuOn: menuOn, dockOn: dockOn)
+            for n in [a, b] { queue.append(contentsOf: (adj[n] ?? []).filter { !visited.contains($0) }) }
+        }
+        return visited.count == set.count
+    }
+
+    /// 열린 체인의 두 끝 (노드, 그 끝에 붙은 세그먼트). 정렬 순서 고정(위→아래, 좌→우).
+    /// 고리이거나 유효하지 않으면 nil.
+    static func chainEnds(_ set: Set<SegPart>, menuOn: Bool, dockOn: Bool)
+        -> (start: (node: SegNode, seg: SegPart), end: (node: SegNode, seg: SegPart))? {
+        guard isValidSegments(set, menuOn: menuOn, dockOn: dockOn) else { return nil }
+        let adj = segAdjacency(set, menuOn: menuOn, dockOn: dockOn)
+        let eps = adj.filter { $0.value.count == 1 }.keys.sorted()
+        guard eps.count == 2 else { return nil }
+        return ((eps[0], adj[eps[0]]![0]), (eps[1], adj[eps[1]]![0]))
+    }
+
+    /// 영역 조합의 둘레를 이루는 세그먼트(#요청3 — 영역 빠른 선택).
+    static func zonePerimeter(_ z: Set<ScreenZone>, menuOn: Bool, dockOn: Bool) -> Set<SegPart> {
+        // 꺼진 경계선의 영역은 본문으로 병합.
+        var eff = Set(z.map { zone -> ScreenZone in
+            if zone == .menuBar && !menuOn { return .main }
+            if zone == .dock && !dockOn { return .main }
+            return zone
+        })
+        if eff.isEmpty { eff = [.main] }
+        func topLevel(_ zone: ScreenZone) -> Int {
+            switch zone { case .menuBar: return 0; case .main: return menuOn ? 1 : 0; case .dock: return 2 }
+        }
+        func bottomLevel(_ zone: ScreenZone) -> Int {
+            switch zone { case .menuBar: return 1; case .main: return dockOn ? 2 : 3; case .dock: return 3 }
+        }
+        let order: [ScreenZone] = [.menuBar, .main, .dock]
+        let top = order.first { eff.contains($0) } ?? .main
+        let bottom = order.last { eff.contains($0) } ?? .main
+        func hSeg(_ level: Int) -> SegPart {
+            switch level { case 0: return .hTop; case 1: return .hMenu; case 2: return .hDock; default: return .hBottom }
+        }
+        var out: Set<SegPart> = [hSeg(topLevel(top)), hSeg(bottomLevel(bottom))]
+        for zone in order where eff.contains(zone) {
+            switch zone {
+            case .menuBar: out.insert(.lMenuBar); out.insert(.rMenuBar)
+            case .main: out.insert(.lMain); out.insert(.rMain)
+            case .dock: out.insert(.lDock); out.insert(.rDock)
+            }
+        }
+        return out
+    }
+
+    /// 구버전 (변 + 영역) 설정 → 세그먼트 조합으로 변환.
+    static func migrateToSegments(edges: Set<BorderEdge>, zones z: Set<ScreenZone>,
+                                  menuOn: Bool, dockOn: Bool) -> Set<SegPart> {
+        let peri = zonePerimeter(z, menuOn: menuOn, dockOn: dockOn)
+        // 영역 둘레의 위/아래 가로선과 좌/우 세로줄을 변 선택에 맞춰 채운다.
+        let lv: [SegPart: Int] = [.hTop: 0, .hMenu: 1, .hDock: 2, .hBottom: 3]
+        let hs = peri.filter { $0.isHorizontal }.sorted { (lv[$0] ?? 0) < (lv[$1] ?? 0) }
+        var out: Set<SegPart> = []
+        if edges.contains(.top), let t = hs.first { out.insert(t) }
+        if edges.contains(.bottom), let b = hs.last { out.insert(b) }
+        if edges.contains(.left) { out.formUnion(peri.filter { [SegPart.lMenuBar, .lMain, .lDock].contains($0) }) }
+        if edges.contains(.right) { out.formUnion(peri.filter { [SegPart.rMenuBar, .rMain, .rDock].contains($0) }) }
+        if out.isEmpty { out = [.hTop] }
+        return out
+    }
+
     // MARK: - AI별 겹치지 않게 보기
 
     /// 켜면 각 AI가 자기 변·방향으로 따로 그린다(겹치지 않음). 끄면 같은 레일에 겹침.
@@ -285,28 +685,75 @@ final class OverlaySettings: ObservableObject {
 
     static func defaultLayouts() -> [String: ProviderLayout] {
         var m: [String: ProviderLayout] = [:]
-        // 기본 분배: 첫 AI=상변, 둘째=하변, 셋째=좌변, 넷째=우변.
-        let edgeByIndex: [BorderEdge] = [.top, .bottom, .left, .right]
-        let anchorByEdge: [BorderEdge: BorderCorner] = [.top: .topLeft, .bottom: .bottomLeft, .left: .bottomLeft, .right: .topRight]
+        // 기본 분배(세그먼트 모델): 첫 AI=상단, 둘째=하단, 셋째=좌·본문, 넷째=우·본문.
+        let segByIndex: [SegPart] = [.hTop, .hBottom, .lMain, .rMain]
+        let anchorBySeg: [SegPart: BorderCorner] = [.hTop: .topLeft, .hBottom: .bottomLeft,
+                                                    .lMain: .bottomLeft, .rMain: .topRight]
         for (i, spec) in ProviderSpec.all.enumerated() {
-            let e = edgeByIndex[i % 4]
-            m[spec.id] = ProviderLayout(edges: [e], anchorCorner: anchorByEdge[e] ?? .topLeft, anchorSide: .center, clockwise: true)
+            let s = segByIndex[i % 4]
+            m[spec.id] = ProviderLayout(edges: nil, anchorCorner: anchorBySeg[s] ?? .topLeft,
+                                        anchorSide: .center, clockwise: true, segments: [s])
         }
         return m
     }
 
     func layout(for id: String) -> ProviderLayout {
-        providerLayouts[id] ?? Self.defaultLayouts()[id] ?? ProviderLayout(edges: [.top], anchorCorner: .topLeft, anchorSide: .center, clockwise: true)
+        providerLayouts[id] ?? Self.defaultLayouts()[id]
+            ?? ProviderLayout(edges: nil, anchorCorner: .topLeft, anchorSide: .center,
+                              clockwise: true, segments: [.hTop])
     }
 
-    // 이 AI가 주어진 변 조합을 쓸 수 있는지: 연속이고, 다른 AI와 **완전히 같은 조합**만 아니면 OK.
-    /// (겹치는 건 허용 — 예: 상우하 vs 하. 단 상 vs 상 처럼 동일 조합은 금지.)
-    func canUseLayout(_ id: String, _ edges: Set<BorderEdge>) -> Bool {
-        guard !edges.isEmpty, Self.isContiguous(edges) else { return false }
-        for spec in ProviderSpec.all where spec.id != id {
-            if layout(for: spec.id).edges == edges { return false }
+    /// 이 AI가 노드에서 (가로 h + 세로 v) 꺾일 때 쓰는 곡률 — 겹침 분할 클립 경계 계산용.
+    /// SegmentChainShape.bendVertices와 동일한 규칙(캡 우선, 아니면 세로선 영역 꼭짓점).
+    func bendRadiusEstimate(for id: String, h: SegPart, v: SegPart, node: SegNode) -> CGFloat {
+        let menuOn = menuLineEnabled, dockOn = dockLineEnabled
+        func zoneOf(_ s: SegPart) -> ScreenZone {
+            switch s {
+            case .lMenuBar, .rMenuBar: return .menuBar
+            case .lDock, .rDock: return .dock
+            default: return .main
+            }
         }
-        return true
+        func bottomLevel(_ z: ScreenZone) -> Int {
+            switch z { case .menuBar: return 1; case .main: return dockOn ? 2 : 3; case .dock: return 3 }
+        }
+        func zoneAbove(_ level: Int) -> ScreenZone? {
+            switch level { case 1: return menuOn ? .menuBar : nil; case 2: return .main
+                           case 3: return dockOn ? .dock : .main; default: return nil }
+        }
+        func zoneBelow(_ level: Int) -> ScreenZone? {
+            switch level { case 0: return menuOn ? .menuBar : .main; case 1: return .main
+                           case 2: return dockOn ? .dock : nil; default: return nil }
+        }
+        let cap = hCap(id, h, right: node.right)
+        if cap == .up || cap == .down {
+            if let z = (cap == .up) ? zoneAbove(node.level) : zoneBelow(node.level) {
+                let corner: BorderCorner = (cap == .up)
+                    ? (node.right ? .bottomRight : .bottomLeft)
+                    : (node.right ? .topRight : .topLeft)
+                return max(0, zoneRadiiDict(z)[corner] ?? 0)
+            }
+        }
+        let z = zoneOf(v)
+        let isBottom = bottomLevel(z) == node.level
+        let corner: BorderCorner = isBottom
+            ? (node.right ? .bottomRight : .bottomLeft)
+            : (node.right ? .topRight : .topLeft)
+        return max(0, zoneRadiiDict(z)[corner] ?? 0)
+    }
+
+    /// 커서 호버 판정용: 화면의 이 변(상/하/좌/우)에 그려진 세그먼트가 하나라도 있는지.
+    func edgeActive(_ e: BorderEdge) -> Bool {
+        for spec in ProviderSpec.all {
+            let s = segs(for: spec.id)
+            switch e {
+            case .top: if s.contains(.hTop) { return true }
+            case .bottom: if s.contains(.hBottom) { return true }
+            case .left: if !s.isDisjoint(with: [.lMenuBar, .lMain, .lDock]) { return true }
+            case .right: if !s.isDisjoint(with: [.rMenuBar, .rMain, .rDock]) { return true }
+            }
+        }
+        return false
     }
 
     /// provider 색 조회(없으면 스펙 기본색).
@@ -349,9 +796,22 @@ final class OverlaySettings: ObservableObject {
             UserDefaults.standard.set(version, forKey: "usagemeter.settingsVersion")
         }
         // 지난번 설정을 불러와 적용(재시작 후 유지).
+        var loadedStored = false
         if let data = UserDefaults.standard.data(forKey: Self.currentKey),
            let snap = try? JSONDecoder().decode(SettingsSnapshot.self, from: data) {
             apply(snap)
+            loadedStored = true
+        }
+        // 노치 자동 감지는 **최초 실행(저장 설정 없음)일 때만** 기본값으로 반영한다.
+        // 이후에는 노치 탭에서 수동으로 조절한 값이 유지된다(탭에 자동 감지 버튼 별도 제공).
+        if !loadedStored {
+            if let n = Self.detectNotch() {
+                notchEnabled = true
+                notchWidth = n.width
+                notchHeight = n.height
+            } else {
+                notchEnabled = false
+            }
         }
         // 이후 설정이 바뀌면 자동 저장(변경 직후 값으로, 300ms 디바운스).
         autosave = objectWillChange
@@ -366,36 +826,7 @@ final class OverlaySettings: ObservableObject {
         }
     }
 
-    // MARK: - 시작 꼭짓점 유효성(#2)
-
-    /// 꼭짓점에 인접한 두 변.
-    static func cornerEdges(_ c: BorderCorner) -> (BorderEdge, BorderEdge) {
-        switch c {
-        case .topLeft: return (.top, .left)
-        case .topRight: return (.top, .right)
-        case .bottomRight: return (.bottom, .right)
-        case .bottomLeft: return (.bottom, .left)
-        }
-    }
-
-    /// 주어진 변 집합에서 시작 꼭짓점으로 쓸 수 있는 것들.
-    static func validAnchors(_ edges: Set<BorderEdge>) -> [BorderCorner] {
-        if edges.count >= 4 { return BorderCorner.allCases }
-        return BorderCorner.allCases.filter {
-            let (e1, e2) = cornerEdges($0)
-            return edges.contains(e1) != edges.contains(e2)
-        }
-    }
-
-    /// 시작 꼭짓점으로 고를 수 있는 것들(현재 전역 edges 기준).
-    var validAnchorCorners: [BorderCorner] { Self.validAnchors(edges) }
-
-    /// 현재 시작 꼭짓점이 유효하지 않으면 유효한 것으로 보정.
-    func clampAnchorCorner() {
-        if !validAnchorCorners.contains(anchorCorner) {
-            anchorCorner = validAnchorCorners.first ?? .topLeft
-        }
-    }
+    // MARK: - 화면 감지
 
     /// 현재 주 화면의 노치 크기를 감지한다(없으면 nil). safeAreaInsets/보조영역 이용.
     static func detectNotch() -> (width: CGFloat, height: CGFloat)? {
@@ -409,28 +840,6 @@ final class OverlaySettings: ObservableObject {
         guard width > 0, width < full else { return nil }
         return (width, top)
     }
-
-    /// 변 집합이 '이어붙는(연속)' 형태인지. 서로 안 붙는 조합(상+하, 좌+우)은 불가.
-    static func isContiguous(_ set: Set<BorderEdge>) -> Bool {
-        if set.count <= 1 || set.count >= 4 { return true }
-        if set.count == 2 { return set != [.top, .bottom] && set != [.left, .right] }
-        return true   // 3개는 항상 연속
-    }
-
-    /// 변 e를 토글해도 되는지(최소 1변 유지 + 연속 형태 유지).
-    func canToggleEdge(_ e: BorderEdge) -> Bool {
-        var s = edges
-        if s.contains(e) {
-            if s.count <= 1 { return false }
-            s.remove(e)
-        } else {
-            s.insert(e)
-        }
-        return Self.isContiguous(s)
-    }
-
-    /// 4변 전체가 선택돼 루프(닫힌 고리)를 이루는지.
-    var isLoop: Bool { edges.count == 4 }
 
     /// 특정 모서리 곡률 조회(없으면 0).
     func radius(_ corner: BorderCorner) -> CGFloat { cornerRadii[corner] ?? 0 }
@@ -477,7 +886,21 @@ final class OverlaySettings: ObservableObject {
             menuShowPace: menuShowPace,
             menuShowChart: menuShowChart,
             notifyEnabled: notifyEnabled,
-            notifyThresholds: Array(notifyThresholds)
+            notifyThresholds: Array(notifyThresholds),
+            menuLineEnabled: menuLineEnabled,
+            menuLineHeight: Double(menuLineHeight),
+            dockLineEnabled: dockLineEnabled,
+            dockLineHeight: Double(dockLineHeight),
+            globalZones: zones.map { $0.rawValue },
+            menuZoneRadii: Dictionary(uniqueKeysWithValues: menuZoneRadii.map { ($0.key.rawValue, Double($0.value)) }),
+            dockZoneRadii: Dictionary(uniqueKeysWithValues: dockZoneRadii.map { ($0.key.rawValue, Double($0.value)) }),
+            globalSegments: segParts.map { $0.rawValue },
+            segCapStart: segCapStart.rawValue,
+            segCapEnd: segCapEnd.rawValue,
+            noOverlapLines: noOverlapLines,
+            splitOverlapLines: splitOverlapLines,
+            linkMenuMainRadii: linkMenuMainRadii,
+            linkMainDockRadii: linkMainDockRadii
         )
     }
 
@@ -533,6 +956,45 @@ final class OverlaySettings: ObservableObject {
         menuShowChart = s.menuShowChart ?? false
         notifyEnabled = s.notifyEnabled ?? false
         if let t = s.notifyThresholds { notifyThresholds = Set(t) }
+        menuLineEnabled = s.menuLineEnabled ?? false
+        menuLineHeight = CGFloat(s.menuLineHeight ?? 25)
+        dockLineEnabled = s.dockLineEnabled ?? false
+        dockLineHeight = CGFloat(s.dockLineHeight ?? 70)
+        if let gz = s.globalZones {
+            let set = Set(gz.compactMap { ScreenZone(rawValue: $0) })
+            if Self.isValidZones(set) { zones = set }
+        }
+        if let mr = s.menuZoneRadii {
+            menuZoneRadii = Dictionary(uniqueKeysWithValues: mr.compactMap { k, v in
+                BorderCorner(rawValue: k).map { ($0, CGFloat(v)) } })
+        }
+        if let dr = s.dockZoneRadii {
+            dockZoneRadii = Dictionary(uniqueKeysWithValues: dr.compactMap { k, v in
+                BorderCorner(rawValue: k).map { ($0, CGFloat(v)) } })
+        }
+        if let gs = s.globalSegments {
+            let set = Set(gs.compactMap { SegPart(rawValue: $0) })
+            if Self.isValidSegments(set, menuOn: menuLineEnabled, dockOn: dockLineEnabled) { segParts = set }
+        } else {
+            // 구버전: 변+영역 설정에서 변환.
+            segParts = Self.migrateToSegments(edges: edges, zones: zones,
+                                              menuOn: menuLineEnabled, dockOn: dockLineEnabled)
+        }
+        segCapStart = s.segCapStart.flatMap { SegCap(rawValue: $0) } ?? .none
+        segCapEnd = s.segCapEnd.flatMap { SegCap(rawValue: $0) } ?? .none
+        noOverlapLines = s.noOverlapLines ?? false
+        splitOverlapLines = s.splitOverlapLines ?? false
+        linkMenuMainRadii = s.linkMenuMainRadii ?? true
+        linkMainDockRadii = s.linkMainDockRadii ?? true
+        // 스키마 일원화(#정리): 구버전(변+영역) 저장분은 세그먼트로 1회 변환해 고정한다.
+        for spec in ProviderSpec.all {
+            if var l = providerLayouts[spec.id], l.segments == nil {
+                l.segments = Self.migrateToSegments(edges: l.edges ?? Set(BorderEdge.allCases),
+                                                    zones: l.zoneSet,
+                                                    menuOn: menuLineEnabled, dockOn: dockLineEnabled)
+                providerLayouts[spec.id] = l
+            }
+        }
     }
 
     /// 현재 설정을 이름으로 저장(최대 maxPresets).
@@ -570,16 +1032,6 @@ final class OverlaySettings: ObservableObject {
     static let presetCornerRadii: [(String, CGFloat)] = [
         ("직각 (0)", 0), ("살짝 (6)", 6), ("보통 (12)", 12),
         ("둥글게 (20)", 20), ("많이 (32)", 32),
-    ]
-
-    static let presetEdgeSets: [(String, Set<BorderEdge>)] = [
-        ("전체 (4변)", Set(BorderEdge.allCases)),
-        ("좌변만", [.left]),
-        ("우변만", [.right]),
-        ("상변만", [.top]),
-        ("하변만", [.bottom]),
-        ("ㄷ자 (좌·하·우)", [.left, .bottom, .right]),
-        ("ㄴ자 (좌·하)", [.left, .bottom]),
     ]
 
     /// 대표 AI 브랜드 로고 주요 색 + 몇 가지 기본색.

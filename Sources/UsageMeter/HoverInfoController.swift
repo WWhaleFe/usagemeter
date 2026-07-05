@@ -39,7 +39,8 @@ final class HoverInfoController: NSObject {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
-        panel.level = .popUpMenu                        // 오버레이보다 위
+        // 오버레이 창(.screenSaver)보다 확실히 위 — 선에 가려지지 않게(#호버 최상단).
+        panel.level = NSWindow.Level(rawValue: NSWindow.Level.screenSaver.rawValue + 1)
         panel.ignoresMouseEvents = true
         panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
         panel.contentView = bg
@@ -68,10 +69,11 @@ final class HoverInfoController: NSObject {
         let f = screen.frame
         let th = max(6, settings.thickness) + 7      // 선 근처로 볼 여유
         var near = false
-        if settings.edges.contains(.top),    abs(p.y - f.maxY) <= th, (f.minX...f.maxX).contains(p.x) { near = true }
-        if settings.edges.contains(.bottom), abs(p.y - f.minY) <= th, (f.minX...f.maxX).contains(p.x) { near = true }
-        if settings.edges.contains(.left),   abs(p.x - f.minX) <= th, (f.minY...f.maxY).contains(p.y) { near = true }
-        if settings.edges.contains(.right),  abs(p.x - f.maxX) <= th, (f.minY...f.maxY).contains(p.y) { near = true }
+        // 세그먼트 모델 기준: 어느 AI든 그 변에 선이 있으면 호버 대상(#스키마 일원화).
+        if settings.edgeActive(.top),    abs(p.y - f.maxY) <= th, (f.minX...f.maxX).contains(p.x) { near = true }
+        if settings.edgeActive(.bottom), abs(p.y - f.minY) <= th, (f.minX...f.maxX).contains(p.x) { near = true }
+        if settings.edgeActive(.left),   abs(p.x - f.minX) <= th, (f.minY...f.maxY).contains(p.y) { near = true }
+        if settings.edgeActive(.right),  abs(p.x - f.maxX) <= th, (f.minY...f.maxY).contains(p.y) { near = true }
         near ? show(at: p, on: screen) : hide()
     }
 

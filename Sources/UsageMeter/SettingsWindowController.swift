@@ -6,16 +6,18 @@ import SwiftUI
 final class SettingsWindowController: NSObject {
     private var window: NSWindow?
     private let settings: OverlaySettings
+    private let manager: ProviderManager
 
-    init(settings: OverlaySettings) {
+    init(settings: OverlaySettings, manager: ProviderManager) {
         self.settings = settings
+        self.manager = manager
         super.init()
     }
 
     /// 설정 창을 앞으로 가져온다(없으면 생성).
     func show() {
         if window == nil {
-            let hosting = NSHostingController(rootView: SettingsView(settings: settings))
+            let hosting = NSHostingController(rootView: SettingsView(settings: settings, manager: manager))
             let win = NSWindow(contentViewController: hosting)
             win.title = "UsageMeter 설정"
             win.styleMask = [.titled, .closable, .miniaturizable]
