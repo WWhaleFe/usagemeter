@@ -1,0 +1,6 @@
+<Application x:Class="UsageMeter.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnExplicitShutdown">
+    <!-- 트레이 상주 앱: 메인 창 없음, 종료는 트레이 메뉴에서 -->
+</Application>
