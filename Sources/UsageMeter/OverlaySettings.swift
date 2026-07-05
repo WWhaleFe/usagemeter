@@ -204,6 +204,7 @@ struct SettingsSnapshot: Codable {
     var segCapEnd: String?
     var noOverlapLines: Bool?
     var splitOverlapLines: Bool?
+    var chartHours: Int?
     var linkMenuMainRadii: Bool?
     var linkMainDockRadii: Bool?
 }
@@ -406,8 +407,10 @@ final class OverlaySettings: ObservableObject {
     @Published var menuShowCountdown: Bool = true
     /// 소진 예측(pace) 표시.
     @Published var menuShowPace: Bool = false
-    /// 드롭다운에 24시간 미니 차트 표시.
+    /// 드롭다운에 미니 차트 표시.
     @Published var menuShowChart: Bool = false
+    /// 미니 차트가 보여줄 기간(시간): 6 / 12 / 24.
+    @Published var chartHours: Int = 24
 
     // MARK: - 임계치 알림
 
@@ -899,6 +902,7 @@ final class OverlaySettings: ObservableObject {
             segCapEnd: segCapEnd.rawValue,
             noOverlapLines: noOverlapLines,
             splitOverlapLines: splitOverlapLines,
+            chartHours: chartHours,
             linkMenuMainRadii: linkMenuMainRadii,
             linkMainDockRadii: linkMainDockRadii
         )
@@ -984,6 +988,7 @@ final class OverlaySettings: ObservableObject {
         segCapEnd = s.segCapEnd.flatMap { SegCap(rawValue: $0) } ?? .none
         noOverlapLines = s.noOverlapLines ?? false
         splitOverlapLines = s.splitOverlapLines ?? false
+        chartHours = s.chartHours ?? 24
         linkMenuMainRadii = s.linkMenuMainRadii ?? true
         linkMainDockRadii = s.linkMainDockRadii ?? true
         // 스키마 일원화(#정리): 구버전(변+영역) 저장분은 세그먼트로 1회 변환해 고정한다.

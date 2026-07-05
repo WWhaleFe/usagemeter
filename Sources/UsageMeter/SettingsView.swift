@@ -189,6 +189,13 @@ struct SettingsView: View {
                 ("info.chart", $settings.menuShowChart),
                 ("info.updated", $settings.menuShowUpdated),
             ])
+            // 미니 차트 기간(6/12/24시간) — 차트 표시가 켜져 있을 때만 활성(#차트 기간).
+            Picker(settings.t("chart.range"), selection: $settings.chartHours) {
+                ForEach([6, 12, 24], id: \.self) { h in
+                    Text(settings.tn("chart.hoursFmt", h)).tag(h)
+                }
+            }
+            .disabled(!settings.menuShowChart)
         }
         section(settings.t("sec.notify")) {
             Toggle(settings.t("notify.enable"), isOn: $settings.notifyEnabled)

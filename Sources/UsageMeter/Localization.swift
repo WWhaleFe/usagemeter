@@ -174,7 +174,7 @@ enum Loc {
         "info.reset":   ("리셋 시각", "Reset time", "リセット時刻"),
         "info.countdown": ("리셋까지 남은 시간", "Time until reset", "リセットまでの時間"),
         "info.pace":    ("소진 예측", "Depletion forecast", "消費予測"),
-        "info.chart":   ("24시간 미니 차트", "24-hour mini chart", "24時間ミニチャート"),
+        "info.chart":   ("미니 차트", "Mini chart", "ミニチャート"),
         "info.updated": ("마지막 갱신 시각", "Last updated", "最終更新時刻"),
 
         // 카운트다운/소진예측
@@ -187,7 +187,9 @@ enum Loc {
         "pace.okReset":    ("· 리셋 후 여유", "· after reset (safe)", "· リセット後（安全）"),
 
         // 미니 차트
-        "chart.title":   ("최근 24시간 잔여율(%)", "Remaining % (last 24h)", "残量%（直近24時間）"),
+        "chart.titleFmt": ("최근 %d시간 잔여율(%)", "Remaining % (last %dh)", "残量%（直近%d時間）"),
+        "chart.range":    ("미니 차트 기간", "Mini chart range", "ミニチャート期間"),
+        "chart.hoursFmt": ("%d시간", "%d hours", "%d時間"),
         "chart.collecting": ("차트 데이터 수집 중…", "Collecting chart data…", "チャートデータ収集中…"),
 
         // 임계치 알림

@@ -188,15 +188,17 @@ final class StatusBarController: NSObject {
     /// 24시간 미니 차트를 담은 메뉴 항목(데이터 있으면).
     private func buildChartItem() -> NSMenuItem? {
         var lines: [MiniChartView.Line] = []
+        let hours = Double(settings.chartHours)
         for a in manager.active {
-            let pts = history.series(for: a.spec.id, hours: 24)
+            let pts = history.series(for: a.spec.id, hours: hours)
             if pts.count >= 2 {
                 lines.append(.init(id: a.spec.id, name: a.spec.name,
                                    color: settings.color(forProvider: a.spec.id), points: pts))
             }
         }
         guard !lines.isEmpty else { return nil }
-        let host = NSHostingView(rootView: MiniChartView(title: settings.t("chart.title"), lines: lines))
+        let host = NSHostingView(rootView: MiniChartView(
+            title: settings.tn("chart.titleFmt", settings.chartHours), lines: lines, hours: hours))
         // 메뉴 폭에 맞춰 늘어나도록(#차트 꽉 채움): 기본 폭 + 가로 자동 리사이즈.
         host.frame = NSRect(x: 0, y: 0, width: 340, height: 118)
         host.autoresizingMask = [.width]

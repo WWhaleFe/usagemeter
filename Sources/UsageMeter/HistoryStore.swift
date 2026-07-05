@@ -83,6 +83,20 @@ final class HistoryStore: ObservableObject {
         samples = arr.filter { $0.t >= cutoff }
     }
     private func save() {
+        // 다른 인스턴스(재시작 직후 겹침, swift run과 .app 동시 실행 등)가 쓴 표본과
+        // 병합해 통째 덮어쓰기로 과거 이력이 유실되는 것을 방지한다(#이력 유실 수정).
+        if let data = try? Data(contentsOf: url),
+           let arr = try? JSONDecoder().decode([UsageSample].self, from: data) {
+            let known = Set(samples.map { ($0.t.timeIntervalSinceReferenceDate * 10).rounded() })
+            let cutoff = Date().addingTimeInterval(-maxAge)
+            let extra = arr.filter {
+                $0.t >= cutoff && !known.contains(($0.t.timeIntervalSinceReferenceDate * 10).rounded())
+            }
+            if !extra.isEmpty {
+                samples.append(contentsOf: extra)
+                samples.sort { $0.t < $1.t }
+            }
+        }
         if let data = try? JSONEncoder().encode(samples) {
             try? data.write(to: url, options: .atomic)
         }

@@ -11,13 +11,13 @@ struct MiniChartView: View {
     }
     let title: String
     let lines: [Line]
+    /// 차트가 보여줄 기간(시간). X축은 [지금-기간, 지금]으로 고정해 **실제 시간 스케일**을
+    /// 보여준다(#24시간 안 보임 수정) — 데이터가 적으면 그만큼만 채워지고 오른쪽 끝 = 지금.
+    var hours: Double = 24
 
-    /// 데이터의 실제 시간 범위. Charts의 자동 도메인이 눈금 경계까지 늘려
-    /// 오른쪽에 빈 공간을 만들지 않도록 이 범위로 X축을 고정한다(#빈공간 채움).
     private var xDomain: ClosedRange<Date>? {
-        let all = lines.flatMap { $0.points.map(\.0) }
-        guard let lo = all.min(), let hi = all.max(), hi > lo else { return nil }
-        return lo...hi
+        let now = Date()
+        return now.addingTimeInterval(-hours * 3600)...now
     }
 
     var body: some View {
