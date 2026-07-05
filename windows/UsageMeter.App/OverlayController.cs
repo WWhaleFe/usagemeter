@@ -57,12 +57,13 @@ public sealed class OverlayController
         foreach (var spec in ProviderSpec.All)
         {
             var snap = _manager.SnapshotFor(spec.Id);
-            if (snap is not { Ok: true }) continue;
             var layout = _settings.LayoutFor(spec.Id);
             var rgb = layout.ColorRgb is { Length: 3 } c
                 ? Color.FromRgb((byte)c[0], (byte)c[1], (byte)c[2])
                 : Color.FromRgb(spec.DefaultColor.R, spec.DefaultColor.G, spec.DefaultColor.B);
-            items.Add(new Item(spec, layout, snap.RemainingRatio, rgb));
+            // 미로그인이어도 트랙(연한 띠)은 그려서 설정한 배치를 확인할 수 있게 한다.
+            double remaining = snap is { Ok: true } ? snap.RemainingRatio : 0;
+            items.Add(new Item(spec, layout, remaining, rgb));
         }
         if (items.Count == 0) return strokes;
 

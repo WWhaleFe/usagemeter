@@ -131,7 +131,7 @@ public sealed class SettingsWindow : Window
                 Foreground = snap is { Ok: true } ? Brushes.Green : Brushes.Gray,
             };
             var login = new Button { Content = T("menu.login"), Padding = new Thickness(10, 2, 10, 2) };
-            login.Click += async (_, _) => await _manager.SessionFor(spec.Id).ShowLoginAsync();
+            login.Click += async (_, _) => await _manager.ShowLoginAsync(spec.Id);
             var logout = new Button
             {
                 Content = T("menu.logout"),

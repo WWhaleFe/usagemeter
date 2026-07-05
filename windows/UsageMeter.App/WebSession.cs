@@ -59,7 +59,9 @@ public sealed class WebSession : IAsyncDisposable
         return tcs.Task;
     }
 
-    /// <summary>usage JS를 실행해 스냅샷 반환. 로그인 안 됐으면 Ok=false.</summary>
+    /// <summary>usage JS를 실행해 스냅샷 반환. 로그인 안 됐으면 Ok=false.
+    /// ExecuteScriptAsync는 Promise를 await하지 않으므로(빈 객체 반환)
+    /// postMessage(WebMessageReceived)로 async 결과를 받는다.</summary>
     public async Task<UsageSnapshot> FetchAsync()
     {
         try
@@ -71,9 +73,29 @@ public sealed class WebSession : IAsyncDisposable
                 await WaitForLoadAsync();
                 await Task.Delay(1500);   // DOM 렌더 대기(Gemini)
             }
-            string raw = await _webView!.CoreWebView2.ExecuteScriptAsync(_spec.UsageJs);
-            using var doc = JsonDocument.Parse(raw);
-            return UsageSnapshot.Parse(_spec.Id, doc.RootElement, DateTimeOffset.Now);
+            var tcs = new TaskCompletionSource<string>();
+            void OnMessage(object? s, CoreWebView2WebMessageReceivedEventArgs e)
+            {
+                try { tcs.TrySetResult(e.TryGetWebMessageAsString()); }
+                catch { tcs.TrySetResult("{\"ok\":false,\"reason\":\"bad_message\"}"); }
+            }
+            _webView!.CoreWebView2.WebMessageReceived += OnMessage;
+            try
+            {
+                string wrapped = "(async () => { try { const r = await (" + _spec.UsageJs + "); " +
+                    "window.chrome.webview.postMessage(JSON.stringify(r)); } catch (e) { " +
+                    "window.chrome.webview.postMessage(JSON.stringify({ok:false,reason:'exception',message:String(e)})); } })(); null";
+                await _webView.CoreWebView2.ExecuteScriptAsync(wrapped);
+                var done = await Task.WhenAny(tcs.Task, Task.Delay(25000));
+                if (done != tcs.Task)
+                    return new UsageSnapshot(_spec.Id, 0, null, null, null, null, null, false, DateTimeOffset.Now);
+                using var doc = JsonDocument.Parse(tcs.Task.Result);
+                return UsageSnapshot.Parse(_spec.Id, doc.RootElement, DateTimeOffset.Now);
+            }
+            finally
+            {
+                _webView.CoreWebView2.WebMessageReceived -= OnMessage;
+            }
         }
         catch
         {
@@ -81,8 +103,9 @@ public sealed class WebSession : IAsyncDisposable
         }
     }
 
-    /// <summary>로그인 창: 같은 UserDataFolder를 쓰는 보이는 창 — 로그인하면 세션 공유됨.</summary>
-    public async Task ShowLoginAsync()
+    /// <summary>로그인 창: 같은 UserDataFolder를 쓰는 보이는 창 — 로그인하면 세션 공유됨.
+    /// 창을 닫으면 onClosed(자동 새로고침) 호출.</summary>
+    public async Task ShowLoginAsync(Action? onClosed = null)
     {
         var wv = new WebView2();
         var win = new Window
@@ -90,6 +113,18 @@ public sealed class WebSession : IAsyncDisposable
             Title = $"{_spec.Name} — Login",
             Width = 980, Height = 760,
             Content = wv,
+        };
+        // 순서 중요: ① 숨은 조회 웹뷰 세션 리셋(새 쿠키 반영) → ② onClosed(새로고침).
+        win.Closed += (_, _) =>
+        {
+            if (_webView != null)
+            {
+                _host?.Close();
+                _webView.Dispose();
+                _webView = null;
+                _ready = false;
+            }
+            onClosed?.Invoke();
         };
         win.Show();
         var env = await CoreWebView2Environment.CreateAsync(null, UserDataDir(_spec.Id));
@@ -137,6 +172,10 @@ public sealed class ProviderManager
         _snapshots.TryGetValue(id, out var s) ? s : null;
 
     public WebSession SessionFor(string id) => _sessions[id];
+
+    /// <summary>로그인 창을 열고, 닫히면 자동으로 전체 새로고침.</summary>
+    public async Task ShowLoginAsync(string id) =>
+        await _sessions[id].ShowLoginAsync(onClosed: async () => await RefreshAllAsync());
 
     public async Task StartAsync()
     {

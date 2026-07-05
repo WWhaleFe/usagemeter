@@ -79,7 +79,7 @@ public sealed class TrayIcon : IDisposable
                 : $"{spec.Name}: {T("acct.loggedOut")}";
             var item = new WinForms.ToolStripMenuItem(status);
             var login = new WinForms.ToolStripMenuItem(T("menu.login"));
-            login.Click += async (_, _) => await _manager.SessionFor(spec.Id).ShowLoginAsync();
+            login.Click += async (_, _) => await _manager.ShowLoginAsync(spec.Id);
             var logout = new WinForms.ToolStripMenuItem(T("menu.logout"));
             logout.Click += async (_, _) =>
             {
