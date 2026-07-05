@@ -96,6 +96,10 @@ public sealed class TrayIcon : IDisposable
         refresh.Click += async (_, _) => await _manager.RefreshAllAsync();
         menu.Items.Add(refresh);
 
+        var settings = new WinForms.ToolStripMenuItem(T("menu.settings"));
+        settings.Click += (_, _) => SettingsWindow.Open(_settings, _manager, _overlays);
+        menu.Items.Add(settings);
+
         var quit = new WinForms.ToolStripMenuItem(T("menu.quit"));
         quit.Click += (_, _) => Application.Current.Shutdown();
         menu.Items.Add(quit);
