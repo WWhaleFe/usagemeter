@@ -5,12 +5,18 @@
 A macOS menu-bar overlay widget that shows your remaining **Claude · Gemini · Codex (ChatGPT plan)** usage as thin colored bands along the screen edges.
 As you use up your quota, the band gets shorter — so you can tell how much is left at a glance, without opening anything.
 
-## ⬇️ Download
+## ⬇️ Download (macOS)
 
-**[Get the latest release](https://github.com/WWhaleFe/usagemeter/releases/latest)** — download `UsageMeter-vX.X.X.zip` → unzip → move to Applications.
+**[Get the latest release](https://github.com/WWhaleFe/usagemeter/releases/latest)** — available in two forms:
+
+- **`UsageMeter-vX.X.X.zip`** — unzip and drag the app into **Applications**.
+- **`UsageMeter-vX.X.X.pkg`** — **double-click installer** (installs to `/Applications` automatically).
+
 Universal binary (Apple Silicon + Intel), macOS 14+.
 
-> ⚠️ The app is not notarized, so the first launch requires **right-click → Open**. If it still won't open, go to System Settings → Privacy & Security and click "Open Anyway".
+> ⚠️ The app is not notarized yet, so the first launch requires **right-click → Open**. If it still won't open, go to System Settings → Privacy & Security and click "Open Anyway". (The `.pkg` may need the same right-click → Open / "Open Anyway" on install.)
+
+> 🪟 **A Windows version** is also in development — but it's expected to take a **considerable amount of time** to complete.
 
 <br>
 

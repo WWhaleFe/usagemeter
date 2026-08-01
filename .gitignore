@@ -26,3 +26,4 @@ minimalist-*.png
 
 # 릴리스 zip (Releases에만 업로드)
 UsageMeter*.zip
+dist/
