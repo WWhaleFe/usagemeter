@@ -251,7 +251,7 @@ enum Loc {
         "lay.noCurve":     ("↳ 곡선을 이웃 변으로 안 뻗기", "↳ Don't extend curve to neighbor edge", "↳ 曲線を隣の辺へ伸ばさない"),
         "lay.extendEnd":   ("반대쪽 끝 모서리 포함", "Include far-end corner", "反対側の端の角を含める"),
         "lay.anchor":      ("% 차감 시작 위치", "Depletion start position", "%減少開始位置"),
-        "lay.clockwise":   ("시계방향으로 차감", "Deplete clockwise", "時計回りに減少"),
+        "lay.clockwise":   ("반시계방향으로 차감", "Deplete counterclockwise", "反時計回りに減少"),
         "lay.partialDir":  ("일부 변만: 차감 방향은 ‘% 차감 시작 위치’가 정합니다.",
                             "Partial edges: direction is set by ‘Depletion start position’.",
                             "一部の辺のみ：減少方向は「%減少開始位置」で決まります。"),
