@@ -9,14 +9,10 @@
 
 ## ⬇️ 다운로드 (macOS)
 
-**[최신 릴리스 받기 (Releases)](https://github.com/WWhaleFe/usagemeter/releases/latest)** — 두 가지 형태로 제공합니다:
-
-- **`UsageMeter-vX.X.X.zip`** — 압축 해제 후 앱을 **응용 프로그램**으로 드래그.
-- **`UsageMeter-vX.X.X.pkg`** — **더블클릭 설치 관리자**(자동으로 `/Applications`에 설치).
-
+**[최신 릴리스 받기 (Releases)](https://github.com/WWhaleFe/usagemeter/releases/latest)** — `UsageMeter-vX.X.X.zip` 다운로드 → 압축 해제 → 앱을 **응용 프로그램**으로 드래그.
 유니버설 바이너리(애플실리콘 + 인텔), macOS 14+.
 
-> ⚠️ 아직 애플 공증(notarize) 전이라 첫 실행 시 **우클릭 → 열기**가 필요합니다. 안 열리면 시스템 설정 → 개인정보 보호 및 보안에서 "그래도 열기". (`.pkg`도 설치 시 동일하게 우클릭 → 열기 또는 "그래도 열기"가 필요할 수 있습니다.)
+> ⚠️ 아직 애플 공증(notarize) 전이라 첫 실행 시 **우클릭 → 열기**가 필요합니다. 안 열리면 시스템 설정 → 개인정보 보호 및 보안에서 "그래도 열기".
 
 > 🪟 **Windows 버전**도 개발 중입니다 — 다만 완성까지는 **상당한 시간이 걸릴 것으로 예상**됩니다.
 
