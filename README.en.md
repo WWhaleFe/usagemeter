@@ -30,8 +30,7 @@ Universal binary (Apple Silicon + Intel), macOS 14+.
 - **Appearance (light/dark/system)** — follow the device or pick manually; menus, settings, and hover panels follow the theme.
 - **AI display order** — one shared order for the dropdown, hover, and the menu-bar %.
 - **Alerts** — macOS notifications at 75 / 90 / 95% usage.
-- **Support** — inside the app (Settings → Support): a **GitHub Sponsors** button + a **KakaoPay QR** (both fee-free). While a Settings/Analytics window is open, a Dock icon lets you bring it back.
-- **Convenience** — login tab for per-AI sign in/out, auto-refresh interval (1 min–2 h or custom), 10 named presets + default-state save, launch at login, Korean / English / Japanese UI.
+- **Convenience** — login tab for per-AI sign in/out, auto-refresh interval (1 min–2 h or custom), 10 named presets + default-state save, launch at login, Korean / English / Japanese UI. While a Settings/Analytics window is open, a Dock icon lets you bring it back.
 - Every setting persists across restarts.
 
 ## 🧩 How it works
