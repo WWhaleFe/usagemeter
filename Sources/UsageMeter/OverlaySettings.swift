@@ -207,6 +207,10 @@ struct SettingsSnapshot: Codable {
     var chartHours: Int?
     var linkMenuMainRadii: Bool?
     var linkMainDockRadii: Bool?
+    var appearance: String?
+    var providerOrder: [String]?
+    var hoverInfoEnabled: Bool?
+    var chartHoverEnabled: Bool?
 }
 
 /// 이름이 붙은 저장 프리셋.
@@ -214,6 +218,27 @@ struct SavedPreset: Codable, Identifiable {
     var id: UUID
     var name: String
     var snapshot: SettingsSnapshot
+}
+
+/// 앱 외형(라이트/다크). system이면 기기 설정을 따른다.
+enum AppAppearance: String, CaseIterable, Codable {
+    case system, light, dark
+
+    /// NSApp에 적용할 외형(nil = 시스템 따름).
+    var nsAppearance: NSAppearance? {
+        switch self {
+        case .system: return nil
+        case .light: return NSAppearance(named: .aqua)
+        case .dark: return NSAppearance(named: .darkAqua)
+        }
+    }
+    func label(_ lang: AppLanguage) -> String {
+        switch self {
+        case .system: return Loc.tr("appearance.system", lang)
+        case .light: return Loc.tr("appearance.light", lang)
+        case .dark: return Loc.tr("appearance.dark", lang)
+        }
+    }
 }
 
 /// 오버레이 테두리의 사용자 설정(굵기·색·모서리 곡률·노치 등). 메뉴바에서 바꾸면
@@ -388,6 +413,10 @@ final class OverlaySettings: ObservableObject {
     /// 설정 창에서 열 탭 요청(메뉴에서 트리거). 처리 후 nil로 되돌린다. 영속화 안 함.
     @Published var requestedTab: String? = nil
 
+    /// 다른 창을 여는 훅 — StatusBarController가 주입(영속화 안 함).
+    var onOpenAnalytics: (() -> Void)?
+    var onOpenSettings: (() -> Void)?
+
     // MARK: - 메뉴바/드롭다운 표시
 
     /// 메뉴바 링 아이콘이 어느 AI 기준으로 표시될지(#2). 로그인 안 됐으면 자동 폴백.
@@ -411,6 +440,42 @@ final class OverlaySettings: ObservableObject {
     @Published var menuShowChart: Bool = false
     /// 미니 차트가 보여줄 기간(시간): 6 / 12 / 24.
     @Published var chartHours: Int = 24
+
+    /// 앱 외형(라이트/다크/시스템). 바뀌면 AppDelegate가 NSApp.appearance에 반영.
+    @Published var appearance: AppAppearance = .system
+
+    /// 화면 테두리(색 띠)에 마우스를 올리면 정보 패널을 띄울지.
+    @Published var hoverInfoEnabled: Bool = true
+
+    /// 드롭다운 미니 차트에 마우스를 올리면 그 시점 값을 툴팁으로 띄울지.
+    @Published var chartHoverEnabled: Bool = true
+
+    /// 드롭다운·호버에서 AI를 보여줄 순서(위→아래). 기본은 스펙 순서.
+    @Published var providerOrder: [String] = ProviderSpec.all.map { $0.id }
+
+    /// providerOrder에서 이 AI의 위치(없으면 뒤로).
+    func orderIndex(_ id: String) -> Int { providerOrder.firstIndex(of: id) ?? Int.max }
+
+    /// providerOrder가 항상 모든 provider를 정확히 한 번씩 담도록 보정.
+    private func normalizeProviderOrder() {
+        var seen = Set<String>()
+        var out = providerOrder.filter { ProviderSpec.spec($0) != nil && seen.insert($0).inserted }
+        for spec in ProviderSpec.all where !seen.contains(spec.id) { out.append(spec.id) }
+        providerOrder = out
+    }
+
+    /// 이 AI를 표시 순서에서 한 칸 위로.
+    func moveProviderUp(_ id: String) {
+        normalizeProviderOrder()
+        guard let i = providerOrder.firstIndex(of: id), i > 0 else { return }
+        providerOrder.swapAt(i, i - 1)
+    }
+    /// 이 AI를 표시 순서에서 한 칸 아래로.
+    func moveProviderDown(_ id: String) {
+        normalizeProviderOrder()
+        guard let i = providerOrder.firstIndex(of: id), i < providerOrder.count - 1 else { return }
+        providerOrder.swapAt(i, i + 1)
+    }
 
     // MARK: - 임계치 알림
 
@@ -904,7 +969,11 @@ final class OverlaySettings: ObservableObject {
             splitOverlapLines: splitOverlapLines,
             chartHours: chartHours,
             linkMenuMainRadii: linkMenuMainRadii,
-            linkMainDockRadii: linkMainDockRadii
+            linkMainDockRadii: linkMainDockRadii,
+            appearance: appearance.rawValue,
+            providerOrder: providerOrder,
+            hoverInfoEnabled: hoverInfoEnabled,
+            chartHoverEnabled: chartHoverEnabled
         )
     }
 
@@ -991,6 +1060,15 @@ final class OverlaySettings: ObservableObject {
         chartHours = s.chartHours ?? 24
         linkMenuMainRadii = s.linkMenuMainRadii ?? true
         linkMainDockRadii = s.linkMainDockRadii ?? true
+        appearance = s.appearance.flatMap { AppAppearance(rawValue: $0) } ?? .system
+        hoverInfoEnabled = s.hoverInfoEnabled ?? true
+        chartHoverEnabled = s.chartHoverEnabled ?? true
+        if let po = s.providerOrder {
+            var seen = Set<String>()
+            var out = po.filter { ProviderSpec.spec($0) != nil && seen.insert($0).inserted }
+            for spec in ProviderSpec.all where !seen.contains(spec.id) { out.append(spec.id) }
+            providerOrder = out
+        }
         // 스키마 일원화(#정리): 구버전(변+영역) 저장분은 세그먼트로 1회 변환해 고정한다.
         for spec in ProviderSpec.all {
             if var l = providerLayouts[spec.id], l.segments == nil {

@@ -25,6 +25,7 @@ final class SettingsWindowController: NSObject {
             win.center()
             window = win
         }
+        if let win = window { DockPresence.shared.register(win) }   // 열려 있는 동안 Dock 아이콘 표시
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
     }

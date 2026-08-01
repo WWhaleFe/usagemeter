@@ -22,16 +22,21 @@ final class HoverInfoController: NSObject {
 
         label = NSTextField(labelWithString: "")
         label.font = .systemFont(ofSize: 12, weight: .medium)
-        label.textColor = .white
+        // 라이트/다크에 맞춰 자동으로 글자색이 바뀐다(#테마 대응).
+        label.textColor = .labelColor
         label.usesSingleLineMode = false
         label.maximumNumberOfLines = 0
         label.lineBreakMode = .byWordWrapping
         label.translatesAutoresizingMaskIntoConstraints = false
 
-        let bg = NSView()
+        // 반투명 재질 배경(라이트/다크 자동 대응) — 어떤 화면 위에서도 대비 유지.
+        let bg = NSVisualEffectView()
+        bg.material = .hudWindow
+        bg.state = .active
+        bg.blendingMode = .behindWindow
         bg.wantsLayer = true
-        bg.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.82).cgColor
         bg.layer?.cornerRadius = 7
+        bg.layer?.masksToBounds = true
         bg.addSubview(label)
 
         panel = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 10, height: 10),
@@ -64,6 +69,7 @@ final class HoverInfoController: NSObject {
 
     /// 커서가 선택된 변 근처인지 확인해 패널을 띄우거나 숨긴다.
     private func handleMove() {
+        guard settings.hoverInfoEnabled else { hide(); return }
         let p = NSEvent.mouseLocation
         guard let screen = NSScreen.screens.first(where: { $0.frame.contains(p) }) else { hide(); return }
         let f = screen.frame

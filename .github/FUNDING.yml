@@ -1,0 +1,5 @@
+# GitHub 저장소 상단에 "♡ Sponsor" 버튼을 표시한다.
+github: [WWhaleFe]
+
+# 카카오페이 송금 링크(수신 전용) — 커스텀 링크로 함께 노출.
+custom: ["https://qr.kakaopay.com/Fa89McYNg"]

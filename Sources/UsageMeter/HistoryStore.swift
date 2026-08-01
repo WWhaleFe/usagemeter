@@ -23,8 +23,8 @@ final class HistoryStore: ObservableObject {
     private var cancellable: AnyCancellable?
     private var lastRecord: Date = .distantPast
     private let url: URL
-    private let maxAge: TimeInterval = 48 * 3600   // 48시간 보관
-    private let minGap: TimeInterval = 45          // 표본 간 최소 간격(초)
+    private let maxAge: TimeInterval = 35 * 24 * 3600   // 35일 보관(분석 대시보드 한 달 뷰용)
+    private let minGap: TimeInterval = 45               // 표본 간 최소 간격(초)
 
     init(manager: ProviderManager) {
         self.manager = manager
@@ -61,6 +61,27 @@ final class HistoryStore: ObservableObject {
             guard s.t >= cutoff, let r = s.ratios[id] else { return nil }
             return (s.t, r)
         }
+    }
+
+    /// 가장 오래된 표본 시각(데이터 수집 시작일 안내용).
+    var earliest: Date? { samples.map(\.t).min() }
+
+    /// 소비(사용) 이벤트: 연속 표본에서 잔여율이 **줄어든 만큼**(양수)을 나중 시각에 기록.
+    /// (잔여율이 오르는 구간 = 리셋이므로 소비로 치지 않는다.) 5시간 창 기준 상대 소비량.
+    func consumptionEvents(for id: String, since: Date) -> [(t: Date, amount: Double)] {
+        let s = samples
+            .compactMap { smp -> (Date, Double)? in
+                guard smp.t >= since, let r = smp.ratios[id] else { return nil }
+                return (smp.t, r)
+            }
+            .sorted { $0.0 < $1.0 }
+        guard s.count >= 2 else { return [] }
+        var out: [(t: Date, amount: Double)] = []
+        for i in 1..<s.count {
+            let drop = s[i - 1].1 - s[i].1
+            if drop > 0.0005 { out.append((s[i].0, drop)) }
+        }
+        return out
     }
 
     /// 최근 추세로 소진 예측. 잔여가 감소 중일 때만 값을 준다.

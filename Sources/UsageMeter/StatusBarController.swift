@@ -28,6 +28,9 @@ final class StatusBarController: NSObject {
     /// 설정 창 컨트롤러(지연 생성).
     private lazy var settingsWC = SettingsWindowController(settings: settings, manager: manager)
 
+    /// 분석 대시보드 창(지연 생성).
+    private lazy var analyticsWC = AnalyticsWindowController(settings: settings, manager: manager, history: history)
+
     /// 커서를 테두리에 올리면 현재 정보를 보여주는 컨트롤러.
     private let hoverInfo: HoverInfoController
 
@@ -52,6 +55,9 @@ final class StatusBarController: NSObject {
             .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
             .sink { [weak self] in self?.updateStatusIcon(); self?.updateHoverInfo() }
             .store(in: &cancellables)
+        // 설정·분석 창을 서로 열 수 있게 훅 주입(분석창의 "앱 설정", 설정창의 "분석 보기").
+        settings.onOpenAnalytics = { [weak self] in self?.analyticsWC.show() }
+        settings.onOpenSettings = { [weak self] in self?.settingsWC.show() }
         mainMenu.autoenablesItems = false
         mainMenu.delegate = self
         populateMenu(mainMenu)
@@ -62,29 +68,18 @@ final class StatusBarController: NSObject {
     private func populateMenu(_ menu: NSMenu) {
         menu.removeAllItems()
 
-        // 1) AI별 정보 섹션(#2)
-        let active = manager.active
-        if active.isEmpty {
+        // 1) AI별 정보 섹션 — SwiftUI 카드로 고대비 렌더(#가독성). providerOrder 순서.
+        let infos = buildAIInfos()
+        if infos.isEmpty {
             let it = NSMenuItem(title: settings.t("menu.noAI"), action: nil, keyEquivalent: "")
             it.isEnabled = false
             menu.addItem(it)
         } else {
-            for (i, a) in active.enumerated() {
-                if i > 0 { menu.addItem(.separator()) }
-                let head = NSMenuItem(title: a.spec.name + (a.spec.id == "gemini" ? settings.t("menu.experimental") : ""),
-                                      action: nil, keyEquivalent: "")
-                head.attributedTitle = NSAttributedString(
-                    string: head.title,
-                    attributes: [.font: NSFont.boldSystemFont(ofSize: NSFont.systemFontSize),
-                                 .foregroundColor: NSColor(settings.color(forProvider: a.spec.id))])
-                head.isEnabled = false
-                menu.addItem(head)
-                for line in infoLines(a) {
-                    let li = NSMenuItem(title: "    " + line, action: nil, keyEquivalent: "")
-                    li.isEnabled = false
-                    menu.addItem(li)
-                }
-            }
+            let card = NSHostingView(rootView: MenuInfoCardView(infos: infos))
+            card.frame = NSRect(origin: .zero, size: card.fittingSize)
+            let item = NSMenuItem()
+            item.view = card
+            menu.addItem(item)
             // 24시간 미니 차트(#2순위)
             if settings.menuShowChart, let chart = buildChartItem() {
                 menu.addItem(.separator())
@@ -92,6 +87,9 @@ final class StatusBarController: NSObject {
             }
         }
         menu.addItem(.separator())
+
+        // 분석 대시보드(#분석) — 표시 정보 위.
+        menu.addItem(NSMenuItem(title: settings.t("menu.analytics"), action: #selector(openAnalytics), keyEquivalent: ""))
 
         // 표시 정보 선택(#2)
         let infoItem = NSMenuItem(title: settings.t("menu.showInfo"), action: nil, keyEquivalent: "")
@@ -124,9 +122,29 @@ final class StatusBarController: NSObject {
         rebuildPresetSubmenu()
         menu.addItem(presetItem)
 
+        // 후원(☕): 설정 창의 후원 탭으로 이동(#후원 탭).
+        menu.addItem(.separator())
+        let supportItem = NSMenuItem(title: "☕ " + settings.t("menu.support"), action: #selector(openSupport), keyEquivalent: "")
+        menu.addItem(supportItem)
+
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: settings.t("menu.quit"), action: #selector(quit), keyEquivalent: "q"))
         for item in menu.items where item.action != nil { item.target = self }
+    }
+
+    /// 표시 순서(providerOrder)대로 정렬된 로그인 AI들.
+    private func orderedActive() -> [(spec: ProviderSpec, snap: UsageSnapshot)] {
+        manager.active.sorted { settings.orderIndex($0.spec.id) < settings.orderIndex($1.spec.id) }
+    }
+
+    /// 드롭다운·호버 공용 AI 정보(같은 내용·같은 순서).
+    private func buildAIInfos() -> [MenuAIInfo] {
+        orderedActive().map { a in
+            MenuAIInfo(id: a.spec.id, name: a.spec.name,
+                       color: settings.color(forProvider: a.spec.id),
+                       plan: a.snap.plan,       // 구독 플랜(예: Max (5x))
+                       lines: infoLines(a))
+        }
     }
 
     /// 드롭다운에 표시할 AI 정보 줄들(표시 옵션에 따라).
@@ -147,8 +165,11 @@ final class StatusBarController: NSObject {
         if settings.menuShowWeekly, let w = s.secondaryRatio {
             lines.append(settings.t("menu.lineWeekly") + "  \(Int((w * 100).rounded()))%" + resetSuffix(s.secondaryResetAt))
         }
-        if settings.menuShowOpus, let o = s.opusRatio {
-            lines.append(settings.t("info.opus") + "  \(Int((o * 100).rounded()))%" + resetSuffix(s.opusResetAt))
+        // 모델별 주간 한도(예: Fable) — 서버가 주는 각 버킷을 표시.
+        if settings.menuShowOpus, let buckets = s.modelBuckets {
+            for b in buckets {
+                lines.append(b.label + " " + settings.t("menu.lineWeekly") + "  \(Int((b.remainingRatio * 100).rounded()))%" + resetSuffix(b.resetAt))
+            }
         }
         if settings.menuShowPace, let p = history.pace(for: a.spec.id) {
             lines.append(paceString(p, resetAt: s.resetAt))
@@ -198,7 +219,8 @@ final class StatusBarController: NSObject {
         }
         guard !lines.isEmpty else { return nil }
         let host = NSHostingView(rootView: MiniChartView(
-            title: settings.tn("chart.titleFmt", settings.chartHours), lines: lines, hours: hours))
+            title: settings.tn("chart.titleFmt", settings.chartHours), lines: lines, hours: hours,
+            hoverEnabled: settings.chartHoverEnabled))
         // 메뉴 폭에 맞춰 늘어나도록(#차트 꽉 채움): 기본 폭 + 가로 자동 리사이즈.
         host.frame = NSRect(x: 0, y: 0, width: 340, height: 118)
         host.autoresizingMask = [.width]
@@ -206,13 +228,26 @@ final class StatusBarController: NSObject {
         return item
     }
 
-    /// '표시 정보' 서브메뉴: 어떤 정보를 드롭다운에 보일지 체크박스로.
+    /// 클릭해도 메뉴가 닫히지 않는 체크박스 항목(커스텀 뷰는 자동 dismiss 안 됨 #팝업 유지).
+    private static func stickyCheckItem(_ title: String, on: Bool, target: AnyObject, action: Selector) -> NSMenuItem {
+        let btn = NSButton(checkboxWithTitle: title, target: target, action: action)
+        btn.state = on ? .on : .off
+        btn.font = NSFont.menuFont(ofSize: 0)
+        let fit = btn.fittingSize
+        let leading: CGFloat = 14
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: leading + fit.width + 16, height: fit.height + 6))
+        btn.frame = NSRect(x: leading, y: 3, width: fit.width, height: fit.height)
+        container.addSubview(btn)
+        let item = NSMenuItem()
+        item.view = container
+        return item
+    }
+
+    /// '표시 정보' 서브메뉴: 어떤 정보를 드롭다운에 보일지 체크박스로(클릭해도 안 닫힘).
     private func buildInfoToggleMenu() -> NSMenu {
         let m = NSMenu(); m.autoenablesItems = false
         func add(_ title: String, _ on: Bool, _ sel: Selector) {
-            let it = NSMenuItem(title: title, action: sel, keyEquivalent: "")
-            it.state = on ? .on : .off; it.target = self
-            m.addItem(it)
+            m.addItem(Self.stickyCheckItem(title, on: on, target: self, action: sel))
         }
         add(settings.t("info.5h"), settings.menuShow5h, #selector(toggleShow5h))
         add(settings.t("info.weekly"), settings.menuShowWeekly, #selector(toggleShowWeekly))
@@ -519,6 +554,18 @@ final class StatusBarController: NSObject {
 
     @objc private func openSettings() { settingsWC.show() }
 
+    @objc private func openAnalytics() { analyticsWC.show() }
+
+    // MARK: - 후원
+
+    /// 팝업 "후원" 클릭 → 설정 창의 후원 탭을 연다(#후원 탭).
+    @objc private func openSupport() {
+        settings.requestedTab = "support"
+        openSettings()
+    }
+
+    // (AI 표시 순서는 설정 창에서 조절 — 팝업 서브메뉴는 클릭 시 전체가 닫혀 제거함.)
+
     /// 프리셋 서브메뉴 채우기: 저장된 게 있으면 불러오기/삭제, 항상 현재 설정 저장(5개 미만일 때).
     private func rebuildPresetSubmenu() {
         presetSubmenu.removeAllItems()
@@ -585,7 +632,7 @@ final class StatusBarController: NSObject {
         for id in manager.order {
             guard let st = manager.states[id] else { continue }
             let mark = st.loggedIn ? "● " : "○ "
-            let header = NSMenuItem(title: mark + st.spec.name + (st.spec.id == "gemini" ? settings.t("menu.experimental") : ""),
+            let header = NSMenuItem(title: mark + st.spec.name,
                                     action: nil, keyEquivalent: "")
             header.isEnabled = false
             aiSubmenu.addItem(header)
@@ -626,9 +673,10 @@ final class StatusBarController: NSObject {
         } else {
             button.image = Self.ringImage(ratio: 1, color: .secondaryLabelColor, dim: true)
         }
-        // 메뉴바 % 표시(#2): 선택 AI들의 잔여 %를 각자 색으로 나란히. 순서 옵션 반영.
+        // 메뉴바 % 표시(#2): 선택 AI들의 잔여 %를 각자 색으로 나란히.
+        // 순서는 'AI 표시 순서'(providerOrder)를 그대로 따른다(#순서 통일).
         var shown = active.filter { settings.menuBarPercentIDs.contains($0.spec.id) }
-        shown.sort { a, _ in a.spec.id == settings.menuBarPercentFirstID }   // 먼저 둘 AI를 앞으로
+        shown.sort { settings.orderIndex($0.spec.id) < settings.orderIndex($1.spec.id) }
         if shown.isEmpty {
             button.imagePosition = .imageOnly
             button.attributedTitle = NSAttributedString(string: "")
@@ -646,11 +694,11 @@ final class StatusBarController: NSObject {
         button.attributedTitle = str
     }
 
-    /// 호버 정보: 로그인된 모든 AI의 사용량(설정 언어에 맞춤).
+    /// 호버 정보: 팝업 카드와 동일한 내용·순서(#호버=팝업).
     private func updateHoverInfo() {
-        let active = manager.active
-        hoverInfo.infoText = active.isEmpty ? settings.t("hover.noAI")
-            : active.map { $0.spec.name + " · " + describe($0.snap) }.joined(separator: "\n")
+        let infos = buildAIInfos()
+        hoverInfo.infoText = infos.isEmpty ? settings.t("hover.noAI")
+            : infos.map { ([$0.name] + $0.lines).joined(separator: "\n") }.joined(separator: "\n\n")
     }
 
     /// 잔여율만큼 채워지는 원형 링 아이콘.

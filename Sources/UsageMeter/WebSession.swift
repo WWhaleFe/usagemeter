@@ -60,6 +60,10 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         webView.frame = hostWindow.contentView?.bounds ?? webView.frame
         hostWindow.alphaValue = 0
         hostWindow.ignoresMouseEvents = true
+        // 조회 엔진용 숨은 창: 미션 컨트롤/Exposé·창 순환·창 메뉴에서 감춘다.
+        // (.transient = 미션 컨트롤에 노출 안 됨. 웹뷰는 창에 그대로 살아 조회는 계속 동작.)
+        hostWindow.collectionBehavior = [.transient, .ignoresCycle]
+        hostWindow.isExcludedFromWindowsMenu = true
         hostWindow.orderFrontRegardless()
     }
 
@@ -71,6 +75,8 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         hostWindow.delegate = delegate
         hostWindow.ignoresMouseEvents = false
         hostWindow.alphaValue = 1
+        // 로그인 중엔 일반 창으로(사용자가 다루고 미션 컨트롤에서도 정상 취급).
+        hostWindow.collectionBehavior = [.managed]
         hostWindow.setContentSize(NSSize(width: 460, height: 720))
         hostWindow.center()
         load()
@@ -82,6 +88,8 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         hostWindow.delegate = nil
         hostWindow.alphaValue = 0
         hostWindow.ignoresMouseEvents = true
+        // 다시 숨은 엔진 창으로: 미션 컨트롤에서 감춤.
+        hostWindow.collectionBehavior = [.transient, .ignoresCycle]
         hostWindow.orderBack(nil)
     }
 
@@ -160,12 +168,19 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         let five = raw["five_hour"] as? [String: Any]
         let week = raw["seven_day"] as? [String: Any]
         let opus = raw["seven_day_opus"] as? [String: Any]
+        // 구독 플랜 + 모델별 주간 버킷(예: Claude "Fable") — 제공자가 주면 반영.
+        let plan = (raw["plan"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+        let buckets = (raw["model_buckets"] as? [[String: Any]])?.compactMap { b -> UsageModelBucket? in
+            guard let label = b["label"] as? String, !label.isEmpty else { return nil }
+            return UsageModelBucket(label: label, remainingRatio: remaining(b), resetAt: resetDate(b))
+        }
         return UsageSnapshot(
             id: spec.id, remainingRatio: remaining(five), secondaryRatio: week.map(remaining),
             opusRatio: opus.map(remaining),
             resetAt: resetDate(five), secondaryResetAt: resetDate(week),
             opusResetAt: resetDate(opus),
-            status: .ok, lastUpdated: now
+            status: .ok, lastUpdated: now,
+            plan: plan, modelBuckets: (buckets?.isEmpty == true ? nil : buckets)
         )
     }
 

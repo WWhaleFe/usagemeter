@@ -48,6 +48,7 @@ struct SettingsView: View {
                 tabScroll { layoutTab }.tabItem { Label(settings.t("tab.layout"), systemImage: "square.dashed") }.tag("layout")
                 tabScroll { cornerTab }.tabItem { Label(settings.t("tab.corner"), systemImage: "rectangle.roundedtop") }.tag("corner")
                 tabScroll { notchTab }.tabItem { Label(settings.t("tab.notch"), systemImage: "rectangle.tophalf.inset.filled") }.tag("notch")
+                tabScroll { supportTab }.tabItem { Label(settings.t("tab.support"), systemImage: "heart") }.tag("support")
             }
             .padding(.horizontal, 10)
             .padding(.bottom, 10)
@@ -80,9 +81,17 @@ struct SettingsView: View {
     @ViewBuilder private var baseStateSection: some View {
         section(settings.t("sec.baseState")) {
             HStack {
+                // 왼쪽: 기본 상태 저장/초기화
                 Button(settings.t("base.save")) { settings.saveAsDefault() }
                 Button(settings.t("base.reset")) { settings.resetToDefault() }
                     .disabled(!settings.hasCustomDefault)
+                Spacer()
+                // 오른쪽: 분석 창 열기
+                Button {
+                    settings.onOpenAnalytics?()
+                } label: {
+                    Label(settings.t("menu.analytics"), systemImage: "chart.bar.xaxis")
+                }
             }
         }
     }
@@ -117,10 +126,15 @@ struct SettingsView: View {
             Circle()
                 .fill(loggedIn ? Color.green : Color.secondary.opacity(0.35))
                 .frame(width: 9, height: 9)
-            Text(spec.name + (spec.id == "gemini" ? settings.t("menu.experimental") : ""))
+            Text(spec.name)
                 .font(.subheadline).bold()
             Text(loggedIn ? settings.t("acct.loggedIn") : settings.t("acct.loggedOut"))
                 .font(.caption).foregroundStyle(.secondary)
+            if spec.id == "gemini" {
+                Text(settings.t("acct.geminiExperimental"))
+                    .font(.caption).foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             Spacer()
             if loggedIn {
                 Button(settings.t("acct.logout")) { manager.logout(spec.id) }
@@ -160,6 +174,32 @@ struct SettingsView: View {
             .pickerStyle(.segmented)
             .labelsHidden()
         }
+        section(settings.t("appearance.title")) {
+            Picker("", selection: $settings.appearance) {
+                ForEach(AppAppearance.allCases, id: \.self) { Text($0.label(settings.language)).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+        }
+        section(settings.t("sec.providerOrder")) {
+            ForEach(Array(settings.providerOrder.enumerated()), id: \.element) { i, id in
+                if let spec = ProviderSpec.spec(id) {
+                    HStack {
+                        Text("\(i + 1). \(spec.name)")
+                        Spacer()
+                        Button { settings.moveProviderUp(id) } label: { Image(systemName: "chevron.up") }
+                            .buttonStyle(.borderless).disabled(i == 0)
+                        Button { settings.moveProviderDown(id) } label: { Image(systemName: "chevron.down") }
+                            .buttonStyle(.borderless).disabled(i == settings.providerOrder.count - 1)
+                    }
+                }
+            }
+            Text(settings.t("order.desc")).font(.caption).foregroundStyle(.secondary)
+        }
+        section(settings.t("hover.enable")) {
+            Toggle(settings.t("hover.enable"), isOn: $settings.hoverInfoEnabled)
+            Text(settings.t("hover.enableDesc")).font(.caption).foregroundStyle(.secondary)
+        }
         section(settings.t("sec.menuIcon")) {
             Picker(settings.t("disp.iconBaseAI"), selection: $settings.menuBarIconID) {
                 ForEach(ProviderSpec.all) { Text($0.name).tag($0.id) }
@@ -171,10 +211,6 @@ struct SettingsView: View {
             ForEach(ProviderSpec.all) { spec in
                 Toggle(settings.tf("disp.showPercent", spec.name), isOn: menuBarPercentBinding(spec.id))
             }
-            let bothOn = settings.menuBarPercentIDs.count >= 2
-            Picker(settings.t("disp.firstAI"), selection: $settings.menuBarPercentFirstID) {
-                ForEach(ProviderSpec.all) { Text($0.name).tag($0.id) }
-            }.disabled(!bothOn)
             Text(settings.t("disp.percentDesc"))
                 .font(.caption).foregroundStyle(.secondary)
         }
@@ -196,6 +232,8 @@ struct SettingsView: View {
                 }
             }
             .disabled(!settings.menuShowChart)
+            Toggle(settings.t("chartHover.enable"), isOn: $settings.chartHoverEnabled)
+                .disabled(!settings.menuShowChart)
         }
         section(settings.t("sec.notify")) {
             Toggle(settings.t("notify.enable"), isOn: $settings.notifyEnabled)
@@ -438,6 +476,14 @@ struct SettingsView: View {
 
     private func notchBinding(_ c: NotchCorner) -> Binding<CGFloat> {
         Binding(get: { settings.notchRadii[c] ?? 0 }, set: { settings.notchRadii[c] = $0 })
+    }
+
+    // MARK: - 후원 탭
+
+    @ViewBuilder private var supportTab: some View {
+        section(settings.t("sec.support")) {
+            SupportView(settings: settings)
+        }
     }
 
     // MARK: - 세그먼트 편집기 (#배치 수정 1: 좌=옵션, 우=세그먼트 그리드)

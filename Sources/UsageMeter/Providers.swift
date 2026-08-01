@@ -34,12 +34,28 @@ struct ProviderSpec: Identifiable {
           if (orgsRes.status !== 200) return {ok:false, reason:'not_logged_in', status: orgsRes.status};
           const orgs = await orgsRes.json();
           if (!Array.isArray(orgs) || orgs.length === 0) return {ok:false, reason:'no_org'};
-          const org = orgs[0].uuid;
-          const usageRes = await fetch('https://claude.ai/api/organizations/'+org+'/usage', {headers:{'Accept':'application/json'}, credentials:'include'});
+          const org = orgs[0];
+          // 구독 플랜(rate_limit_tier) → 사람이 읽는 라벨.
+          const planLabel = ((t) => {
+            if (!t) return null;
+            if (t.includes('max_20x')) return 'Max (20x)';
+            if (t.includes('max_5x')) return 'Max (5x)';
+            if (t.includes('max')) return 'Max';
+            if (t.includes('team')) return 'Team';
+            if (t.includes('enterprise')) return 'Enterprise';
+            if (t.includes('pro')) return 'Pro';
+            if (t.includes('free')) return 'Free';
+            return t.replace(/^default_claude_/,'').replace(/_/g,' ');
+          })(org.rate_limit_tier || '');
+          const usageRes = await fetch('https://claude.ai/api/organizations/'+org.uuid+'/usage', {headers:{'Accept':'application/json'}, credentials:'include'});
           if (usageRes.status !== 200) return {ok:false, reason:'usage_failed', status: usageRes.status};
           const u = await usageRes.json();
           const pick = (x) => (x && typeof x.utilization === 'number') ? {utilization: x.utilization, resets_at: x.resets_at || null} : null;
-          return {ok:true, five_hour: pick(u.five_hour), seven_day: pick(u.seven_day), seven_day_opus: pick(u.seven_day_opus)};
+          // 모델별 주간 한도(weekly_scoped): 서버가 주는 display_name(예: "Fable") + percent(사용률).
+          const buckets = Array.isArray(u.limits) ? u.limits
+            .filter(l => l && l.kind === 'weekly_scoped' && l.scope && l.scope.model && l.scope.model.display_name && typeof l.percent === 'number')
+            .map(l => ({label: l.scope.model.display_name, utilization: l.percent, resets_at: l.resets_at || null})) : [];
+          return {ok:true, plan: planLabel, five_hour: pick(u.five_hour), seven_day: pick(u.seven_day), seven_day_opus: pick(u.seven_day_opus), model_buckets: buckets};
         } catch (e) { return {ok:false, reason:'exception', message: String(e)}; }
         """,
         defaultColor: Color(red: 0.85, green: 0.47, blue: 0.34)   // Anthropic 코랄
@@ -94,8 +110,9 @@ struct ProviderSpec: Identifiable {
             if (sessRes.status === 401 || sessRes.status === 403) return {ok:false, reason:'not_logged_in', status: sessRes.status};
             if (sessRes.status === 200) { const s = await sessRes.json(); token = (s && s.accessToken) || null; }
           } catch (e) {}
-          // 2) 계정 ID (팀 워크스페이스 구분용 헤더, 실패해도 진행).
+          // 2) 계정 ID (팀 워크스페이스 구분용 헤더, 실패해도 진행) + 구독 플랜(best-effort).
           let accountId = null;
+          let plan = null;
           if (token) {
             try {
               const accRes = await fetch('https://chatgpt.com/backend-api/accounts/check/v4-2023-04-27', {headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}, credentials:'include'});
@@ -104,6 +121,12 @@ struct ProviderSpec: Identifiable {
                 const entries = (acc && acc.accounts) ? Object.values(acc.accounts) : [];
                 const pick = entries.find(a => a && a.account && a.account.is_default) || entries[0];
                 accountId = (pick && pick.account && (pick.account.account_id || pick.account.id)) || null;
+                const pt = pick && pick.account && (pick.account.plan_type || pick.account.plan || (pick.account.entitlement && pick.account.entitlement.subscription_plan));
+                if (typeof pt === 'string' && pt) {
+                  const m = {plus:'Plus', pro:'Pro', team:'Team', free:'Free', enterprise:'Enterprise', business:'Business'};
+                  const key = pt.replace(/^chatgpt[-_]?/,'').replace(/[-_].*$/,'').toLowerCase();
+                  plan = m[key] || pt;
+                }
               }
             } catch (e) {}
           }
@@ -136,7 +159,7 @@ struct ProviderSpec: Identifiable {
           const primary = win(rl.primary_window || rl.primary);
           const secondary = win(rl.secondary_window || rl.secondary);
           if (!primary && !secondary) return {ok:false, reason:'no_data'};
-          return {ok:true, five_hour: primary, seven_day: secondary};
+          return {ok:true, plan: plan, five_hour: primary, seven_day: secondary};
         } catch (e) { return {ok:false, reason:'exception', message: String(e)}; }
         """,
         defaultColor: Color(red: 0.06, green: 0.64, blue: 0.50)   // OpenAI 틸
