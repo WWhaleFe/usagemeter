@@ -24,15 +24,20 @@
 - **세그먼트 배치** — 가로 4개(상단/메뉴바선/Dock선/하단) + 세로 좌우 각 3구간을 인터랙티브 다이어그램에서 클릭해 선택. 한 줄로 이어진 조합만 허용, 모양 프리셋 원클릭.
 - **모서리 표현** — 영역별 모서리 곡률(경계 연결 토글), 가로선 끝 위/아래 둥글게, 스쿱(오목 감싸기) 모서리, 노치 감싸기(자동 감지).
 - **겹침 렌더링** — 같은 모양끼리는 급한(잔여 최소) 띠가 맨 위, 부분 겹침은 실제 겹치는 구간만 굵기를 나눠 나란히. 굵기 전환은 수백 pt에 걸쳐 평활되어 눈치챌 수 없다.
-- **메뉴바** — 잔여율 링 아이콘(기준 AI 선택) + 아이콘 옆 %(AI별) + 드롭다운에 5시간/주간/Opus 주간 잔여·리셋 카운트다운·소진 예측·24시간 미니 차트.
+- **메뉴바** — 잔여율 링 아이콘(기준 AI 선택) + 아이콘 옆 %(AI별) + 드롭다운 정보 카드(고대비, 라이트/다크 자동)에 5시간·주간·모델별 주간 잔여·리셋 카운트다운·소진 예측·24시간 미니 차트(호버 시 값 표시).
+- **구독 플랜·모델별 사용량** — AI 이름 옆에 구독 플랜 뱃지(예: Claude `Max (5x)`), 그리고 5시간(현재 세션)·주간(모든 모델)·모델별 주간(예: `Fable`) 잔여를 함께 표시. 서버가 주는 항목만 자동 표시된다.
+- **분석 대시보드** — 메뉴/설정의 "분석 보기"로 열림. 기간(1일·3일·주간·한달)별 **AI별 소비 비중(도넛)**·**시간대별 사용 패턴**·요약(누적/일평균/가장 활발한 시간). Claude·Gemini·Codex를 **모두·일부·하나만** 골라 볼 수 있다.
+- **외형(라이트/다크/시스템)** — 기기 설정을 따르거나 라이트·다크를 직접 선택. 메뉴·설정·호버 색이 테마에 맞게 바뀐다.
+- **AI 표시 순서** — 드롭다운·호버·메뉴바 % 표시 순서를 통일해서 조절.
 - **알림** — 사용률 75/90/95% 도달 시 macOS 알림.
+- **후원** — 앱 안(설정 → 후원 탭)에 **GitHub Sponsors** 버튼 + **카카오페이 QR**(둘 다 수수료 없음). 설정·분석 창이 열려 있는 동안엔 Dock 아이콘으로도 다시 불러올 수 있다.
 - **편의** — 로그인 탭(AI별 로그인/로그아웃), 자동 갱신 주기(1분~2시간+직접 입력), 프리셋 10개 + 기본 상태 저장, Mac 로그인 시 자동 실행, 한국어/English/日本語.
 - 모든 설정은 저장되어 재시작해도 유지된다.
 
 ## 🧩 동작 원리
 
 - 로그인 세션이 살아있는 **WKWebView 안에서 in-page `fetch`** 로 사용량을 읽어 Cloudflare를 통과한다(curl/URLSession은 403).
-- Claude: `GET /api/organizations/{uuid}/usage` (5시간·주간·Opus utilization). Gemini: `gemini.google.com/usage` DOM. Codex: chatgpt.com 세션으로 공식 대시보드가 쓰는 내부 API(`backend-api/wham/usage`) 호출.
+- Claude: `GET /api/organizations/{uuid}/usage` (5시간·주간 + `limits`의 모델별 `weekly_scoped` 버킷) + `rate_limit_tier`로 플랜 판별. Gemini: `gemini.google.com/usage` DOM. Codex: chatgpt.com 세션으로 공식 대시보드가 쓰는 내부 API(`backend-api/wham/usage`) 호출.
 - 오버레이는 borderless 투명 창(screenSaver 레벨, 클릭 통과)에 SwiftUI **Canvas** 로 그린다. 테두리는 세그먼트 그래프로 모델링되고, 겹침 구간은 경로 트림 스팬으로 계산해 가우시안 평활로 굵기를 섞는다.
 - 쿠키는 `WKWebsiteDataStore.default()`(로컬)에만 저장되고 **외부로 전송하지 않는다**.
 
@@ -73,11 +78,16 @@ usagemeter/
     Localization.swift          한/영/일 문자열
     Providers.swift / WebSession.swift / ProviderManager.swift
     StatusBarController.swift   메뉴바
+    MenuInfoCardView.swift      드롭다운 정보 카드(고대비·플랜/모델 표시)
     SettingsView.swift / SettingsWindowController.swift
+    SupportView.swift           후원 탭(GitHub Sponsors + 카카오페이 QR)
+    AnalyticsView.swift / AnalyticsWindowController.swift   분석 대시보드
+    DockPresence.swift          창 열림 시 Dock 아이콘 표시
     LineDragOverlay.swift       경계선 화면 드래그 조정
     HistoryStore.swift / MiniChartView.swift / NotificationManager.swift
     RefreshScheduler.swift
     LoginWindowController.swift / PopupWebView.swift / HoverInfoController.swift
+  .github/FUNDING.yml           저장소 스폰서 버튼
   PROGRESS.md                   개발 진행 기록
 ```
 
