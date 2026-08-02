@@ -23,6 +23,7 @@ Universal binary (Apple Silicon + Intel), macOS 14+.
 - **Screen partitions** — split the screen with a menu-bar line and a Dock line, then wrap any region (e.g. just the menu bar, or just the Dock). Adjust boundaries by dragging directly on screen.
 - **Segment layout** — 4 horizontal lines (top / menu line / Dock line / bottom) + 3 vertical sections per side, picked by clicking an interactive diagram. Only connected chains/loops are allowed; one-click shape presets included.
 - **Corner control** — per-zone corner radii (with linked-boundary toggle), curve horizontal line ends up/down, scoop (concave wrap) corners, notch wrap with auto-detection.
+- **Resolution & device auto-adapt** — when the resolution/scale or monitor setup changes, the border is redrawn to fit the new screen automatically. Notched MacBooks get notch wrap and top corner radius fitted to the device on first launch; on a resolution change the notch is re-detected from the device and the corner radii scale with the resolution ("Fit to this device" in the menu re-applies it anytime).
 - **Overlap rendering** — identical shapes stack with the most urgent band on top; partial overlaps split the thickness into side-by-side lanes only where they actually overlap, with transitions smoothed over hundreds of points so width changes are imperceptible.
 - **Menu bar** — remaining-ratio ring icon (pick the reference AI), per-AI % next to the icon, and a high-contrast dropdown info card (light/dark aware) with 5-hour · weekly · per-model-weekly remaining, reset countdown, depletion forecast, and a 24-hour mini chart (values shown on hover).
 - **Plan & per-model usage** — a subscription-plan badge next to each AI (e.g. Claude `Max (5x)`), plus 5-hour (current session), weekly (all models), and per-model weekly (e.g. `Fable`) remaining. Only the buckets the server actually returns are shown.
@@ -30,6 +31,7 @@ Universal binary (Apple Silicon + Intel), macOS 14+.
 - **Appearance (light/dark/system)** — follow the device or pick manually; menus, settings, and hover panels follow the theme.
 - **AI display order** — one shared order for the dropdown, hover, and the menu-bar %.
 - **Alerts** — macOS notifications at 75 / 90 / 95% usage.
+- **Temporarily hide the border** — a "Hide border" toggle in the menu bar turns the overlay (usage display) off and on (not persisted — it shows again after a restart).
 - **Convenience** — login tab for per-AI sign in/out, auto-refresh interval (1 min–2 h or custom), 10 named presets + default-state save, launch at login, Korean / English / Japanese UI. While a Settings/Analytics window is open, a Dock icon lets you bring it back.
 - Every setting persists across restarts.
 
