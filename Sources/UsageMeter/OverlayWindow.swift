@@ -25,8 +25,11 @@ final class OverlayWindow: NSWindow {
         hasShadow = false
 
         // --- 항상 위에 (always-on-top) ---
-        // 스크린세이버 수준으로 올려 일반 앱 창들 위에 뜨게 한다.
-        level = .screenSaver
+        // 메뉴바(.mainMenu=24)·일반 앱 창 위에는 뜨되, 팝업 메뉴(.popUpMenu=101)와
+        // 시스템 보안 인증 UI(App Store 구매 확인·Touch ID·암호 입력 등)보다는 아래에 둔다.
+        // .screenSaver(1000 = CGShieldingWindowLevel)로 올리면 그 창들이 이 투명 오버레이
+        // 아래에 가려져 "구매 버튼/지문 인증이 안 뜨고, 팝업 메뉴가 선 뒤로 가는" 충돌이 생긴다.
+        level = .statusBar
 
         // --- 클릭 통과 (click-through) ---
         // 창을 마우스 이벤트에 투명하게 만들어 아래 앱을 그대로 클릭할 수 있게 한다.

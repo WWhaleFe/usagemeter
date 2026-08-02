@@ -44,8 +44,9 @@ final class HoverInfoController: NSObject {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
-        // 오버레이 창(.screenSaver)보다 확실히 위 — 선에 가려지지 않게(#호버 최상단).
-        panel.level = NSWindow.Level(rawValue: NSWindow.Level.screenSaver.rawValue + 1)
+        // 오버레이 선(.statusBar)보다 한 단계 위 — 선에 가려지지 않게. 단, 팝업 메뉴·시스템
+        // 보안 인증 UI는 막지 않도록 보안 레벨(.screenSaver)보다는 낮게 유지한다.
+        panel.level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 1)
         panel.ignoresMouseEvents = true
         panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
         panel.contentView = bg

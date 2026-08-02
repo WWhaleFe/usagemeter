@@ -16,7 +16,9 @@ final class LineDragOverlay {
         win.backgroundColor = .clear
         win.isOpaque = false
         win.hasShadow = false
-        win.level = .screenSaver
+        // 오버레이 선(.statusBar)보다 위에서 드래그 핸들을 다루되, 보안 인증 UI(.screenSaver)보다는
+        // 아래로 둔다. (드래그는 사용자가 선을 조정하는 일시적 상태라 인증 UI와 겹칠 일도 드물다.)
+        win.level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 2)
         win.ignoresMouseEvents = false
         win.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         win.contentView = NSHostingView(rootView: LineDragView(settings: settings) { [weak self] in
