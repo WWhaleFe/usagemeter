@@ -162,7 +162,15 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         let raw = await probeRaw()
         guard raw["ok"] as? Bool == true else {
             let reason = raw["reason"] as? String ?? "unknown"
-            if reason == "not_logged_in" || reason == "no_data" { return snapshot(.authExpired, now) }
+            // 진짜 미로그인일 때만 재로그인을 유도한다.
+            if reason == "not_logged_in" { return snapshot(.authExpired, now) }
+            // 로그인은 됐으나 화면/응답을 못 읽음(예: Gemini DOM 변경, 서버 응답 없음) →
+            // '재로그인 필요'가 아니라 '못 읽음'으로 구분해 오안내를 막는다. 튜닝용 진단은 콘솔에 남긴다.
+            if reason == "parse_failed" {
+                let host = raw["host"] as? String ?? "?"
+                let snippet = raw["snippet"] as? String ?? ""
+                NSLog("[UsageMeter] %@ parse_failed host=%@ snippet=%@", spec.id, host, snippet)
+            }
             return snapshot(.unavailable(reason), now)
         }
         let five = raw["five_hour"] as? [String: Any]

@@ -122,7 +122,31 @@ final class StatusBarController: NSObject {
         rebuildPresetSubmenu()
         menu.addItem(presetItem)
 
-        // 후원(☕): 설정 창의 후원 탭으로 이동(#후원 탭).
+        // 개발자에게 리포트: 후원 버튼 위 서브메뉴. 첫 줄(안내)+둘째 줄(메일 주소)은 선택 불가 표시.
+        menu.addItem(.separator())
+        let reportItem = NSMenuItem(title: settings.t("menu.reportSubmenu"), action: nil, keyEquivalent: "")
+        reportItem.image = NSImage(systemSymbolName: "envelope", accessibilityDescription: nil)
+        let reportSub = NSMenu()
+        reportSub.autoenablesItems = false
+        // 정보 표시용 헤더: 커스텀 라벨 뷰를 써서 완전 정적으로(선택·하이라이트·클릭 반응 없음)
+        // 표시한다. 비활성 항목은 글자가 흐려지고, 활성 항목은 마우스 오버 시 하이라이트되므로
+        // 둘 다 피하려면 view 기반이 정답. labelColor라 라이트/다크 모두 또렷하다.
+        let reportHeader = NSMenuItem()
+        reportHeader.view = Self.makeReportHeaderView(settings)
+        reportSub.addItem(reportHeader)
+        reportSub.addItem(.separator())
+        let mailItem = NSMenuItem(title: settings.t("menu.reportMail"), action: #selector(openReportMail), keyEquivalent: "")
+        mailItem.image = NSImage(systemSymbolName: "paperplane", accessibilityDescription: nil)
+        mailItem.target = self
+        reportSub.addItem(mailItem)
+        let copyItem = NSMenuItem(title: settings.t("menu.reportCopy"), action: #selector(copyReportEmail), keyEquivalent: "")
+        copyItem.image = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: nil)
+        copyItem.target = self
+        reportSub.addItem(copyItem)
+        reportItem.submenu = reportSub
+        menu.addItem(reportItem)
+
+        // 후원(☕): 설정 창의 개발자에게 탭으로 이동.
         menu.addItem(.separator())
         let supportItem = NSMenuItem(title: "☕ " + settings.t("menu.support"), action: #selector(openSupport), keyEquivalent: "")
         menu.addItem(supportItem)
@@ -556,9 +580,67 @@ final class StatusBarController: NSObject {
 
     @objc private func openAnalytics() { analyticsWC.show() }
 
+    // MARK: - 개발자에게 리포트
+
+    /// 팝업 리포트 헤더: 첫 줄 안내 + 둘째 줄 메일 주소(두 줄, 선택 불가).
+    /// 다른 메뉴 항목과 동일한 양식(메뉴 기본 폰트 + 표준 labelColor)으로 맞추고
+    /// 글자 크기만 2단(12/13pt)으로 유지한다. labelColor는 라이트/다크 자동 대응.
+    private static func reportHeaderTitle(_ settings: OverlaySettings) -> NSAttributedString {
+        let para = NSMutableParagraphStyle()
+        para.lineSpacing = 2
+        para.paragraphSpacing = 4
+        let s = NSMutableAttributedString()
+        s.append(NSAttributedString(string: settings.t("menu.reportTitle") + "\n", attributes: [
+            .font: NSFont.menuFont(ofSize: 12),
+            .foregroundColor: NSColor.labelColor,
+            .paragraphStyle: para]))
+        s.append(NSAttributedString(string: SupportLinks.reportEmail, attributes: [
+            .font: NSFont.menuFont(ofSize: 13),
+            .foregroundColor: NSColor.labelColor,
+            .paragraphStyle: para]))
+        return s
+    }
+
+    /// 리포트 헤더를 담는 커스텀 라벨 뷰. NSTextField(label)은 선택·편집·하이라이트가 없어
+    /// "마우스를 올리거나 클릭해도 반응 없는 단순 텍스트"로 표시된다.
+    private static func makeReportHeaderView(_ settings: OverlaySettings) -> NSView {
+        let label = NSTextField(labelWithAttributedString: reportHeaderTitle(settings))
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.isSelectable = false
+        label.isEditable = false
+        label.isBezeled = false
+        label.drawsBackground = false
+        let container = NSView()
+        container.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 21),
+            label.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -14),
+            label.topAnchor.constraint(equalTo: container.topAnchor, constant: 5),
+            label.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -5),
+        ])
+        container.frame = NSRect(x: 0, y: 0, width: 240, height: container.fittingSize.height)
+        return container
+    }
+
+    /// "메일 앱으로" → 기본 메일 앱 작성 창(mailto, 제목 자동 채움).
+    @objc private func openReportMail() {
+        let subject = settings.t("report.mailSubject")
+        let enc = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? subject
+        if let url = URL(string: "mailto:\(SupportLinks.reportEmail)?subject=\(enc)") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    /// "메일주소 복사" → 클립보드에 메일 주소 복사.
+    @objc private func copyReportEmail() {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(SupportLinks.reportEmail, forType: .string)
+    }
+
     // MARK: - 후원
 
-    /// 팝업 "후원" 클릭 → 설정 창의 후원 탭을 연다(#후원 탭).
+    /// 팝업 "후원" 클릭 → 설정 창의 개발자에게 탭을 연다.
     @objc private func openSupport() {
         settings.requestedTab = "support"
         openSettings()
@@ -736,13 +818,24 @@ final class StatusBarController: NSObject {
     private func describe(_ s: UsageSnapshot) -> String {
         switch s.status {
         case .authExpired: return settings.t("hover.authExpired")
-        case .unavailable(let why): return settings.tf("hover.unavailable", why)
+        case .unavailable(let why): return settings.tf("hover.unavailable", Self.friendlyReason(why, settings))
         case .stale, .ok:
             let five = Int((s.remainingRatio * 100).rounded())
             var out = settings.t("menu.line5h") + " \(five)%"
             if let w = s.secondaryRatio { out += " · " + settings.t("menu.lineWeekly") + " \(Int((w * 100).rounded()))%" }
             if let r = s.resetAt { out += " · " + settings.t("menu.lineReset") + " " + Self.timeFmt.string(from: r) }
             return out
+        }
+    }
+
+    /// unavailable 사유 코드를 사용자 친화적 문구로. 모르는 코드는 원본을 그대로 보여준다.
+    private static func friendlyReason(_ code: String, _ settings: OverlaySettings) -> String {
+        switch code {
+        case "parse_failed", "no_data": return settings.t("reason.parseFailed")
+        case "usage_failed":            return settings.t("reason.serverError")
+        case "exception", "eval_error", "bad_result", "unknown":
+            return settings.t("reason.temporary")
+        default:                        return code
         }
     }
 

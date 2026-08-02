@@ -48,7 +48,7 @@ struct SettingsView: View {
                 tabScroll { layoutTab }.tabItem { Label(settings.t("tab.layout"), systemImage: "square.dashed") }.tag("layout")
                 tabScroll { cornerTab }.tabItem { Label(settings.t("tab.corner"), systemImage: "rectangle.roundedtop") }.tag("corner")
                 tabScroll { notchTab }.tabItem { Label(settings.t("tab.notch"), systemImage: "rectangle.tophalf.inset.filled") }.tag("notch")
-                tabScroll { supportTab }.tabItem { Label(settings.t("tab.support"), systemImage: "heart") }.tag("support")
+                tabPlain { supportTab }.tabItem { Label(settings.t("tab.support"), systemImage: "envelope") }.tag("support")
             }
             .padding(.horizontal, 10)
             .padding(.bottom, 10)
@@ -74,6 +74,14 @@ struct SettingsView: View {
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    /// 스크롤 없이 여백만 주는 탭 래퍼(개발자에게 탭 등 스크롤 불필요한 탭용).
+    @ViewBuilder
+    private func tabPlain<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 12) { content() }
+            .padding(14)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     // MARK: - 항상 보이는 상단
@@ -481,9 +489,7 @@ struct SettingsView: View {
     // MARK: - 후원 탭
 
     @ViewBuilder private var supportTab: some View {
-        section(settings.t("sec.support")) {
-            SupportView(settings: settings)
-        }
+        SupportView(settings: settings)
     }
 
     // MARK: - 세그먼트 편집기 (#배치 수정 1: 좌=옵션, 우=세그먼트 그리드)

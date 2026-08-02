@@ -46,8 +46,17 @@ enum Loc {
         "order.down":        ("아래로", "Move down", "下へ"),
 
         // 후원
-        "tab.support":       ("후원", "Support", "支援"),
-        "sec.support":       ("후원하기", "Support the developer", "開発者を支援"),
+        "tab.support":       ("개발자에게", "To the developer", "開発者へ"),
+        "sec.support":       ("개발자에게", "To the developer", "開発者へ"),
+        // 리포트(문의/버그/제안)
+        "report.title":      ("리포트 보내기", "Send a report", "レポートを送る"),
+        "report.desc":       ("버그·오류·기능 제안 등 무엇이든 편하게 보내주세요. 아래 주소로 메일이 전송됩니다.", "Bugs, errors, feature ideas — anything is welcome. Mail is sent to the address below.", "バグ・不具合・機能のご提案など、お気軽にどうぞ。下記アドレスにメールが届きます。"),
+        "report.openMail":   ("메일앱 실행", "Open mail app", "メールアプリを開く"),
+        "report.copyEmail":  ("메일 주소 복사", "Copy address", "アドレスをコピー"),
+        "report.copied":     ("복사됨", "Copied", "コピーしました"),
+        "report.mailSubject":("UsageMeter 리포트", "UsageMeter report", "UsageMeter レポート"),
+        // 후원
+        "support.moreTitle": ("개발 후원", "Support development", "開発を支援"),
         "support.desc":      ("이 앱이 도움이 되셨다면 개발을 응원해 주세요. 아래 방법은 모두 수수료 없이 전달됩니다.", "If this app helps you, consider supporting its development. Both options below are fee-free.", "このアプリが役立ったら開発の応援をご検討ください。以下はどちらも手数料なしで届きます。"),
         "support.sponsors":  ("GitHub Sponsors 열기", "Open GitHub Sponsors", "GitHub Sponsorsを開く"),
         "support.kakaoTitle":("카카오페이로 커피 한 잔", "Buy me a coffee (KakaoPay)", "コーヒーを一杯（KakaoPay）"),
@@ -283,6 +292,9 @@ enum Loc {
         "hover.noAI":        ("로그인된 AI 없음 — 메뉴에서 로그인하세요", "No AI logged in — log in from the menu", "ログイン済みAIなし — メニューからログイン"),
         "hover.authExpired": ("로그인이 필요합니다", "Login required", "ログインが必要です"),
         "hover.unavailable": ("사용량을 못 읽음 (%@)", "Can't read usage (%@)", "使用量を取得できません（%@）"),
+        "reason.parseFailed": ("화면을 읽지 못함 — 서비스 UI 변경 가능성", "couldn't read the page — service UI may have changed", "画面を読み取れません — サービスUI変更の可能性"),
+        "reason.serverError": ("서버 응답 오류", "server error", "サーバー応答エラー"),
+        "reason.temporary":   ("일시 오류 — 잠시 후 자동 재시도", "temporary error — will retry", "一時的なエラー — 後で自動再試行"),
 
         // 메뉴바 드롭다운
         "menu.noAI":        ("로그인된 AI 없음 — 아래에서 로그인하세요", "No AI logged in — log in below", "ログイン済みAIなし — 下からログイン"),
@@ -335,6 +347,10 @@ enum Loc {
         "menu.refresh":     ("사용량 새로고침", "Refresh usage", "使用量を更新"),
         "menu.settings":    ("앱 설정", "Settings", "設定"),
         "menu.presets":     ("프리셋", "Presets", "プリセット"),
+        "menu.reportSubmenu":   ("개발자에게 리포트", "Report to developer", "開発者へレポート"),
+        "menu.reportTitle":     ("개발자의 메일 주소", "Developer's email", "開発者のメールアドレス"),
+        "menu.reportMail":      ("메일 앱으로", "Open in mail app", "メールアプリで"),
+        "menu.reportCopy":      ("메일주소 복사", "Copy address", "アドレスをコピー"),
         "menu.support":         ("후원", "Support", "支援"),
         "menu.supportSponsors": ("GitHub Sponsors", "GitHub Sponsors", "GitHub Sponsors"),
         "menu.supportKakao":    ("카카오페이로 커피 한 잔", "Buy me a coffee (KakaoPay)", "コーヒーを一杯（KakaoPay）"),

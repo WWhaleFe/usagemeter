@@ -72,16 +72,53 @@ struct ProviderSpec: Identifiable {
         reloadBeforeFetch: true,
         usageJS: """
         try {
-          function pct(el){ if(!el) return null; const m=(el.textContent||'').match(/(\\d+)\\s*%/); return m?parseInt(m[1],10):null; }
-          let cur = pct(document.querySelector('[data-test-id=\\"gxu-currently\\"]')) ?? pct(document.querySelector('.gxu-currently'));
-          let wk  = pct(document.querySelector('[data-test-id=\\"gxu-weekly\\"]')) ?? pct(document.querySelector('.gxu-weekly'));
-          if (cur==null && wk==null) {
-            const t = document.body ? (document.body.innerText||'') : '';
-            const ms = [...t.matchAll(/(\\d+)\\s*%/g)].map(m=>parseInt(m[1],10));
-            if (ms.length) { cur = ms[0]; wk = ms.length>1 ? ms[1] : null; }
+          // 0) 실제 로그인 상태 확인: 구글 로그인 화면으로 튕겼으면 미로그인(재로그인 유도가 맞음).
+          const host = location.host || '';
+          const path = location.pathname || '';
+          if (/accounts\\.google\\.com/.test(host) || /(^|\\/)(signin|ServiceLogin|InteractiveLogin)/i.test(path)) {
+            return {ok:false, reason:'not_logged_in', host: host};
           }
-          if (cur==null && wk==null) return {ok:false, reason:'no_data'};
-          const pick = (p) => (p==null) ? null : {utilization: p, resets_at: null};
+          const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+          const pctFrom = (el) => {
+            if (!el) return null;
+            const m = (el.textContent || '').match(/(\\d+(?:\\.\\d+)?)\\s*%/);
+            return m ? parseFloat(m[1]) : null;
+          };
+          const curSels = ['[data-test-id=\\"gxu-currently\\"]', '.gxu-currently', '[data-test-id*=\\"current\\"]'];
+          const wkSels  = ['[data-test-id=\\"gxu-weekly\\"]', '.gxu-weekly', '[data-test-id*=\\"weekly\\"]'];
+          const firstMatch = (sels) => { for (const s of sels) { const v = pctFrom(document.querySelector(s)); if (v != null) return v; } return null; };
+          // 1) 클라이언트 렌더 대기: 셀렉터가 나타날 때까지 최대 ~6초 폴링.
+          let cur = null, wk = null;
+          for (let i = 0; i < 12; i++) {
+            if (cur == null) cur = firstMatch(curSels);
+            if (wk == null)  wk  = firstMatch(wkSels);
+            if (cur != null && wk != null) break;
+            await sleep(500);
+          }
+          // 2) 셀렉터 실패 시: 사용/남은 관련 단어 근처의 %만 채택(임의의 % 오탐 방지).
+          //    강함(같은 잎에 키워드+%) 우선, 없으면 약함(부모 문맥에 키워드)으로 폴백.
+          if (cur == null && wk == null) {
+            const KW = /(usage|used|limit|remaining|left|quota|사용|남은|한도|使用|残)/i;
+            const strong = [], weak = [];
+            const leaves = document.querySelectorAll('body *');
+            for (const n of leaves) {
+              if (n.children && n.children.length > 0) continue;      // 잎 노드만
+              const txt = (n.textContent || '').trim();
+              const m = txt.match(/(\\d+(?:\\.\\d+)?)\\s*%/);
+              if (!m) continue;
+              const val = parseFloat(m[1]);
+              if (KW.test(txt)) { strong.push(val); }
+              else { const ctx = (n.parentElement && n.parentElement.textContent) || ''; if (KW.test(ctx)) weak.push(val); }
+            }
+            const cands = strong.length ? strong : weak;
+            if (cands.length) { cur = cands[0]; wk = cands.length > 1 ? cands[1] : null; }
+          }
+          // 3) 그래도 못 찾으면: 로그인은 된 상태이므로 재로그인 요구가 아니라 '읽기 실패'로 구분한다.
+          if (cur == null && wk == null) {
+            const snippet = (document.body ? (document.body.innerText || '') : '').slice(0, 200).replace(/\\s+/g, ' ').trim();
+            return {ok:false, reason:'parse_failed', host: host, snippet: snippet};
+          }
+          const pick = (p) => (p == null) ? null : {utilization: p, resets_at: null};
           return {ok:true, five_hour: pick(cur), seven_day: pick(wk)};
         } catch (e) { return {ok:false, reason:'exception', message: String(e)}; }
         """,
