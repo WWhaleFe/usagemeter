@@ -1,10 +1,10 @@
 #!/bin/bash
-# UsageMeter를 더블클릭 실행 가능한 .app 번들로 패키징한다. (v1.2.1)
+# UsageMeter를 더블클릭 실행 가능한 .app 번들로 패키징한다. (v1.2.2)
 # 사용: ./build-app.sh  → UsageMeter.app 생성 (앱 아이콘 = icon.png)
 set -e
 cd "$(dirname "$0")"
 
-VERSION="1.2.1"
+VERSION="1.2.2"
 BUILD="9"
 
 DEPLOY_TARGET="14.0"
