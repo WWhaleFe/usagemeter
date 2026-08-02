@@ -27,9 +27,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // 오버레이를 화면 중앙을 덮지 않는 얇은 스트립 창들로 구성한다(OverlayFrameController).
         // 중앙에 창이 없으므로 App Store 등 시스템 인증 UI(구매/설치 버튼·Touch ID)를 가리지 않는다.
-        for screen in NSScreen.screens {
-            overlayFrames.append(OverlayFrameController(screen: screen, settings: settings, manager: manager))
-        }
+        rebuildOverlays()
+
+        // 해상도·모니터 구성이 바뀌면 오버레이를 새 화면에 맞게 다시 구성한다.
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(screenParametersChanged),
+            name: NSApplication.didChangeScreenParametersNotification, object: nil)
 
         let history = HistoryStore(manager: manager)
         historyStore = history
@@ -42,6 +45,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+
+    /// 연결된 각 화면마다 오버레이 스트립 프레임을 (재)생성한다.
+    private func rebuildOverlays() {
+        overlayFrames.forEach { $0.invalidate() }
+        overlayFrames = NSScreen.screens.map {
+            OverlayFrameController(screen: $0, settings: settings, manager: manager)
+        }
+    }
+
+    /// 해상도·모니터 구성이 바뀌면: 노치·곡률을 새 화면에 맞게 조정하고 오버레이를 다시 만든다.
+    @objc private func screenParametersChanged() {
+        settings.adaptToScreenChange()
+        rebuildOverlays()
+    }
 
     /// Dock 아이콘 클릭 시 이미 열린 설정·분석 창을 모두 앞으로 가져온다.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {

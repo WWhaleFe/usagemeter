@@ -347,6 +347,8 @@ enum Loc {
         "menu.refresh":     ("사용량 새로고침", "Refresh usage", "使用量を更新"),
         "menu.settings":    ("앱 설정", "Settings", "設定"),
         "menu.presets":     ("프리셋", "Presets", "プリセット"),
+        "menu.hideBorder":      ("테두리 숨기기", "Hide border", "枠を隠す"),
+        "menu.deviceFit":       ("이 기기에 맞춤", "Fit to this device", "この端末に合わせる"),
         "menu.reportSubmenu":   ("개발자에게 리포트", "Report to developer", "開発者へレポート"),
         "menu.reportTitle":     ("개발자의 메일 주소", "Developer's email", "開発者のメールアドレス"),
         "menu.reportMail":      ("메일 앱으로", "Open in mail app", "メールアプリで"),

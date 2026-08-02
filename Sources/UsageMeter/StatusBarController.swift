@@ -122,6 +122,14 @@ final class StatusBarController: NSObject {
         rebuildPresetSubmenu()
         menu.addItem(presetItem)
 
+        // 테두리 임시 숨기기(체크 시 숨김) + 이 기기에 맞춤(노치/곡률 자동).
+        let hideItem = NSMenuItem(title: settings.t("menu.hideBorder"), action: #selector(toggleHideOverlay), keyEquivalent: "")
+        hideItem.state = settings.hideOverlay ? .on : .off
+        menu.addItem(hideItem)
+        let fitItem = NSMenuItem(title: settings.t("menu.deviceFit"), action: #selector(applyDeviceFitClicked), keyEquivalent: "")
+        fitItem.image = NSImage(systemSymbolName: "sparkles.rectangle.stack", accessibilityDescription: nil)
+        menu.addItem(fitItem)
+
         // 개발자에게 리포트: 후원 버튼 위 서브메뉴. 첫 줄(안내)+둘째 줄(메일 주소)은 선택 불가 표시.
         menu.addItem(.separator())
         let reportItem = NSMenuItem(title: settings.t("menu.reportSubmenu"), action: nil, keyEquivalent: "")
@@ -559,6 +567,12 @@ final class StatusBarController: NSObject {
     @objc private func toggleTrack() {
         settings.showTrack.toggle()
     }
+
+    /// 테두리(오버레이) 임시 숨김 토글. 저장 안 됨(재시작 시 다시 표시).
+    @objc private func toggleHideOverlay() { settings.hideOverlay.toggle() }
+
+    /// "이 기기에 맞춤" — 현재 디바이스/해상도에 맞는 노치·곡률로 재설정.
+    @objc private func applyDeviceFitClicked() { settings.applyDeviceFit() }
 
     /// 숫자 하나를 입력받는 간단한 프롬프트(모서리 곡률·노치 크기 정밀 조정용).
     private func promptNumber(_ title: String, current: CGFloat) -> CGFloat? {

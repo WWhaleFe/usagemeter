@@ -351,6 +351,10 @@ final class OverlaySettings: ObservableObject {
     /// 옅은 트랙(전체 길이)을 함께 그릴지.
     @Published var showTrack: Bool = true
 
+    /// 테두리(오버레이) 임시 숨김. 팝업 메뉴에서 토글하며, **저장하지 않는다**(재시작 시 다시 표시).
+    /// SettingsSnapshot에 포함하지 않으므로 영속화되지 않는다.
+    @Published var hideOverlay: Bool = false
+
     /// 소모 끝부분 투명 그라데이션 켜기/끄기.
     @Published var fadeEnabled: Bool = true
     /// 그라데이션 길이(경로 대비 비율 0~0.2). 슬라이더는 0~20(%)로 노출.
@@ -870,16 +874,12 @@ final class OverlaySettings: ObservableObject {
             apply(snap)
             loadedStored = true
         }
-        // 노치 자동 감지는 **최초 실행(저장 설정 없음)일 때만** 기본값으로 반영한다.
-        // 이후에는 노치 탭에서 수동으로 조절한 값이 유지된다(탭에 자동 감지 버튼 별도 제공).
+        // 해상도 변경 시 곡률 스케일 기준이 될 현재 주 화면 폭 기록.
+        lastScreenWidth = NSScreen.main?.frame.width ?? 0
+        // 최초 실행(저장 설정 없음)일 때만 **디바이스 맞춤 프리셋**을 자동 구성한다.
+        // 노치 모델이면 노치 감싸기 + 상단 곡률까지 기기에 맞게 설정. 이후엔 수동 값이 유지된다.
         if !loadedStored {
-            if let n = Self.detectNotch() {
-                notchEnabled = true
-                notchWidth = n.width
-                notchHeight = n.height
-            } else {
-                notchEnabled = false
-            }
+            applyDeviceFit()
         }
         // 이후 설정이 바뀌면 자동 저장(변경 직후 값으로, 300ms 디바운스).
         autosave = objectWillChange
@@ -894,7 +894,58 @@ final class OverlaySettings: ObservableObject {
         }
     }
 
-    // MARK: - 화면 감지
+    // MARK: - 화면/디바이스 적응
+
+    /// 마지막으로 적응한 주 화면 폭(해상도 변경 시 곡률 스케일 비율 계산용).
+    private var lastScreenWidth: CGFloat = 0
+
+    /// 해상도·모니터 구성이 바뀌었을 때 노치·곡률을 새 화면에 맞게 조정한다.
+    /// - 노치: 실기기 감지값으로 갱신(없으면 끔).
+    /// - 곡률: 해상도 폭 비율(0.5~2.0로 제한)로 비례 스케일 후 유효 범위로 클램프.
+    func adaptToScreenChange() {
+        let newW = NSScreen.main?.frame.width ?? 0
+        guard newW > 0 else { return }
+        let old = lastScreenWidth
+        lastScreenWidth = newW
+
+        // 노치: 물리 기기 기준 재감지.
+        if let n = Self.detectNotch() {
+            notchEnabled = true; notchWidth = n.width; notchHeight = n.height
+        } else {
+            notchEnabled = false
+        }
+
+        // 곡률: 해상도 비율로 비례 스케일.
+        guard old > 0 else { return }
+        let s = max(0.5, min(2.0, newW / old))
+        guard abs(s - 1) > 0.01 else { return }
+        let scaleR: (CGFloat) -> CGFloat = { min(80, max(0, ($0 * s).rounded())) }
+        cornerRadii = cornerRadii.mapValues(scaleR)
+        menuZoneRadii = menuZoneRadii.mapValues(scaleR)
+        dockZoneRadii = dockZoneRadii.mapValues(scaleR)
+        notchRadii = notchRadii.mapValues { min(40, max(0, ($0 * s).rounded())) }
+    }
+
+    /// "이 기기에 맞춤" — 현재 디바이스/해상도에 알맞은 테두리 설정을 적용한다.
+    /// 노치가 있는 모델이면 노치 감싸기를 켜고 감지 크기 + 화면 모서리에 어울리는 상단 곡률을 적용,
+    /// 노치가 없으면(외장 모니터 등) 노치를 끈다.
+    func applyDeviceFit() {
+        let w = NSScreen.main?.frame.width ?? lastScreenWidth
+        lastScreenWidth = w > 0 ? w : lastScreenWidth
+        if let n = Self.detectNotch() {
+            notchEnabled = true; notchWidth = n.width; notchHeight = n.height
+            // 노치 모델은 화면 네 모서리가 둥그므로 상단 곡률을 둥글게(해상도 비례, 기준 폭 1710pt).
+            let s = max(0.5, min(2.0, (lastScreenWidth > 0 ? lastScreenWidth : 1710) / 1710))
+            let r = min(80, max(0, (22 * s).rounded()))
+            cornerRadii[.topLeft] = r; cornerRadii[.topRight] = r
+            menuZoneRadii[.topLeft] = r; menuZoneRadii[.topRight] = r
+        } else {
+            notchEnabled = false
+        }
+    }
+
+    /// 노치가 있는 기기인지(메뉴 항목 표시/활성 판단용).
+    var deviceHasNotch: Bool { Self.detectNotch() != nil }
 
     /// 현재 주 화면의 노치 크기를 감지한다(없으면 nil). safeAreaInsets/보조영역 이용.
     static func detectNotch() -> (width: CGFloat, height: CGFloat)? {

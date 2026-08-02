@@ -47,6 +47,7 @@ final class OverlayFrameController {
             w.backgroundColor = .clear
             w.isOpaque = false
             w.hasShadow = false
+            w.isReleasedWhenClosed = false
             w.level = .statusBar   // 메뉴바·일반 앱 위, 팝업/시스템 인증 UI 아래.
             w.ignoresMouseEvents = true
             w.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
@@ -69,6 +70,11 @@ final class OverlayFrameController {
 
     /// 현재 설정 기준으로 각 스트립 창의 프레임과 내부 호스팅 뷰 오프셋을 다시 계산한다.
     func reconfigure() {
+        // 임시 숨김이면 모든 스트립 창을 내린다(팝업 메뉴 '테두리 숨기기').
+        if settings.hideOverlay {
+            for w in windows.values { w.orderOut(nil) }
+            return
+        }
         let S = screen.frame
         // 가로 스트립은 세로 스트립 사이(좌우 vThick)만 덮되, 이음매 방지로 seam 만큼 겹친다.
         let hx = S.minX + vThick - seam
@@ -104,16 +110,12 @@ final class OverlayFrameController {
         }
     }
 
-    /// 스트립 창들을 화면에서 내리거나 다시 올린다(필요 시).
-    func setVisible(_ visible: Bool) {
-        for (s, w) in windows {
-            if visible {
-                // 비활성 선은 계속 숨김.
-                if (s == .hMenu && !settings.menuLineEnabled) || (s == .hDock && !settings.dockLineEnabled) { continue }
-                w.orderFrontRegardless()
-            } else {
-                w.orderOut(nil)
-            }
-        }
+    /// 해상도·모니터 구성 변경 등으로 이 컨트롤러를 폐기할 때 창과 구독을 정리한다.
+    func invalidate() {
+        cancellable?.cancel()
+        cancellable = nil
+        for w in windows.values { w.orderOut(nil); w.close() }
+        windows.removeAll()
+        hosts.removeAll()
     }
 }
