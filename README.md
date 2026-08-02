@@ -39,7 +39,7 @@
 
 - 로그인 세션이 살아있는 **WKWebView 안에서 in-page `fetch`** 로 사용량을 읽어 Cloudflare를 통과한다(curl/URLSession은 403).
 - Claude: `GET /api/organizations/{uuid}/usage` (5시간·주간 + `limits`의 모델별 `weekly_scoped` 버킷) + `rate_limit_tier`로 플랜 판별. Gemini: `gemini.google.com/usage` DOM. Codex: chatgpt.com 세션으로 공식 대시보드가 쓰는 내부 API(`backend-api/wham/usage`) 호출.
-- 오버레이는 borderless 투명 창(screenSaver 레벨, 클릭 통과)에 SwiftUI **Canvas** 로 그린다. 테두리는 세그먼트 그래프로 모델링되고, 겹침 구간은 경로 트림 스팬으로 계산해 가우시안 평활로 굵기를 섞는다.
+- 오버레이는 borderless 투명 창(클릭 통과, 메뉴바·일반 앱 위 레벨)에 SwiftUI **Canvas** 로 그린다. **화면 중앙을 덮지 않도록 가장자리·선만 감싸는 얇은 스트립 창들(오목 프레임)로 구성**되어, App Store·Music·TV·Books·System Settings·웹 Apple Pay 등 화면 중앙에 뜨는 결제·설치·인증 버튼(Touch ID 포함)을 가리지 않는다(v1.2.2 — macOS의 오버레이 방지 동작 회피). 테두리는 세그먼트 그래프로 모델링되고, 겹침 구간은 경로 트림 스팬으로 계산해 가우시안 평활로 굵기를 섞는다.
 - 쿠키는 `WKWebsiteDataStore.default()`(로컬)에만 저장되고 **외부로 전송하지 않는다**.
 
 ## 🚀 실행 (개발)

@@ -37,7 +37,7 @@ Universal binary (Apple Silicon + Intel), macOS 14+.
 
 - Usage is read via **in-page `fetch` inside a logged-in WKWebView**, which passes Cloudflare naturally (plain curl/URLSession gets 403).
 - Claude: `GET /api/organizations/{uuid}/usage` (5-hour · weekly + per-model `weekly_scoped` buckets from `limits`) plus the plan from `rate_limit_tier`. Gemini: `gemini.google.com/usage` DOM. Codex: the same internal endpoint the official dashboard uses (`backend-api/wham/usage`) via the chatgpt.com session.
-- The overlay is a borderless transparent window (screen-saver level, click-through) drawn imperatively with SwiftUI **Canvas**. The border is modeled as a segment graph; overlapping spans are computed as trim ranges along the path and widths are blended with Gaussian smoothing.
+- The overlay is a borderless transparent window (click-through, above the menu bar and regular apps) drawn imperatively with SwiftUI **Canvas**. It's built from **thin strip windows that wrap only the edges/lines and never cover the screen center (a "hollow frame")**, so it doesn't hide the purchase/install/auth buttons (including Touch ID) that apps like App Store · Music · TV · Books · System Settings · web Apple Pay show in the center (v1.2.2 — avoids macOS's overlay-blocking behavior). The border is modeled as a segment graph; overlapping spans are computed as trim ranges along the path and widths are blended with Gaussian smoothing.
 - Cookies stay in the local `WKWebsiteDataStore.default()` only and are **never sent anywhere**.
 
 ## 🚀 Run (development)
