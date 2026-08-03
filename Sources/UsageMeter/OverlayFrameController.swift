@@ -32,7 +32,7 @@ final class OverlayFrameController {
     private var cancellable: AnyCancellable?
 
     /// 스트립 두께(잉크가 가장자리에서 뻗는 최대치 + 여유).
-    /// 세로 폭: inset(≤4)+선(≤8)+곡률(≤80) ≈ 92 → 150. 가로 높이: +노치(≤100) ≈ 112 → 170.
+    /// 세로 폭: inset(≤7.5)+선½(≤7.5)+곡률(≤80) ≈ 95 → 150. 가로 높이: +노치(≤100) ≈ 115 → 170.
     private let vThick: CGFloat = 150
     private let hThick: CGFloat = 170
     /// 스트립 경계(직선 구간)에서 이음매가 안 보이게 하는 미세 겹침.

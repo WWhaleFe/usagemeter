@@ -97,12 +97,22 @@ struct SegmentChainShape: Shape {
         func pt(_ n: SegNode) -> CGPoint {
             var dx: CGFloat = 0, dy: CGFloat = 0
             // 이 노드에 붙은 내 세그먼트의 레인 오프셋을 합성(가로=Δy, 세로=Δx).
+            // 오프셋 부호는 **화면 안쪽(중앙) 방향으로 통일**한다: 그래야 같은 레인 번호가
+            // 상·하·좌·우 모든 가장자리에서 같은 깊이에 놓여, 코너에서 각 AI의 가로 레인과
+            // 세로 레인이 어긋나지 않고 이어진다(#레인 코너 교차 수정). 고정 +y/+x로 두면
+            // 안쪽 방향이 반대인 하단·우변에서 레인 순서가 뒤집혀 코너 선들이 교차한다.
             if !laneOffsets.isEmpty {
                 for s in segs {
                     guard let o = laneOffsets[s], o != 0 else { continue }
                     let (a, b) = OverlaySettings.segEnds(s, menuOn: menuOn, dockOn: dockOn)
                     guard a == n || b == n else { continue }
-                    if s.isHorizontal { dy = o } else { dx = o }
+                    if s.isHorizontal {
+                        // 위쪽 라인(hTop·hMenu)은 +y가, 아래쪽 라인(hDock·hBottom)은 -y가 안쪽.
+                        dy = (s == .hTop || s == .hMenu) ? o : -o
+                    } else {
+                        // 좌변은 +x가, 우변은 -x가 안쪽.
+                        dx = n.right ? -o : o
+                    }
                 }
             }
             return CGPoint(x: (n.right ? xR : xL) + dx, y: yOf(n.level) + dy)
@@ -552,10 +562,10 @@ struct SegmentChainShape: Shape {
 
 /// 화면 가장자리를 따라 각 AI의 잔여율만큼 색 띠를 겹쳐 그리는 오버레이 뷰.
 ///
-/// 겹침 규칙: ① 완전히 같은 모양끼리는 잔여율 높은 것부터(뒤) 그려 %가 가장 적은
-/// 급한 띠가 최상단에 오게 한다. ② 모양이 다른데 일부 세그먼트가 겹치면 그 구간만
-/// 굵기를 공유자 수로 나눠 나란히 표시한다. ③ '겹침 구간 굵기 분할' 옵션을 켜면
-/// 같은 모양끼리도 ②처럼 나눠 표시한다. 노치 우회는 항상 원굵기 한 줄이다.
+/// 겹침 규칙: ① 기본은 **모든 선이 겹친다** — 공유 구간을 잔여율 높은 것부터(뒤) 그려
+/// %가 가장 적은 급한 띠가 최상단에 오게 쌓는다(모양이 부분적으로 달라도 동일). ② '겹침
+/// 구간 굵기 분할' 옵션을 켜야만, 공유 구간의 굵기를 공유자 수로 나눠 나란히(안 겹치게)
+/// 표시한다. 노치 우회는 항상 원굵기 한 줄이다.
 struct BorderView: View {
     @ObservedObject var settings: OverlaySettings
     @ObservedObject var manager: ProviderManager
@@ -635,9 +645,10 @@ struct BorderView: View {
             for s in mySegs {
                 let sh = sharers[s] ?? [myId]
                 let k = sh.count
-                // 분할 조건(#규칙2,3): 다른 모양과 부분 겹침이거나, 분할 옵션이 켜져 있으면.
-                let differs = sh.contains { settings.segs(for: $0) != mySegs }
-                if k > 1, differs || settings.splitOverlapLines, let i = sh.firstIndex(of: myId) {
+                // 분할 조건: '겹침 분할' 옵션을 켰을 때만 레인으로 나눈다. 기본(옵션 꺼짐)은
+                // 부분적으로 모양이 달라도 공유 구간에서 그냥 겹쳐(쌓여) 그린다 — 잔여율 낮은
+                // 띠가 위로(#규칙1). 옵션을 풀어야만 나란히(안 겹치게) 표시(#겹침 기본화).
+                if k > 1, settings.splitOverlapLines, let i = sh.firstIndex(of: myId) {
                     lanes[s] = (CGFloat(i) - CGFloat(k - 1) / 2) * (t / CGFloat(k))
                     widths[s] = t / CGFloat(k)
                 }

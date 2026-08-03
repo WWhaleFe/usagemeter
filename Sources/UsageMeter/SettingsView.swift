@@ -311,7 +311,7 @@ struct SettingsView: View {
 
     @ViewBuilder private var lineTab: some View {
         section(settings.t("sec.line")) {
-            sliderRow(settings.t("line.thickness"), value: $settings.thickness, range: 1...8, step: 0.5)
+            sliderRow(settings.t("line.thickness"), value: $settings.thickness, range: 1...15, step: 0.5)
             sliderRow(settings.t("line.opacity"), value: transparencyBinding, range: 0...100, step: 1)
             Toggle(settings.t("line.track"), isOn: $settings.showTrack)
             Toggle(settings.t("line.fade"), isOn: $settings.fadeEnabled)
