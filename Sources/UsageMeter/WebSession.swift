@@ -69,7 +69,13 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     func load() { webView.load(URLRequest(url: spec.homeURL)) }
 
+    /// 로그인 창에서 여는 주소(서비스에 따라 홈이 아닐 수 있다 — ProviderSpec.loginURL 참고).
+    func loadLogin() { webView.load(URLRequest(url: spec.effectiveLoginURL)) }
+
     // MARK: - 로그인 창 표시/숨김
+
+    /// 로그인 창이 화면에 떠 있는지(로드 실패 안내를 띄울지 판단에 쓴다).
+    private var loginWindowVisible: Bool { hostWindow.alphaValue > 0 }
 
     func presentLoginWindow(delegate: NSWindowDelegate?) {
         hostWindow.delegate = delegate
@@ -79,7 +85,7 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         hostWindow.collectionBehavior = [.managed]
         hostWindow.setContentSize(NSSize(width: 460, height: 720))
         hostWindow.center()
-        load()
+        loadLogin()
         NSApp.activate(ignoringOtherApps: true)
         hostWindow.makeKeyAndOrderFront(nil)
     }
@@ -91,6 +97,9 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         // 다시 숨은 엔진 창으로: 미션 컨트롤에서 감춤.
         hostWindow.collectionBehavior = [.transient, .ignoresCycle]
         hostWindow.orderBack(nil)
+        // 로그인을 도중에 닫았다면 웹뷰가 로그인 페이지(accounts.google.com 등)에 머문다.
+        // 그대로 두면 이후 조회가 계속 그 페이지에서 실패하므로 서비스 홈으로 되돌린다.
+        if !(webView.url?.host?.contains(spec.matchHost) ?? false) { load() }
     }
 
     // MARK: - 팝업(OAuth) 처리
@@ -112,6 +121,36 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         lastLoadedMatches = webView.url?.host?.contains(spec.matchHost) ?? false
         if lastLoadedMatches { resume(&readyWaiters) }
         resume(&loadWaiters)
+    }
+
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        handleLoadFailure(error)
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        handleLoadFailure(error)
+    }
+
+    /// 로드 실패 처리: 기다리는 조회를 즉시 깨우고, 로그인 창이라면 흰 화면 대신 이유를 보여준다.
+    private func handleLoadFailure(_ error: Error) {
+        let ns = error as NSError
+        // 리다이렉트·재로드로 인한 취소는 실패가 아니다.
+        guard ns.code != NSURLErrorCancelled else { return }
+        NSLog("[UsageMeter] %@ load failed (%ld): %@", spec.id, ns.code, error.localizedDescription)
+        resume(&loadWaiters)
+        guard loginWindowVisible else { return }
+        let url = spec.effectiveLoginURL.absoluteString
+        let detail = error.localizedDescription
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+        webView.loadHTMLString("""
+        <html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+        <style>body{font:14px -apple-system,sans-serif;color:#333;padding:32px 24px;line-height:1.6}
+        a{display:inline-block;margin-top:16px;padding:8px 16px;background:#0a66ff;color:#fff;
+        border-radius:8px;text-decoration:none}</style></head><body>
+        <b>페이지를 열지 못했습니다 · Couldn't load the page</b>
+        <p>\(detail)</p><a href="\(url)">다시 시도 · Retry</a></body></html>
+        """, baseURL: nil)
     }
 
     private func resume(_ waiters: inout [CheckedContinuation<Void, Never>]) {
@@ -152,25 +191,51 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         } catch { return ["ok": false, "reason": "eval_error"] }
     }
 
-    /// 로그인 여부(강제 이동 없이 현재 페이지에서 시도).
-    func probeLoggedIn() async -> Bool { (await probeRaw())["ok"] as? Bool == true }
+    /// 사용량까지 정상적으로 읽히는지(= 가장 확실한 로그인 상태). 강제 이동 없이 현재 페이지에서 시도.
+    func probeUsageOK() async -> Bool { (await probeRaw())["ok"] as? Bool == true }
+
+    /// 로그인 창을 닫아도 되는지 판정.
+    ///
+    /// 제미나이처럼 사용량 조회가 DOM 파싱인 서비스는 화면 구조가 바뀌면 "로그인했는데도
+    /// 조회 실패"가 나서, 조회 성공을 로그인 판정에 쓰면 창이 영영 안 닫힌다.
+    /// 그래서 그런 서비스는 **인증 쿠키 + 서비스 도메인 복귀**로 판정한다.
+    func probeLoginDone() async -> Bool {
+        guard !spec.authCookieNames.isEmpty else { return await probeUsageOK() }
+        // 로그인 절차 중(accounts.google.com 등)에 미리 닫히지 않도록 서비스 도메인 복귀를 함께 본다.
+        guard webView.url?.host?.contains(spec.matchHost) ?? false else { return false }
+        return await hasAuthCookie()
+    }
+
+    private func hasAuthCookie() async -> Bool {
+        let cookies = await webView.configuration.websiteDataStore.httpCookieStore.allCookies()
+        return cookies.contains { c in
+            spec.authCookieNames.contains(c.name)
+                && spec.cookieDomains.contains(where: { c.domain.contains($0) })
+        }
+    }
 
     func fetchUsage() async -> UsageSnapshot {
+        // 로그인 창이 떠 있는 동안엔 조회하지 않는다.
+        // 조회와 로그인이 **같은 웹뷰**를 쓰기 때문에, 로그인 중에 주기 갱신이 끼어들면
+        // reload가 구글 로그인 화면을 덮어써서 로그인 절차가 통째로 날아간다
+        // (사용자가 본 "Gemini 로그인 창이 흰 화면으로 멈춤"의 원인).
+        if loginWindowVisible { return snapshot(.unavailable("logging_in"), Date()) }
         await ensureReady()
         if spec.reloadBeforeFetch { await reloadAndWait() }
         let now = Date()
         let raw = await probeRaw()
         guard raw["ok"] as? Bool == true else {
             let reason = raw["reason"] as? String ?? "unknown"
+            // 실패 원인은 항상 남긴다(사용자 제보 때 원인 파악이 가능하도록).
+            NSLog("[UsageMeter] %@ fetch failed reason=%@ host=%@ status=%@ snippet=%@",
+                  spec.id, reason,
+                  raw["host"] as? String ?? "-",
+                  String(describing: raw["status"] ?? "-"),
+                  raw["snippet"] as? String ?? "-")
             // 진짜 미로그인일 때만 재로그인을 유도한다.
             if reason == "not_logged_in" { return snapshot(.authExpired, now) }
             // 로그인은 됐으나 화면/응답을 못 읽음(예: Gemini DOM 변경, 서버 응답 없음) →
-            // '재로그인 필요'가 아니라 '못 읽음'으로 구분해 오안내를 막는다. 튜닝용 진단은 콘솔에 남긴다.
-            if reason == "parse_failed" {
-                let host = raw["host"] as? String ?? "?"
-                let snippet = raw["snippet"] as? String ?? ""
-                NSLog("[UsageMeter] %@ parse_failed host=%@ snippet=%@", spec.id, host, snippet)
-            }
+            // '재로그인 필요'가 아니라 '못 읽음'으로 구분해 오안내를 막는다.
             return snapshot(.unavailable(reason), now)
         }
         let five = raw["five_hour"] as? [String: Any]

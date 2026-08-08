@@ -10,6 +10,16 @@ struct ProviderSpec: Identifiable {
     let matchHost: String
     /// 로그아웃 시 지울 쿠키 도메인 조각들.
     let cookieDomains: [String]
+    /// 로그인 창이 열 주소. nil이면 homeURL.
+    /// 홈이 **로그아웃 상태에서 빈 화면을 주는** 서비스(제미나이)는 실제 로그인 폼이
+    /// 서버에서 그려지는 주소를 따로 지정해야 한다. 안 그러면 흰 창만 뜨고 멈춘다.
+    var loginURL: URL? = nil
+    /// 로그인 완료 판정에 쓰는 인증 쿠키 이름들(하나라도 있으면 로그인으로 본다).
+    /// 사용량 조회가 DOM 파싱이라 로그인 판정에 쓸 수 없는 서비스(제미나이)용.
+    /// 비어 있으면 usageJS 결과(ok)로 판정한다.
+    var authCookieNames: [String] = []
+    /// 실제로 로그인 창이 열 주소.
+    var effectiveLoginURL: URL { loginURL ?? homeURL }
     /// 조회 전 홈을 다시 로드해야 하는지(제미나이 /usage는 재로드로 최신 DOM 확보).
     let reloadBeforeFetch: Bool
     /// 사용량을 읽는 async JS. 반환: {ok, five_hour:{utilization,resets_at}, seven_day:{...}} 또는 {ok:false,...}
@@ -63,12 +73,19 @@ struct ProviderSpec: Identifiable {
 
     // MARK: - Gemini
     // gemini.google.com/usage 의 렌더된 DOM에서 5시간/주간 %를 읽는다(2026-05 도입).
+    //
+    // 로그인은 gemini.google.com이 아니라 구글 계정 페이지에서 해야 한다:
+    // 로그아웃 상태의 gemini.google.com/usage는 서버 리다이렉트 없이 **본문이 빈 셸**만
+    // 내려줘서(2026-08 확인) 로그인 창이 흰 화면으로 멈춘다. accounts.google.com의
+    // ServiceLogin은 로그인 폼을 서버에서 그려주고, 끝나면 continue= 로 되돌아온다.
     static let gemini = ProviderSpec(
         id: "gemini",
         name: "Gemini",
         homeURL: URL(string: "https://gemini.google.com/usage")!,
         matchHost: "gemini.google.com",
         cookieDomains: ["google.com", "gemini"],
+        loginURL: URL(string: "https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fgemini.google.com%2Fusage&followup=https%3A%2F%2Fgemini.google.com%2Fusage")!,
+        authCookieNames: ["__Secure-1PSID", "__Secure-3PSID", "SID"],
         reloadBeforeFetch: true,
         usageJS: """
         try {
@@ -113,8 +130,15 @@ struct ProviderSpec: Identifiable {
             const cands = strong.length ? strong : weak;
             if (cands.length) { cur = cands[0]; wk = cands.length > 1 ? cands[1] : null; }
           }
-          // 3) 그래도 못 찾으면: 로그인은 된 상태이므로 재로그인 요구가 아니라 '읽기 실패'로 구분한다.
+          // 3) 그래도 못 찾으면 두 경우를 갈라야 한다.
+          //    (a) 로그아웃: /usage가 서버 리다이렉트 없이 빈 셸을 주므로 호스트로는 못 가린다.
+          //        대신 구글바의 'Sign in'(ServiceLogin) 링크가 로그아웃 상태에서만 나온다.
+          //        %를 읽는 데 성공했으면 여기까지 오지 않으므로 오탐 위험이 없다.
+          //    (b) 로그인은 됐는데 화면을 못 읽음 → '읽기 실패'(재로그인 요구 아님).
           if (cur == null && wk == null) {
+            if (document.querySelector('a[href*="ServiceLogin"], a[href*="accounts.google.com/signin"]')) {
+              return {ok:false, reason:'not_logged_in', host: host};
+            }
             const snippet = (document.body ? (document.body.innerText || '') : '').slice(0, 200).replace(/\\s+/g, ' ').trim();
             return {ok:false, reason:'parse_failed', host: host, snippet: snippet};
           }
