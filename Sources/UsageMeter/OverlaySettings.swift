@@ -189,6 +189,7 @@ struct SettingsSnapshot: Codable {
     var menuShowChart: Bool?
     var notifyEnabled: Bool?
     var notifyThresholds: [Int]?
+    var autoCheckUpdate: Bool?
     // 화면 분할(파티션) — 가로 경계선.
     var menuLineEnabled: Bool?
     var menuLineHeight: Double?
@@ -487,6 +488,9 @@ final class OverlaySettings: ObservableObject {
     @Published var notifyEnabled: Bool = false
     /// 알림을 보낼 사용률(%) 임계치(잔여 = 100 - 이 값).
     @Published var notifyThresholds: Set<Int> = [75, 90, 95]
+
+    /// 새 버전 자동 확인(시작 시 1회 + 24시간마다). 끄면 메뉴에서 수동으로만 확인한다.
+    @Published var autoCheckUpdate: Bool = true
 
     // MARK: - 화면 분할(파티션) — 가로 경계선
 
@@ -1006,6 +1010,7 @@ final class OverlaySettings: ObservableObject {
             menuShowChart: menuShowChart,
             notifyEnabled: notifyEnabled,
             notifyThresholds: Array(notifyThresholds),
+            autoCheckUpdate: autoCheckUpdate,
             menuLineEnabled: menuLineEnabled,
             menuLineHeight: Double(menuLineHeight),
             dockLineEnabled: dockLineEnabled,
@@ -1080,6 +1085,7 @@ final class OverlaySettings: ObservableObject {
         menuShowChart = s.menuShowChart ?? false
         notifyEnabled = s.notifyEnabled ?? false
         if let t = s.notifyThresholds { notifyThresholds = Set(t) }
+        autoCheckUpdate = s.autoCheckUpdate ?? true
         menuLineEnabled = s.menuLineEnabled ?? false
         menuLineHeight = CGFloat(s.menuLineHeight ?? 25)
         dockLineEnabled = s.dockLineEnabled ?? false

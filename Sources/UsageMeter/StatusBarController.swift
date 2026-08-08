@@ -10,6 +10,7 @@ final class StatusBarController: NSObject {
     private let settings: OverlaySettings
     private let manager: ProviderManager
     private let history: HistoryStore
+    private let updater: UpdateChecker
 
     /// 드롭다운 메뉴(열 때마다 정보 섹션을 다시 채운다).
     private let mainMenu = NSMenu()
@@ -26,7 +27,7 @@ final class StatusBarController: NSObject {
     private let aiSubmenu = NSMenu()
 
     /// 설정 창 컨트롤러(지연 생성).
-    private lazy var settingsWC = SettingsWindowController(settings: settings, manager: manager)
+    private lazy var settingsWC = SettingsWindowController(settings: settings, manager: manager, updater: updater)
 
     /// 분석 대시보드 창(지연 생성).
     private lazy var analyticsWC = AnalyticsWindowController(settings: settings, manager: manager, history: history)
@@ -39,10 +40,11 @@ final class StatusBarController: NSObject {
 
     private var cancellables: Set<AnyCancellable> = []
 
-    init(settings: OverlaySettings, manager: ProviderManager, history: HistoryStore) {
+    init(settings: OverlaySettings, manager: ProviderManager, history: HistoryStore, updater: UpdateChecker) {
         self.settings = settings
         self.manager = manager
         self.history = history
+        self.updater = updater
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         hoverInfo = HoverInfoController(settings: settings)
         super.init()
@@ -159,10 +161,48 @@ final class StatusBarController: NSObject {
         let supportItem = NSMenuItem(title: "☕ " + settings.t("menu.support"), action: #selector(openSupport), keyEquivalent: "")
         menu.addItem(supportItem)
 
+        // 버전 · 업데이트 확인.
+        menu.addItem(.separator())
+        let versionItem = NSMenuItem(title: "UsageMeter " + settings.tf("update.version", updater.displayVersion),
+                                     action: nil, keyEquivalent: "")
+        versionItem.isEnabled = false
+        menu.addItem(versionItem)
+        if let stateItem = updateStateItem() { menu.addItem(stateItem) }
+        let checkItem = NSMenuItem(title: settings.t("update.check"),
+                                   action: #selector(checkUpdateClicked), keyEquivalent: "")
+        checkItem.image = NSImage(systemSymbolName: "arrow.down.circle", accessibilityDescription: nil)
+        menu.addItem(checkItem)
+
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: settings.t("menu.quit"), action: #selector(quit), keyEquivalent: "q"))
         for item in menu.items where item.action != nil { item.target = self }
     }
+
+    /// 업데이트 확인 결과 줄(확인 전이면 표시하지 않는다).
+    private func updateStateItem() -> NSMenuItem? {
+        switch updater.state {
+        case .idle:
+            return nil
+        case .checking:
+            let it = NSMenuItem(title: settings.t("update.checking"), action: nil, keyEquivalent: "")
+            it.isEnabled = false
+            return it
+        case .upToDate:
+            let it = NSMenuItem(title: "✓ " + settings.t("update.upToDate"), action: nil, keyEquivalent: "")
+            it.isEnabled = false
+            return it
+        case .available(let version, _):
+            let it = NSMenuItem(title: "🔵 " + settings.tf("update.available", "v" + version),
+                                action: #selector(openDownloadClicked), keyEquivalent: "")
+            return it
+        case .failed:
+            return NSMenuItem(title: "⚠️ " + settings.t("update.failed"),
+                              action: #selector(checkUpdateClicked), keyEquivalent: "")
+        }
+    }
+
+    @objc private func checkUpdateClicked() { Task { await updater.check(manual: true) } }
+    @objc private func openDownloadClicked() { updater.openDownloadPage() }
 
     /// 표시 순서(providerOrder)대로 정렬된 로그인 AI들.
     private func orderedActive() -> [(spec: ProviderSpec, snap: UsageSnapshot)] {

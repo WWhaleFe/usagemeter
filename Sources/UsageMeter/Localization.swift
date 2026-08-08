@@ -237,6 +237,18 @@ enum Loc {
         "notify.enable": ("사용량 임계치 알림 켜기", "Enable usage threshold alerts", "使用量しきい値アラートを有効化"),
         "notify.thFmt":  ("%d% 사용 시 알림", "Alert at %d% used", "%d%使用時にアラート"),
         "notify.desc":   ("선택한 사용률에 도달하면 macOS 알림을 보냅니다 (리셋 주기당 1회).", "Sends a macOS notification when usage reaches the selected level (once per reset cycle).", "選択した使用率に達するとmacOS通知を送ります（リセット周期ごとに1回）。"),
+        // 버전 · 업데이트
+        "update.version":     ("버전 %@", "Version %@", "バージョン %@"),
+        "update.check":       ("업데이트 확인…", "Check for Updates…", "アップデートを確認…"),
+        "update.checking":    ("확인 중…", "Checking…", "確認中…"),
+        "update.upToDate":    ("최신 버전입니다", "You're up to date", "最新バージョンです"),
+        "update.available":   ("새 버전 %@ 있음 — 다운로드", "Version %@ available — Download", "新バージョン %@ あり — ダウンロード"),
+        "update.failed":      ("확인 실패 — 다시 시도", "Check failed — Try again", "確認に失敗 — 再試行"),
+        "update.auto":        ("새 버전 자동 확인", "Check for updates automatically", "アップデートを自動で確認"),
+        "update.autoDesc":    ("앱 시작 시와 24시간마다 GitHub 릴리스를 확인합니다. 다운로드·설치는 직접 하셔야 합니다.", "Checks GitHub releases at launch and every 24 hours. Downloading and installing is still manual.", "起動時と24時間ごとにGitHubリリースを確認します。ダウンロードとインストールは手動です。"),
+        "update.notifyTitle": ("UsageMeter 새 버전", "UsageMeter update available", "UsageMeter の新バージョン"),
+        "update.notifyBody":  ("%@ 이(가) 나왔습니다. 클릭하면 다운로드 페이지가 열립니다.", "%@ is available. Click to open the download page.", "%@ が公開されました。クリックするとダウンロードページが開きます。"),
+
         "notify.title":  ("AI 사용량 경고", "AI usage warning", "AI使用量の警告"),
         "notify.body":   ("%@ 사용량이 %d% 도달", "%@ usage reached %d%", "%@ の使用量が %d% に到達"),
 

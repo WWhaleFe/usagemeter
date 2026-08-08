@@ -27,3 +27,7 @@ minimalist-*.png
 # 릴리스 zip (Releases에만 업로드)
 UsageMeter*.zip
 dist/
+
+# 사용자 제보 자료(오류 화면 캡처 등) — 로컬 보관, 공개 저장소에 올리지 않는다.
+# 앱 번들 안에 두면 build-app.sh 의 `rm -rf UsageMeter.app` 에 지워지므로 저장소 루트에 둔다.
+/error/

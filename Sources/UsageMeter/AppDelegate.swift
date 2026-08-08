@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var refreshScheduler: RefreshScheduler?
     private var historyStore: HistoryStore?
     private var notificationManager: NotificationManager?
+    private var updateChecker: UpdateChecker?
     private var cancellables: Set<AnyCancellable> = []
 
     /// 오버레이 설정(오버레이·메뉴바 공유).
@@ -37,7 +38,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let history = HistoryStore(manager: manager)
         historyStore = history
         notificationManager = NotificationManager(settings: settings, manager: manager)
-        statusBar = StatusBarController(settings: settings, manager: manager, history: history)
+        let updater = UpdateChecker(settings: settings)
+        updateChecker = updater
+        statusBar = StatusBarController(settings: settings, manager: manager, history: history, updater: updater)
         manager.start(clearFirst: !settings.keepLoggedIn)
         refreshScheduler = RefreshScheduler(settings: settings, manager: manager)
 

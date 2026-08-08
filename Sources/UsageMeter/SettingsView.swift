@@ -8,6 +8,8 @@ struct SettingsView: View {
     @ObservedObject var settings: OverlaySettings
     /// 로그인 탭에서 각 AI의 로그인/로그아웃을 다루기 위한 세션 관리자.
     @ObservedObject var manager: ProviderManager
+    /// 버전 표시·업데이트 확인.
+    @ObservedObject var updater: UpdateChecker
     @State private var newPresetName: String = ""
     @State private var tab: String = "login"
     /// 다이어그램 겹침 경고: (AI id, 메시지). 잠깐 표시 후 자동 해제.
@@ -101,7 +103,39 @@ struct SettingsView: View {
                     Label(settings.t("menu.analytics"), systemImage: "chart.bar.xaxis")
                 }
             }
+            Divider().padding(.vertical, 2)
+            updateRow
         }
+    }
+
+    /// 버전 표시 + 업데이트 확인(탭을 늘리지 않고 상단 기본 상태 박스에 둔다).
+    /// 설치는 하지 않고 새 버전이 있으면 릴리스 페이지를 열어준다.
+    @ViewBuilder private var updateRow: some View {
+        HStack(spacing: 8) {
+            Text("UsageMeter " + settings.tf("update.version", updater.displayVersion))
+                .font(.system(size: 12, weight: .semibold))
+            switch updater.state {
+            case .checking:
+                Text(settings.t("update.checking")).font(.caption).foregroundStyle(.secondary)
+            case .upToDate:
+                Text("✓ " + settings.t("update.upToDate")).font(.caption).foregroundStyle(.secondary)
+            case .failed:
+                Text("⚠️ " + settings.t("update.failed")).font(.caption).foregroundStyle(.secondary)
+            case .idle, .available:
+                EmptyView()
+            }
+            Spacer()
+            if case .available(let v, _) = updater.state {
+                Button(settings.tf("update.available", "v" + v)) { updater.openDownloadPage() }
+                    .buttonStyle(.borderedProminent)
+            }
+            Button(settings.t("update.check")) { Task { await updater.check(manual: true) } }
+                .disabled(updater.state == .checking)
+        }
+        Toggle(settings.t("update.auto"), isOn: $settings.autoCheckUpdate)
+            .onChange(of: settings.autoCheckUpdate) { _, _ in updater.autoCheckSettingChanged() }
+            .font(.caption)
+            .help(settings.t("update.autoDesc"))
     }
 
     // MARK: - 로그인 탭
