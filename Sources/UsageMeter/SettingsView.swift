@@ -108,8 +108,18 @@ struct SettingsView: View {
         }
     }
 
+    /// 내려받기 버튼 제목 — 진행 상태를 그대로 보여준다.
+    private var downloadButtonTitle: String {
+        switch updater.downloadState {
+        case .idle:        return settings.t("update.download")
+        case .downloading: return settings.t("update.downloading")
+        case .done:        return settings.t("update.downloaded")
+        case .failed:      return settings.t("update.downloadFail")
+        }
+    }
+
     /// 버전 표시 + 업데이트 확인(탭을 늘리지 않고 상단 기본 상태 박스에 둔다).
-    /// 설치는 하지 않고 새 버전이 있으면 릴리스 페이지를 열어준다.
+    /// 설치는 하지 않는다 — 최신 zip을 다운로드 폴더로 받아 Finder에서 보여줄 뿐이다.
     @ViewBuilder private var updateRow: some View {
         HStack(spacing: 8) {
             Text("UsageMeter " + settings.tf("update.version", updater.displayVersion))
@@ -124,14 +134,28 @@ struct SettingsView: View {
             case .idle, .available:
                 EmptyView()
             }
-            Spacer()
             if case .available(let v, _) = updater.state {
-                Button(settings.tf("update.available", "v" + v)) { updater.openDownloadPage() }
-                    .buttonStyle(.borderedProminent)
+                Text("🔵 " + settings.tf("update.available", "v" + v))
+                    .font(.caption).foregroundStyle(.blue)
             }
+            Spacer()
             Button(settings.t("update.check")) { Task { await updater.check(manual: true) } }
                 .disabled(updater.state == .checking)
+            // 최신 버전 zip을 다운로드 폴더로 바로 내려받고 Finder에서 보여준다.
+            Button(downloadButtonTitle) {
+                switch updater.downloadState {
+                case .done:   updater.revealDownload()
+                case .failed: updater.openReleasesPage()
+                default:      updater.downloadLatest()
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(updater.downloadState == .downloading)
+            // 릴리스 페이지에서 버전 목록 확인.
+            Button(settings.t("update.openPage")) { updater.openReleasesPage() }
         }
+        Text(settings.t("update.installHint"))
+            .font(.caption).foregroundStyle(.secondary)
         Toggle(settings.t("update.auto"), isOn: $settings.autoCheckUpdate)
             .onChange(of: settings.autoCheckUpdate) { _, _ in updater.autoCheckSettingChanged() }
             .font(.caption)

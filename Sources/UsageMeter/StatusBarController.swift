@@ -170,8 +170,19 @@ final class StatusBarController: NSObject {
         if let stateItem = updateStateItem() { menu.addItem(stateItem) }
         let checkItem = NSMenuItem(title: settings.t("update.check"),
                                    action: #selector(checkUpdateClicked), keyEquivalent: "")
-        checkItem.image = NSImage(systemSymbolName: "arrow.down.circle", accessibilityDescription: nil)
+        checkItem.image = NSImage(systemSymbolName: "arrow.clockwise", accessibilityDescription: nil)
         menu.addItem(checkItem)
+        // 최신 버전 바로 내려받기(다운로드 폴더 → Finder 표시).
+        let dlItem = NSMenuItem(title: downloadItemTitle(),
+                                action: #selector(downloadUpdateClicked), keyEquivalent: "")
+        dlItem.image = NSImage(systemSymbolName: "arrow.down.circle", accessibilityDescription: nil)
+        dlItem.isEnabled = updater.downloadState != .downloading
+        menu.addItem(dlItem)
+        // 릴리스 페이지에서 버전 목록 확인.
+        let pageItem = NSMenuItem(title: settings.t("update.openPage"),
+                                  action: #selector(openReleasesClicked), keyEquivalent: "")
+        pageItem.image = NSImage(systemSymbolName: "safari", accessibilityDescription: nil)
+        menu.addItem(pageItem)
 
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: settings.t("menu.quit"), action: #selector(quit), keyEquivalent: "q"))
@@ -193,7 +204,8 @@ final class StatusBarController: NSObject {
             return it
         case .available(let version, _):
             let it = NSMenuItem(title: "🔵 " + settings.tf("update.available", "v" + version),
-                                action: #selector(openDownloadClicked), keyEquivalent: "")
+                                action: nil, keyEquivalent: "")
+            it.isEnabled = false
             return it
         case .failed:
             return NSMenuItem(title: "⚠️ " + settings.t("update.failed"),
@@ -201,8 +213,27 @@ final class StatusBarController: NSObject {
         }
     }
 
+    /// 내려받기 항목 제목 — 진행 상태를 그대로 보여준다(메뉴는 열 때마다 다시 그려짐).
+    private func downloadItemTitle() -> String {
+        switch updater.downloadState {
+        case .idle:        return settings.t("update.download")
+        case .downloading: return settings.t("update.downloading")
+        case .done:        return settings.t("update.downloaded")
+        case .failed:      return settings.t("update.downloadFail")
+        }
+    }
+
     @objc private func checkUpdateClicked() { Task { await updater.check(manual: true) } }
-    @objc private func openDownloadClicked() { updater.openDownloadPage() }
+    @objc private func openReleasesClicked() { updater.openReleasesPage() }
+
+    /// 내려받기: 완료 상태면 Finder에서 다시 보여주고, 실패면 릴리스 페이지를 연다.
+    @objc private func downloadUpdateClicked() {
+        switch updater.downloadState {
+        case .done:   updater.revealDownload()
+        case .failed: updater.openReleasesPage()
+        default:      updater.downloadLatest()
+        }
+    }
 
     /// 표시 순서(providerOrder)대로 정렬된 로그인 AI들.
     private func orderedActive() -> [(spec: ProviderSpec, snap: UsageSnapshot)] {

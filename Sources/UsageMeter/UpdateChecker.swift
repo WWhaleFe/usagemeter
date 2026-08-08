@@ -19,9 +19,20 @@ final class UpdateChecker: NSObject, ObservableObject {
         case failed(String)
     }
 
+    /// 내려받기 진행 상태.
+    enum DownloadState: Equatable {
+        case idle
+        case downloading
+        case done(URL)
+        case failed(String)
+    }
+
     @Published private(set) var state: State = .idle
+    @Published private(set) var downloadState: DownloadState = .idle
     /// 마지막으로 확인을 끝낸 시각(성공·실패 모두).
     @Published private(set) var lastCheckedAt: Date?
+    /// 최신 릴리스의 zip 첨부 주소(있으면 앱 안에서 바로 내려받을 수 있다).
+    private(set) var latestAssetURL: URL?
 
     /// 현재 앱 버전. `.app` 번들이 아니면(개발 중 `swift run`) nil.
     let currentVersion: String?
@@ -60,10 +71,60 @@ final class UpdateChecker: NSObject, ObservableObject {
     /// 설정에서 자동 확인을 켜고 끌 때 호출.
     func autoCheckSettingChanged() { scheduleAuto() }
 
-    /// 릴리스 페이지 열기(메뉴·설정의 '다운로드' 동작).
-    func openDownloadPage() {
+    /// 릴리스 페이지 열기 — 어떤 버전들이 있는지 브라우저에서 확인한다.
+    func openReleasesPage() {
         if case .available(_, let url) = state { NSWorkspace.shared.open(url) }
         else { NSWorkspace.shared.open(releasesPage) }
+    }
+
+    /// 최신 릴리스 zip을 **다운로드 폴더로 바로 내려받고** Finder에서 보여준다.
+    /// 설치(앱 교체)는 하지 않는다 — 받은 zip을 풀어 응용 프로그램으로 옮기는 건 사용자가 한다.
+    /// 첨부 주소를 아직 모르면(확인 전) 릴리스 페이지를 대신 연다.
+    func downloadLatest() {
+        guard let asset = latestAssetURL else { openReleasesPage(); return }
+        guard downloadState != .downloading else { return }
+        downloadState = .downloading
+        Task {
+            do {
+                let (tmp, resp) = try await URLSession.shared.download(from: asset)
+                let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+                guard code == 200 else {
+                    downloadState = .failed("HTTP \(code)")
+                    return
+                }
+                let dest = Self.uniqueDownloadURL(named: asset.lastPathComponent)
+                try FileManager.default.moveItem(at: tmp, to: dest)
+                // URLSession 임시 파일은 0600으로 만들어진다 — 보통 내려받은 파일처럼 0644로.
+                try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: dest.path)
+                NSLog("[UsageMeter] update downloaded: %@", dest.path)
+                downloadState = .done(dest)
+                NSWorkspace.shared.activateFileViewerSelecting([dest])   // Finder에서 선택 표시
+            } catch {
+                NSLog("[UsageMeter] update download failed: %@", error.localizedDescription)
+                downloadState = .failed(error.localizedDescription)
+            }
+        }
+    }
+
+    /// 내려받은 파일을 Finder에서 다시 보여준다.
+    func revealDownload() {
+        if case .done(let url) = downloadState { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+    }
+
+    /// 다운로드 폴더에 같은 이름이 있으면 `-1`, `-2`… 를 붙여 겹치지 않게 한다.
+    private static func uniqueDownloadURL(named name: String) -> URL {
+        let fm = FileManager.default
+        let dir = fm.urls(for: .downloadsDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Downloads")
+        var url = dir.appendingPathComponent(name)
+        let base = url.deletingPathExtension().lastPathComponent
+        let ext = url.pathExtension
+        var i = 1
+        while fm.fileExists(atPath: url.path) {
+            url = dir.appendingPathComponent(ext.isEmpty ? "\(base)-\(i)" : "\(base)-\(i).\(ext)")
+            i += 1
+        }
+        return url
     }
 
     /// 최신 릴리스를 조회해 현재 버전과 비교한다.
@@ -86,6 +147,11 @@ final class UpdateChecker: NSObject, ObservableObject {
             }
             let pageURL = (obj["html_url"] as? String).flatMap(URL.init(string:)) ?? releasesPage
             let latest = Self.normalize(tag)
+            // zip 첨부가 있으면 앱 안에서 바로 내려받을 수 있게 주소를 기억한다.
+            latestAssetURL = (obj["assets"] as? [[String: Any]])?
+                .compactMap { $0["browser_download_url"] as? String }
+                .first { $0.hasSuffix(".zip") }
+                .flatMap(URL.init(string:))
 
             // 번들 버전을 모르면(개발 실행) 비교할 수 없다.
             guard let current = currentVersion else { state = .failed("no_bundle_version"); return }

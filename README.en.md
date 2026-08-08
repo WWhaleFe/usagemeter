@@ -31,6 +31,7 @@ Universal binary (Apple Silicon + Intel), macOS 14+.
 - **Appearance (light/dark/system)** — follow the device or pick manually; menus, settings, and hover panels follow the theme.
 - **AI display order** — one shared order for the dropdown, hover, and the menu-bar %.
 - **Alerts** — macOS notifications at 75 / 90 / 95% usage.
+- **Version & updates** — the current version is shown at the bottom of the menu-bar popup and at the top of Settings, along with **"Check for Updates"**, **"Download Latest"** (saves the zip straight to your Downloads folder and reveals it in Finder), and **"Open Releases Page"**. It checks GitHub releases at launch and every 24 hours, notifying you once per new version (auto-check can be turned off). Installing — unzip and move to Applications — is still manual.
 - **Temporarily hide the border** — a "Hide border" toggle in the menu bar turns the overlay (usage display) off and on (not persisted — it shows again after a restart).
 - **Convenience** — login tab for per-AI sign in/out, auto-refresh interval (1 min–2 h or custom), 10 named presets + default-state save, launch at login, Korean / English / Japanese UI. While a Settings/Analytics window is open, a Dock icon lets you bring it back.
 - Every setting persists across restarts.
