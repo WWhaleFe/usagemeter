@@ -132,7 +132,13 @@ final class UpdateChecker: NSObject, ObservableObject {
     func check(manual: Bool) async {
         guard state != .checking else { return }
         state = .checking
-        defer { lastCheckedAt = Date() }
+        // 결과는 성공·실패 모두 남긴다(사용자 제보 시 원인 파악용).
+        defer {
+            lastCheckedAt = Date()
+            if case .failed(let why) = state {
+                NSLog("[UsageMeter] update check failed: %@ (manual=%@)", why, manual ? "yes" : "no")
+            }
+        }
         do {
             var req = URLRequest(url: releasesAPI)
             req.timeoutInterval = 15
