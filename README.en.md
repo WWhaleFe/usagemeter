@@ -32,6 +32,7 @@ Universal binary (Apple Silicon + Intel), macOS 14+.
 - **AI display order** — one shared order for the dropdown, hover, and the menu-bar %.
 - **Alerts** — macOS notifications at 75 / 90 / 95% usage.
 - **Version & updates** — the current version is shown at the bottom of the menu-bar popup and at the top of Settings, along with **"Check for Updates"**, **"Download Latest"** (saves the zip straight to your Downloads folder and reveals it in Finder), and **"Open Releases Page"**. It checks GitHub releases at launch and every 24 hours, notifying you once per new version (auto-check can be turned off). Installing — unzip and move to Applications — is still manual.
+- **Light memory footprint (v1.2.6)** — the app sits in the background using about **110 MB** (earlier versions used 1.5 GB+), with essentially 0% idle CPU. See [MEMORY-REPORT.md](MEMORY-REPORT.md) for the full investigation.
 - **Temporarily hide the border** — a "Hide border" toggle in the menu bar turns the overlay (usage display) off and on (not persisted — it shows again after a restart).
 - **Convenience** — login tab for per-AI sign in/out, auto-refresh interval (1 min–2 h or custom), 10 named presets + default-state save, launch at login, Korean / English / Japanese UI. While a Settings/Analytics window is open, a Dock icon lets you bring it back.
 - Every setting persists across restarts.
@@ -40,7 +41,8 @@ Universal binary (Apple Silicon + Intel), macOS 14+.
 
 - Usage is read via **in-page `fetch` inside a logged-in WKWebView**, which passes Cloudflare naturally (plain curl/URLSession gets 403).
 - Claude: `GET /api/organizations/{uuid}/usage` (5-hour · weekly + per-model `weekly_scoped` buckets from `limits`) plus the plan from `rate_limit_tier`. Gemini: `gemini.google.com/usage` DOM. Codex: the same internal endpoint the official dashboard uses (`backend-api/wham/usage`) via the chatgpt.com session.
-- The overlay is a borderless transparent window (click-through, above the menu bar and regular apps) drawn imperatively with SwiftUI **Canvas**. It's built from **thin strip windows that wrap only the edges/lines and never cover the screen center (a "hollow frame")**, so it doesn't hide the purchase/install/auth buttons (including Touch ID) that apps like App Store · Music · TV · Books · System Settings · web Apple Pay show in the center (v1.2.2 — avoids macOS's overlay-blocking behavior). The border is modeled as a segment graph; overlapping spans are computed as trim ranges along the path and widths are blended with Gaussian smoothing.
+- **Web views are kept to a minimum (v1.2.6)** — Claude and Codex only need `fetch`, so instead of loading the service SPA the app loads **an empty document on that origin** (cookies and Cloudflare still work exactly the same). Gemini needs the rendered DOM, so its web view is **created only for a poll and destroyed right after** (alive for 4–6 s out of every 5 min). Total app memory dropped from **~1.5 GB to ~110 MB**.
+- The overlay is a borderless transparent window (click-through, above the menu bar and regular apps) drawn imperatively with SwiftUI **Canvas**. It's built from **thin strip windows that wrap only the edges/lines and never cover the screen center (a "hollow frame")**, so it doesn't hide the purchase/install/auth buttons (including Touch ID) that apps like App Store · Music · TV · Books · System Settings · web Apple Pay show in the center (v1.2.2 — avoids macOS's overlay-blocking behavior). Each strip draws into a **canvas its own size**, shifting only the drawing origin so paths are still computed in full-screen coordinates (v1.2.6 — previously every strip allocated a full-screen layer backing store). The border is modeled as a segment graph; overlapping spans are computed as trim ranges along the path and widths are blended with Gaussian smoothing.
 - Cookies stay in the local `WKWebsiteDataStore.default()` only and are **never sent anywhere**.
 
 ## 🚀 Run (development)
@@ -74,7 +76,7 @@ usagemeter/
   icon.png                      app icon source
   Sources/UsageMeter/
     main.swift / AppDelegate.swift
-    OverlayWindow.swift         transparent, always-on-top, click-through window
+    OverlayFrameController.swift  thin edge-wrapping strip windows (transparent, click-through)
     BorderView.swift            Canvas renderer + SegmentChainShape (segment graph)
     OverlaySettings.swift       shared settings (persisted)
     Localization.swift          ko/en/ja strings
@@ -88,8 +90,10 @@ usagemeter/
     LineDragOverlay.swift       on-screen drag adjustment for partition lines
     HistoryStore.swift / MiniChartView.swift / NotificationManager.swift
     RefreshScheduler.swift
+    UpdateChecker.swift         version check + latest-release download
     LoginWindowController.swift / PopupWebView.swift / HoverInfoController.swift
   .github/FUNDING.yml           repo sponsor button
+  MEMORY-REPORT.md              memory investigation & optimization log (v1.2.6)
   PROGRESS.md                   development log
 ```
 

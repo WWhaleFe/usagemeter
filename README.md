@@ -34,6 +34,7 @@
 - **AI 표시 순서** — 드롭다운·호버·메뉴바 % 표시 순서를 통일해서 조절.
 - **알림** — 사용률 75/90/95% 도달 시 macOS 알림.
 - **버전 표시·업데이트** — 메뉴바 팝업 하단과 설정 창 상단에 현재 버전이 보이고, **"업데이트 확인"** · **"최신 버전 내려받기"**(다운로드 폴더로 바로 받아 Finder에서 표시) · **"릴리스 페이지 열기"** 버튼을 제공한다. 앱 시작 시와 24시간마다 GitHub 릴리스를 자동 확인해 새 버전이 있으면 알림을 보낸다(같은 버전은 1회만, 자동 확인은 끌 수 있음). 설치(압축 해제 후 응용 프로그램으로 이동)는 직접 해야 한다.
+- **가벼운 메모리 사용(v1.2.6)** — 백그라운드에 상주하면서도 **약 110MB**만 쓴다(이전 버전은 1.5GB 이상). 유휴 CPU도 사실상 0%. 자세한 내용은 [MEMORY-REPORT.md](MEMORY-REPORT.md) 참고.
 - **테두리 임시 숨기기** — 메뉴바에서 "테두리 숨기기" 토글로 오버레이(사용량 표시)를 잠시 껐다 켤 수 있다(저장 안 됨 — 재시작 시 다시 표시).
 - **편의** — 로그인 탭(AI별 로그인/로그아웃), 자동 갱신 주기(1분~2시간+직접 입력), 프리셋 10개 + 기본 상태 저장, Mac 로그인 시 자동 실행, 한국어/English/日本語. 설정·분석 창이 열려 있는 동안엔 Dock 아이콘으로 다시 불러올 수 있다.
 - 모든 설정은 저장되어 재시작해도 유지된다.
@@ -42,7 +43,8 @@
 
 - 로그인 세션이 살아있는 **WKWebView 안에서 in-page `fetch`** 로 사용량을 읽어 Cloudflare를 통과한다(curl/URLSession은 403).
 - Claude: `GET /api/organizations/{uuid}/usage` (5시간·주간 + `limits`의 모델별 `weekly_scoped` 버킷) + `rate_limit_tier`로 플랜 판별. Gemini: `gemini.google.com/usage` DOM. Codex: chatgpt.com 세션으로 공식 대시보드가 쓰는 내부 API(`backend-api/wham/usage`) 호출.
-- 오버레이는 borderless 투명 창(클릭 통과, 메뉴바·일반 앱 위 레벨)에 SwiftUI **Canvas** 로 그린다. **화면 중앙을 덮지 않도록 가장자리·선만 감싸는 얇은 스트립 창들(오목 프레임)로 구성**되어, App Store·Music·TV·Books·System Settings·웹 Apple Pay 등 화면 중앙에 뜨는 결제·설치·인증 버튼(Touch ID 포함)을 가리지 않는다(v1.2.2 — macOS의 오버레이 방지 동작 회피). 테두리는 세그먼트 그래프로 모델링되고, 겹침 구간은 경로 트림 스팬으로 계산해 가우시안 평활로 굵기를 섞는다.
+- **웹뷰는 최소한만 띄운다(v1.2.6)** — Claude·Codex는 `fetch`만 쓰므로 서비스 페이지를 로드하지 않고 **해당 오리진에 속한 빈 문서**만 띄운다(쿠키·Cloudflare 통과는 그대로). DOM을 읽어야 하는 Gemini는 **조회할 때만 웹뷰를 만들었다가 곧바로 파기**한다(5분 주기에서 4~6초만 존재). 그 결과 앱 전체 메모리가 **약 1.5GB → 약 110MB** 로 줄었다.
+- 오버레이는 borderless 투명 창(클릭 통과, 메뉴바·일반 앱 위 레벨)에 SwiftUI **Canvas** 로 그린다. **화면 중앙을 덮지 않도록 가장자리·선만 감싸는 얇은 스트립 창들(오목 프레임)로 구성**되어, App Store·Music·TV·Books·System Settings·웹 Apple Pay 등 화면 중앙에 뜨는 결제·설치·인증 버튼(Touch ID 포함)을 가리지 않는다(v1.2.2 — macOS의 오버레이 방지 동작 회피). 각 스트립은 **자기 크기만큼의 Canvas**에 그리기 원점만 옮겨 화면 전체 좌표로 그린다(v1.2.6 — 화면 한 장짜리 레이어 백스토어를 스트립마다 잡던 문제 해결). 테두리는 세그먼트 그래프로 모델링되고, 겹침 구간은 경로 트림 스팬으로 계산해 가우시안 평활로 굵기를 섞는다.
 - 쿠키는 `WKWebsiteDataStore.default()`(로컬)에만 저장되고 **외부로 전송하지 않는다**.
 
 ## 🚀 실행 (개발)
@@ -76,7 +78,7 @@ usagemeter/
   icon.png                      앱 아이콘 원본
   Sources/UsageMeter/
     main.swift / AppDelegate.swift
-    OverlayWindow.swift         투명·항상위·클릭통과 창
+    OverlayFrameController.swift  가장자리를 감싸는 얇은 스트립 창들(투명·클릭통과) 구성
     BorderView.swift            Canvas 렌더 + SegmentChainShape(세그먼트 그래프)
     OverlaySettings.swift       공유 설정(영속화)
     Localization.swift          한/영/일 문자열
@@ -90,8 +92,10 @@ usagemeter/
     LineDragOverlay.swift       경계선 화면 드래그 조정
     HistoryStore.swift / MiniChartView.swift / NotificationManager.swift
     RefreshScheduler.swift
+    UpdateChecker.swift         버전 확인·최신 릴리스 내려받기
     LoginWindowController.swift / PopupWebView.swift / HoverInfoController.swift
   .github/FUNDING.yml           저장소 스폰서 버튼
+  MEMORY-REPORT.md              메모리 점유 조사·최적화 기록 (v1.2.6)
   PROGRESS.md                   개발 진행 기록
 ```
 
