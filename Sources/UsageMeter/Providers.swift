@@ -20,8 +20,16 @@ struct ProviderSpec: Identifiable {
     var authCookieNames: [String] = []
     /// 실제로 로그인 창이 열 주소.
     var effectiveLoginURL: URL { loginURL ?? homeURL }
-    /// 조회 전 홈을 다시 로드해야 하는지(제미나이 /usage는 재로드로 최신 DOM 확보).
+    /// 조회 전 홈을 다시 로드해야 하는지(상주 웹뷰에서 최신 DOM을 확보할 때).
     let reloadBeforeFetch: Bool
+    /// 사용량을 읽는 데 **렌더된 화면**이 필요한지.
+    ///
+    /// `false`(Claude·Codex): `usageJS`가 `fetch()`만 쓴다 → 서비스 SPA를 로드할 필요가 없어
+    /// 오리진만 맞춘 빈 문서를 띄운다(WebSession.loadStub). WebContent 314MB → 16MB.
+    ///
+    /// `true`(Gemini): DOM을 파싱하므로 실제 페이지를 렌더해야 한다 → 빈 문서를 못 쓰는 대신
+    /// 웹뷰를 **상주시키지 않고** 조회할 때만 만들었다 파기한다. 상주 510MB → 0MB.
+    var needsRenderedDOM: Bool = false
     /// 사용량을 읽는 async JS. 반환: {ok, five_hour:{utilization,resets_at}, seven_day:{...}} 또는 {ok:false,...}
     let usageJS: String
     /// 기본 색(브랜드 색).
@@ -87,6 +95,7 @@ struct ProviderSpec: Identifiable {
         loginURL: URL(string: "https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fgemini.google.com%2Fusage&followup=https%3A%2F%2Fgemini.google.com%2Fusage")!,
         authCookieNames: ["__Secure-1PSID", "__Secure-3PSID", "SID"],
         reloadBeforeFetch: true,
+        needsRenderedDOM: true,   // 화면(DOM)을 읽어야 해서 조회 때만 웹뷰를 만들고 곧바로 파기한다.
         usageJS: """
         try {
           // 0) 실제 로그인 상태 확인: 구글 로그인 화면으로 튕겼으면 미로그인(재로그인 유도가 맞음).

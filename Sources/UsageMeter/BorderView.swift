@@ -570,6 +570,13 @@ struct BorderView: View {
     @ObservedObject var settings: OverlaySettings
     @ObservedObject var manager: ProviderManager
 
+    /// 테두리 경로를 계산할 기준이 되는 **화면 전체 크기**.
+    /// 이 뷰 자체는 얇은 스트립 크기지만, 경로는 예전처럼 화면 전체 좌표로 만든다.
+    var screenSize: CGSize = .zero
+    /// 화면 좌상단(0,0) 기준으로 이 스트립이 놓인 위치.
+    /// Canvas를 이만큼 역이동시켜, 화면 전체 좌표로 그려도 자기 구역만 보이게 한다.
+    var originInScreen: CGPoint = .zero
+
     /// 한 AI의 그리기 항목: 모양(레인·구간 굵기 포함) + 잔여율 + 색 + 분할 여부.
     private struct DrawItem: Identifiable {
         let id: String
@@ -676,7 +683,12 @@ struct BorderView: View {
         let fadeOn = settings.fadeEnabled
         let fadeFrac = settings.fadeFraction
         return Canvas { context, size in
-            let rect = CGRect(origin: .zero, size: size)
+            // 스트립 창은 화면의 얇은 띠 하나만 덮는다. 예전엔 이 뷰를 **화면 전체 크기**로 만들어
+            // 창 밖으로 어긋나게 배치했는데, 그러면 CoreAnimation이 스트립마다 화면 한 장짜리
+            // 레이어 백스토어(5K 기준 70MB)를 잡아 4장에 280MB를 썼다(#메모리).
+            // 이제 뷰는 스트립 크기로 두고, 그리기 원점만 옮겨 경로는 그대로 화면 전체 좌표로 그린다.
+            context.translateBy(x: -originInScreen.x, y: -originInScreen.y)
+            let rect = CGRect(origin: .zero, size: screenSize == .zero ? size : screenSize)
             context.opacity = op
             // AI별 (경로, 굵기 구간) 준비. 노치 우회가 있으면 분할이 없어도 구간을 계산해
             // 노치를 별도 레이어(가장 뒤)로 분리한다(#노치 레이어 뒤).

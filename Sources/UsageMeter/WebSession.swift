@@ -5,12 +5,26 @@ import WebKit
 ///
 /// 로그인된 WebView 안에서 조회(fetch/DOM)하므로 Cloudflare 등도 브라우저가 스스로 통과한다.
 /// `WKWebsiteDataStore.default()`(비휘발성)라 재시작해도 로그인이 유지된다.
-/// 평소엔 투명·클릭통과 호스트 창에 담겨 화면에 있으나 안 보인다(로드 유지). 로그인할 때만 보인다.
+///
+/// ## 메모리 전략 (v1.2.6 — 웹뷰가 앱 메모리의 70%를 먹던 문제)
+/// 서비스 홈페이지(SPA)를 통째로 띄워두면 WebContent 프로세스 하나가 300~800MB를 쓴다.
+/// 그래서 provider 성격에 따라 두 가지 방식으로 나눈다:
+///
+/// - **fetch 전용**(Claude·Codex — `needsRenderedDOM == false`):
+///   SPA를 아예 로드하지 않고, 서비스 오리진에 속한 **빈 문서**만 띄워둔다(`loadStub`).
+///   `usageJS`가 `fetch()`만 쓰므로 오리진과 쿠키만 맞으면 동작한다. 314MB → 16MB.
+/// - **DOM 파싱**(Gemini — `needsRenderedDOM == true`):
+///   렌더된 화면이 필요해 빈 문서를 못 쓴다. 대신 **상주시키지 않는다**.
+///   조회할 때만 웹뷰를 만들고 끝나면 파기해 WebContent 프로세스를 통째로 회수한다.
+///   상주 510MB → 0MB(조회 중 10여 초만 피크). 재로드마다 메모리가 누적되던 문제도 함께 사라진다.
+///
+/// 평소엔 투명·클릭통과 호스트 창에 담겨 화면에 있으나 안 보인다. 로그인할 때만 보인다.
 @MainActor
 final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     let spec: ProviderSpec
-    let webView: WKWebView
+    /// 조회용 웹뷰. `needsRenderedDOM` provider는 조회/로그인 중에만 존재하고 그 외엔 nil이다.
+    private(set) var webView: WKWebView?
     private let hostWindow: NSWindow
 
     private var lastLoadedMatches = false
@@ -40,24 +54,13 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     init(spec: ProviderSpec) {
         self.spec = spec
-        let config = WKWebViewConfiguration()
-        config.websiteDataStore = .default()
-        config.userContentController.addUserScript(Self.disablePasskeyScript())
-        self.webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 460, height: 720), configuration: config)
         self.hostWindow = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 460, height: 720),
             styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false
         )
         super.init()
-        webView.navigationDelegate = self
-        webView.uiDelegate = self
-        webView.customUserAgent = desktopUA
-
-        webView.autoresizingMask = [.width, .height]
         hostWindow.title = "\(spec.name) 로그인"
         hostWindow.isReleasedWhenClosed = false
-        hostWindow.contentView?.addSubview(webView)
-        webView.frame = hostWindow.contentView?.bounds ?? webView.frame
         hostWindow.alphaValue = 0
         hostWindow.ignoresMouseEvents = true
         // 조회 엔진용 숨은 창: 미션 컨트롤/Exposé·창 순환·창 메뉴에서 감춘다.
@@ -65,12 +68,69 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         hostWindow.collectionBehavior = [.transient, .ignoresCycle]
         hostWindow.isExcludedFromWindowsMenu = true
         hostWindow.orderFrontRegardless()
+
+        // fetch 전용 provider는 웹뷰가 빈 문서라 상주해도 싸다(16MB) — 미리 만들어 둔다.
+        // DOM 파싱 provider는 조회 시점까지 만들지 않는다(그게 이 클래스의 메모리 절감 핵심).
+        if !spec.needsRenderedDOM { _ = ensureWebView() }
     }
 
-    func load() { webView.load(URLRequest(url: spec.homeURL)) }
+    // MARK: - 웹뷰 수명주기
+
+    /// 웹뷰가 없으면 만들어 호스트 창에 붙인다. 이미 있으면 그대로 돌려준다.
+    @discardableResult
+    private func ensureWebView() -> WKWebView {
+        if let wv = webView { return wv }
+        let config = WKWebViewConfiguration()
+        config.websiteDataStore = .default()
+        config.userContentController.addUserScript(Self.disablePasskeyScript())
+        let wv = WKWebView(frame: NSRect(x: 0, y: 0, width: 460, height: 720), configuration: config)
+        wv.navigationDelegate = self
+        wv.uiDelegate = self
+        wv.customUserAgent = desktopUA
+        wv.autoresizingMask = [.width, .height]
+        hostWindow.contentView?.addSubview(wv)
+        wv.frame = hostWindow.contentView?.bounds ?? wv.frame
+        webView = wv
+        lastLoadedMatches = false
+        return wv
+    }
+
+    /// 웹뷰를 완전히 파기해 WebContent 프로세스 메모리를 OS에 돌려준다.
+    /// 로그인 창이 떠 있는 동안엔 절대 파기하지 않는다(로그인 절차가 통째로 날아간다).
+    private func releaseWebView() {
+        guard !loginWindowVisible, let wv = webView else { return }
+        wv.stopLoading()
+        wv.navigationDelegate = nil
+        wv.uiDelegate = nil
+        wv.removeFromSuperview()
+        webView = nil
+        lastLoadedMatches = false
+    }
+
+    // MARK: - 로드
+
+    func load() {
+        // 아직(또는 더 이상) 웹뷰가 없는 provider는 조회 시점에 만들어 로드한다.
+        guard let wv = webView else { return }
+        guard spec.needsRenderedDOM else { return loadStub(into: wv) }
+        wv.load(URLRequest(url: spec.homeURL))
+    }
+
+    /// SPA를 로드하지 않고 **서비스 오리진에 속한 빈 문서**만 띄운다.
+    ///
+    /// `usageJS`가 `fetch()`만 쓰는 provider(Claude·Codex)는 문서 내용이 필요 없다.
+    /// 오리진만 맞으면 `credentials:'include'` 요청에 쿠키가 그대로 실리고, WebKit 네트워크
+    /// 스택을 쓰므로 Cloudflare도 실제 페이지와 똑같이 통과한다.
+    private func loadStub(into wv: WKWebView) {
+        let url = spec.homeURL
+        let html = Data("<!doctype html><meta charset=\"utf-8\"><title>UsageMeter</title>".utf8)
+        let response = URLResponse(url: url, mimeType: "text/html",
+                                   expectedContentLength: html.count, textEncodingName: "utf-8")
+        wv.loadSimulatedRequest(URLRequest(url: url), response: response, responseData: html)
+    }
 
     /// 로그인 창에서 여는 주소(서비스에 따라 홈이 아닐 수 있다 — ProviderSpec.loginURL 참고).
-    func loadLogin() { webView.load(URLRequest(url: spec.effectiveLoginURL)) }
+    func loadLogin() { ensureWebView().load(URLRequest(url: spec.effectiveLoginURL)) }
 
     // MARK: - 로그인 창 표시/숨김
 
@@ -97,9 +157,11 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         // 다시 숨은 엔진 창으로: 미션 컨트롤에서 감춤.
         hostWindow.collectionBehavior = [.transient, .ignoresCycle]
         hostWindow.orderBack(nil)
+        // DOM 파싱 provider는 로그인이 끝나면 웹뷰를 통째로 버린다(다음 조회 때 새로 만든다).
+        if spec.needsRenderedDOM { return releaseWebView() }
         // 로그인을 도중에 닫았다면 웹뷰가 로그인 페이지(accounts.google.com 등)에 머문다.
-        // 그대로 두면 이후 조회가 계속 그 페이지에서 실패하므로 서비스 홈으로 되돌린다.
-        if !(webView.url?.host?.contains(spec.matchHost) ?? false) { load() }
+        // 그대로 두면 이후 조회가 계속 그 페이지에서 실패하므로 서비스 오리진으로 되돌린다.
+        if !(webView?.url?.host?.contains(spec.matchHost) ?? false) { load() }
     }
 
     // MARK: - 팝업(OAuth) 처리
@@ -114,7 +176,7 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     // MARK: - 로드 추적
     private func matches() -> Bool {
-        lastLoadedMatches && (webView.url?.host?.contains(spec.matchHost) ?? false)
+        lastLoadedMatches && (webView?.url?.host?.contains(spec.matchHost) ?? false)
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -138,12 +200,13 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         guard ns.code != NSURLErrorCancelled else { return }
         NSLog("[UsageMeter] %@ load failed (%ld): %@", spec.id, ns.code, error.localizedDescription)
         resume(&loadWaiters)
-        guard loginWindowVisible else { return }
+        resume(&readyWaiters)
+        guard loginWindowVisible, let wv = webView else { return }
         let url = spec.effectiveLoginURL.absoluteString
         let detail = error.localizedDescription
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")
-        webView.loadHTMLString("""
+        wv.loadHTMLString("""
         <html><head><meta name="viewport" content="width=device-width,initial-scale=1">
         <style>body{font:14px -apple-system,sans-serif;color:#333;padding:32px 24px;line-height:1.6}
         a{display:inline-block;margin-top:16px;padding:8px 16px;background:#0a66ff;color:#fff;
@@ -153,13 +216,27 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         """, baseURL: nil)
     }
 
+    /// WebContent 프로세스가 죽었을 때(메모리 압박에 의한 강제 종료 등) 빈 웹뷰로 남지 않게 복구한다.
+    /// 상주 웹뷰는 이제 빈 문서라 아주 가벼운 대신, 시스템이 회수 대상으로 삼기도 더 쉽다.
+    /// 이 처리가 없으면 이후 모든 조회가 eval_error로 조용히 실패한다.
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        NSLog("[UsageMeter] %@ web content process terminated — reloading", spec.id)
+        lastLoadedMatches = false
+        resume(&readyWaiters)
+        resume(&loadWaiters)
+        // 조회 때만 웹뷰를 만드는 provider는 그냥 버린다(다음 조회에서 새로 만든다).
+        if spec.needsRenderedDOM { return releaseWebView() }
+        load()
+    }
+
     private func resume(_ waiters: inout [CheckedContinuation<Void, Never>]) {
         let w = waiters; waiters = []; w.forEach { $0.resume() }
     }
 
     func ensureReady(timeoutSeconds: Double = 12) async {
         if matches() { return }
-        let onOther = (webView.url != nil) && !(webView.url?.host?.contains(spec.matchHost) ?? false)
+        let wv = ensureWebView()
+        let onOther = (wv.url != nil) && !(wv.url?.host?.contains(spec.matchHost) ?? false)
         if !onOther { load() }
         await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
             readyWaiters.append(c)
@@ -170,7 +247,7 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         }
     }
 
-    /// 홈을 다시 로드하고 완료까지 기다린다(제미나이 /usage 최신 DOM 확보용).
+    /// 홈을 다시 로드하고 완료까지 기다린다(상주 웹뷰에서 최신 DOM을 확보할 때).
     private func reloadAndWait(timeoutSeconds: Double = 12) async {
         load()
         await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
@@ -185,14 +262,24 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     // MARK: - 사용량 조회
     private func probeRaw() async -> [String: Any] {
+        guard let wv = webView else { return ["ok": false, "reason": "no_webview"] }
         do {
-            let result = try await webView.callAsyncJavaScript(spec.usageJS, arguments: [:], in: nil, contentWorld: .page)
+            let result = try await wv.callAsyncJavaScript(spec.usageJS, arguments: [:], in: nil, contentWorld: .page)
             return (result as? [String: Any]) ?? ["ok": false, "reason": "bad_result"]
         } catch { return ["ok": false, "reason": "eval_error"] }
     }
 
     /// 사용량까지 정상적으로 읽히는지(= 가장 확실한 로그인 상태). 강제 이동 없이 현재 페이지에서 시도.
-    func probeUsageOK() async -> Bool { (await probeRaw())["ok"] as? Bool == true }
+    ///
+    /// 웹뷰를 상주시키지 않는 provider는 여기서 웹뷰를 새로 띄우지 않는다 — 이 호출은
+    /// "로그인 창을 열기 전 빠른 확인"용이라, 그러자고 300MB짜리 페이지를 로드하면 본말전도다.
+    /// 대신 인증 쿠키 유무로 판정한다(제미나이의 로그인 판정 기준과 같다).
+    func probeUsageOK() async -> Bool {
+        guard webView != nil else {
+            return spec.authCookieNames.isEmpty ? false : await hasAuthCookie()
+        }
+        return (await probeRaw())["ok"] as? Bool == true
+    }
 
     /// 로그인 창을 닫아도 되는지 판정.
     ///
@@ -202,12 +289,12 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
     func probeLoginDone() async -> Bool {
         guard !spec.authCookieNames.isEmpty else { return await probeUsageOK() }
         // 로그인 절차 중(accounts.google.com 등)에 미리 닫히지 않도록 서비스 도메인 복귀를 함께 본다.
-        guard webView.url?.host?.contains(spec.matchHost) ?? false else { return false }
+        guard webView?.url?.host?.contains(spec.matchHost) ?? false else { return false }
         return await hasAuthCookie()
     }
 
     private func hasAuthCookie() async -> Bool {
-        let cookies = await webView.configuration.websiteDataStore.httpCookieStore.allCookies()
+        let cookies = await WKWebsiteDataStore.default().httpCookieStore.allCookies()
         return cookies.contains { c in
             spec.authCookieNames.contains(c.name)
                 && spec.cookieDomains.contains(where: { c.domain.contains($0) })
@@ -220,8 +307,19 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         // reload가 구글 로그인 화면을 덮어써서 로그인 절차가 통째로 날아간다
         // (사용자가 본 "Gemini 로그인 창이 흰 화면으로 멈춤"의 원인).
         if loginWindowVisible { return snapshot(.unavailable("logging_in"), Date()) }
+
+        // 이번 조회에서 웹뷰를 새로 만들었다면(= 상주하지 않는 provider), 끝나고 반드시 파기한다.
+        let freshlyCreated = (webView == nil)
+        defer { if spec.needsRenderedDOM { releaseWebView() } }
+
         await ensureReady()
-        if spec.reloadBeforeFetch { await reloadAndWait() }
+        if spec.reloadBeforeFetch && !freshlyCreated {
+            // 상주 웹뷰에 남아 있는 옛 DOM을 버리고 새로 그린다.
+            await reloadAndWait()
+        } else if spec.needsRenderedDOM {
+            // 갓 만든 웹뷰는 이미 최신이다 — 클라이언트 렌더 시간만 준다.
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+        }
         let now = Date()
         let raw = await probeRaw()
         guard raw["ok"] as? Bool == true else {
@@ -258,12 +356,13 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
 
     func logout() async {
-        let store = webView.configuration.websiteDataStore.httpCookieStore
+        let store = WKWebsiteDataStore.default().httpCookieStore
         let cookies = await store.allCookies()
         for c in cookies where spec.cookieDomains.contains(where: { c.domain.contains($0) }) {
             await store.deleteCookie(c)
         }
         lastLoadedMatches = false
+        // 상주하지 않는 provider는 웹뷰가 없다 — 다음 조회 때 새로 만들면 된다.
         load()
     }
 

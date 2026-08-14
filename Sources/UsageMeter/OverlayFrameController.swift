@@ -101,8 +101,16 @@ final class OverlayFrameController {
             guard let w = windows[s], let host = hosts[s] else { continue }
             if let f = frame(s) {
                 w.setFrame(f, display: true)
-                // 전체 화면 크기의 BorderView를, 화면 좌표가 일치하도록 창 안에서 어긋나게 배치.
-                host.frame = CGRect(x: S.minX - f.minX, y: S.minY - f.minY, width: S.width, height: S.height)
+                // BorderView를 **창(스트립) 크기**로 둔다. 예전처럼 화면 전체 크기로 두고
+                // 어긋나게 배치하면 스트립마다 화면 한 장짜리 레이어 백스토어가 잡혀
+                // 4장에 280MB를 먹는다(#메모리). 대신 그리기 원점을 BorderView에 넘겨
+                // 경로는 그대로 화면 전체 좌표로 계산하게 한다 — 렌더 결과는 동일하다.
+                host.frame = CGRect(origin: .zero, size: f.size)
+                host.rootView = BorderView(
+                    settings: settings, manager: manager,
+                    screenSize: S.size,
+                    // 화면 좌상단 기준 스트립 위치(SwiftUI는 y가 아래로 증가).
+                    originInScreen: CGPoint(x: f.minX - S.minX, y: S.maxY - f.maxY))
                 if !w.isVisible { w.orderFrontRegardless() }
             } else {
                 w.orderOut(nil)   // 비활성 선(메뉴/Dock 꺼짐)은 창을 내린다.
