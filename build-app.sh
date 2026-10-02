@@ -12,16 +12,21 @@ DEPLOY_TARGET="14.0"
 # 유니버설(arm64 + x86_64) 바이너리를 만든다.
 # `swift build --arch a --arch b` 방식은 전체 Xcode(xcbuild)가 필요하므로,
 # Command Line Tools만으로도 되도록 아키텍처별로 따로 빌드 후 lipo로 합친다.
+# 최신 SwiftPM은 triple과 무관하게 같은 출력 경로(.build/out/...)를 쓰므로,
+# 아키텍처별 결과를 빌드 직후 따로 복사해 두지 않으면 다음 빌드가 덮어쓴다.
+mkdir -p .build/universal
+
 echo "▶ 릴리즈 빌드 (arm64 — 애플실리콘)…"
 swift build -c release --triple "arm64-apple-macosx${DEPLOY_TARGET}"
-ARM_BIN="$(swift build -c release --triple "arm64-apple-macosx${DEPLOY_TARGET}" --show-bin-path)/UsageMeter"
+ARM_BIN=".build/universal/UsageMeter-arm64"
+cp "$(swift build -c release --triple "arm64-apple-macosx${DEPLOY_TARGET}" --show-bin-path)/UsageMeter" "$ARM_BIN"
 
 echo "▶ 릴리즈 빌드 (x86_64 — 인텔)…"
 swift build -c release --triple "x86_64-apple-macosx${DEPLOY_TARGET}"
-X86_BIN="$(swift build -c release --triple "x86_64-apple-macosx${DEPLOY_TARGET}" --show-bin-path)/UsageMeter"
+X86_BIN=".build/universal/UsageMeter-x86_64"
+cp "$(swift build -c release --triple "x86_64-apple-macosx${DEPLOY_TARGET}" --show-bin-path)/UsageMeter" "$X86_BIN"
 
 echo "▶ lipo로 유니버설 바이너리 결합…"
-mkdir -p .build/universal
 BIN=".build/universal/UsageMeter"
 lipo -create -output "$BIN" "$ARM_BIN" "$X86_BIN"
 lipo -info "$BIN"
