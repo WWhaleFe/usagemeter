@@ -65,6 +65,13 @@ enum Loc {
         "support.thanks":    ("감사합니다! 🙇", "Thank you! 🙇", "ありがとうございます！🙇"),
 
         // 호버 정보 표시 토글
+        "sec.hover":         ("마우스 호버 정보", "Hover info", "ホバー情報"),
+        "menuHover.enable":  ("메뉴바 아이콘에 마우스 올리면 정보 표시", "Show info on menu bar icon hover", "メニューバーアイコンにマウスを乗せると情報を表示"),
+        "menuHover.enableDesc": ("메뉴바의 링 아이콘·% 표시 근처에 커서를 올리면 사용량 정보를 띄웁니다.", "Shows usage info when you hover near the menu bar ring icon or percentages.", "メニューバーのリングアイコン・%表示付近にカーソルを乗せると使用量情報を表示します。"),
+        "hoverArea.edges":   ("호버 영역 — 변 전체", "Hover area — whole edges", "ホバー領域 — 辺全体"),
+        "hoverArea.corners": ("호버 영역 — 꼭짓점 부분만", "Hover area — corners only", "ホバー領域 — 角の部分のみ"),
+        "hoverArea.cornerSize": ("꼭짓점 구간 길이(pt)", "Corner zone length (pt)", "角の区間の長さ(pt)"),
+        "hoverArea.desc":    ("선이 그려진 곳 중 고른 영역에서만 정보를 띄웁니다. 변을 끄고 꼭짓점만 켜면 모서리 근처에서만 반응합니다.", "Info appears only in the selected areas where a band is drawn. Turn edges off and corners on to react only near corners.", "線が描かれている部分のうち、選んだ領域でのみ情報を表示します。辺をオフにして角だけオンにすると角付近でのみ反応します。"),
         "hover.enable":      ("테두리에 마우스 올리면 정보 표시", "Show info on border hover", "枠にマウスを乗せると情報を表示"),
         "hover.enableDesc":  ("화면 테두리의 색 띠 위에 커서를 올리면 사용량 정보를 띄웁니다.", "Shows usage info when you hover over the colored bands on screen edges.", "画面端の色帯にカーソルを乗せると使用量情報を表示します。"),
         "chartHover.enable": ("미니 차트에 마우스 올리면 값 표시", "Show values on mini-chart hover", "ミニチャートにマウスで値を表示"),
@@ -262,6 +269,7 @@ enum Loc {
         "line.thickness": ("굵기", "Thickness", "太さ"),
         "line.opacity":   ("투명도 (클수록 투명)", "Transparency (higher = clearer)", "透明度（大きいほど透明）"),
         "line.track":     ("트랙 배경 표시", "Show track background", "トラック背景を表示"),
+        "line.hideOnLaunch": ("앱 시작 시 테두리 숨기기", "Hide border on launch", "起動時に枠を隠す"),
         "line.fade":      ("끝부분 투명 그라데이션", "Fade at the end", "端のフェード"),
         "line.fadeLen":   ("그라데이션 길이(%)", "Fade length (%)", "フェード長さ(%)"),
 

@@ -212,6 +212,11 @@ struct SettingsSnapshot: Codable {
     var providerOrder: [String]?
     var hoverInfoEnabled: Bool?
     var chartHoverEnabled: Bool?
+    var hideOverlayOnLaunch: Bool?
+    var menuBarHoverInfoEnabled: Bool?
+    var hoverEdges: [String]?
+    var hoverCorners: [String]?
+    var hoverCornerSize: Double?
 }
 
 /// 이름이 붙은 저장 프리셋.
@@ -352,9 +357,12 @@ final class OverlaySettings: ObservableObject {
     /// 옅은 트랙(전체 길이)을 함께 그릴지.
     @Published var showTrack: Bool = true
 
-    /// 테두리(오버레이) 임시 숨김. 팝업 메뉴에서 토글하며, **저장하지 않는다**(재시작 시 다시 표시).
+    /// 테두리(오버레이) 임시 숨김. 팝업 메뉴에서 토글하며, **저장하지 않는다**(재시작 시 `hideOverlayOnLaunch` 값으로 복귀).
     /// SettingsSnapshot에 포함하지 않으므로 영속화되지 않는다.
     @Published var hideOverlay: Bool = false
+
+    /// 앱 시작 시 테두리를 숨긴 상태로 시작할지(저장됨). 켜면 실행 직후 `hideOverlay`가 true.
+    @Published var hideOverlayOnLaunch: Bool = false
 
     /// 소모 끝부분 투명 그라데이션 켜기/끄기.
     @Published var fadeEnabled: Bool = true
@@ -454,6 +462,16 @@ final class OverlaySettings: ObservableObject {
 
     /// 드롭다운 미니 차트에 마우스를 올리면 그 시점 값을 툴팁으로 띄울지.
     @Published var chartHoverEnabled: Bool = true
+
+    /// 메뉴바 아이콘·% 표시 근처에 마우스를 올리면 사용량 정보 패널을 띄울지.
+    @Published var menuBarHoverInfoEnabled: Bool = true
+
+    /// 테두리 호버 영역: 변 전체를 호버 대상으로 쓸 변들(기본 4변 모두 = 기존 동작).
+    @Published var hoverEdges: Set<BorderEdge> = Set(BorderEdge.allCases)
+    /// 테두리 호버 영역: 꼭짓점 부분만 쓸 모서리들(변이 꺼져 있어도 이 구간은 반응).
+    @Published var hoverCorners: Set<BorderCorner> = []
+    /// 꼭짓점 호버 구간 길이(pt, 꼭짓점에서 각 변을 따라).
+    @Published var hoverCornerSize: CGFloat = 80
 
     /// 드롭다운·호버에서 AI를 보여줄 순서(위→아래). 기본은 스펙 순서.
     @Published var providerOrder: [String] = ProviderSpec.all.map { $0.id }
@@ -885,6 +903,8 @@ final class OverlaySettings: ObservableObject {
         if !loadedStored {
             applyDeviceFit()
         }
+        // '시작 시 테두리 숨기기'가 켜져 있으면 숨긴 상태로 시작(이후 메뉴 토글은 임시).
+        hideOverlay = hideOverlayOnLaunch
         // 이후 설정이 바뀌면 자동 저장(변경 직후 값으로, 300ms 디바운스).
         autosave = objectWillChange
             .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
@@ -1029,7 +1049,12 @@ final class OverlaySettings: ObservableObject {
             appearance: appearance.rawValue,
             providerOrder: providerOrder,
             hoverInfoEnabled: hoverInfoEnabled,
-            chartHoverEnabled: chartHoverEnabled
+            chartHoverEnabled: chartHoverEnabled,
+            hideOverlayOnLaunch: hideOverlayOnLaunch,
+            menuBarHoverInfoEnabled: menuBarHoverInfoEnabled,
+            hoverEdges: hoverEdges.map { $0.rawValue },
+            hoverCorners: hoverCorners.map { $0.rawValue },
+            hoverCornerSize: Double(hoverCornerSize)
         )
     }
 
@@ -1120,6 +1145,11 @@ final class OverlaySettings: ObservableObject {
         appearance = s.appearance.flatMap { AppAppearance(rawValue: $0) } ?? .system
         hoverInfoEnabled = s.hoverInfoEnabled ?? true
         chartHoverEnabled = s.chartHoverEnabled ?? true
+        hideOverlayOnLaunch = s.hideOverlayOnLaunch ?? false
+        menuBarHoverInfoEnabled = s.menuBarHoverInfoEnabled ?? true
+        hoverEdges = s.hoverEdges.map { Set($0.compactMap { BorderEdge(rawValue: $0) }) } ?? Set(BorderEdge.allCases)
+        hoverCorners = s.hoverCorners.map { Set($0.compactMap { BorderCorner(rawValue: $0) }) } ?? []
+        hoverCornerSize = CGFloat(s.hoverCornerSize ?? 80)
         if let po = s.providerOrder {
             var seen = Set<String>()
             var out = po.filter { ProviderSpec.spec($0) != nil && seen.insert($0).inserted }

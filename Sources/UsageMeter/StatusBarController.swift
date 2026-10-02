@@ -34,6 +34,8 @@ final class StatusBarController: NSObject {
 
     /// 커서를 테두리에 올리면 현재 정보를 보여주는 컨트롤러.
     private let hoverInfo: HoverInfoController
+    /// 상태 아이콘 트래킹 영역의 owner(트래킹 영역은 owner를 강하게 잡지 않으므로 보관).
+    private var hoverTracker: HoverTracker?
 
     /// 프리셋 서브메뉴(저장 목록이 바뀌면 다시 채운다).
     private let presetSubmenu = NSMenu()
@@ -49,8 +51,20 @@ final class StatusBarController: NSObject {
         hoverInfo = HoverInfoController(settings: settings)
         super.init()
 
-        statusItem.button?.toolTip = "UsageMeter"
         updateStatusIcon()
+        updateHoverInfo()
+        // 메뉴바 아이콘 호버: 아이콘 창 위치를 기준으로 호버 영역 계산 + 아이콘 위 이동 감지.
+        hoverInfo.menuBarAnchor = { [weak self] in
+            guard let w = self?.statusItem.button?.window, w.isVisible else { return nil }
+            return w.frame
+        }
+        if let button = statusItem.button {
+            let tracker = HoverTracker { [weak self] in self?.hoverInfo.handleMove() }
+            button.addTrackingArea(NSTrackingArea(
+                rect: .zero, options: [.mouseEnteredAndExited, .mouseMoved, .activeAlways, .inVisibleRect],
+                owner: tracker, userInfo: nil))
+            hoverTracker = tracker
+        }
         // 설정(색) 또는 사용량이 바뀌면 링·호버 정보 갱신.
         settings.objectWillChange
             .merge(with: manager.objectWillChange)
@@ -639,7 +653,7 @@ final class StatusBarController: NSObject {
         settings.showTrack.toggle()
     }
 
-    /// 테두리(오버레이) 임시 숨김 토글. 저장 안 됨(재시작 시 다시 표시).
+    /// 테두리(오버레이) 임시 숨김 토글. 저장 안 됨(재시작 시 `hideOverlayOnLaunch` 값으로 복귀).
     @objc private func toggleHideOverlay() { settings.hideOverlay.toggle() }
 
     /// "이 기기에 맞춤" — 현재 디바이스/해상도에 맞는 노치·곡률로 재설정.
@@ -940,4 +954,20 @@ extension StatusBarController: NSMenuDelegate {
         populateMenu(menu)
         updateStatusIcon()
     }
+    func menuWillOpen(_ menu: NSMenu) {
+        if menu == mainMenu { hoverInfo.suppressed = true }
+    }
+    func menuDidClose(_ menu: NSMenu) {
+        if menu == mainMenu { hoverInfo.suppressed = false }
+    }
+}
+
+/// 상태 아이콘 위 마우스 이동을 받아 호버 판정을 다시 돌리는 트래킹 영역 owner.
+private final class HoverTracker: NSResponder {
+    private let onMove: () -> Void
+    init(onMove: @escaping () -> Void) { self.onMove = onMove; super.init() }
+    required init?(coder: NSCoder) { fatalError() }
+    override func mouseEntered(with event: NSEvent) { onMove() }
+    override func mouseMoved(with event: NSEvent) { onMove() }
+    override func mouseExited(with event: NSEvent) { onMove() }
 }

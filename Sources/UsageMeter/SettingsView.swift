@@ -262,9 +262,30 @@ struct SettingsView: View {
             }
             Text(settings.t("order.desc")).font(.caption).foregroundStyle(.secondary)
         }
-        section(settings.t("hover.enable")) {
+        section(settings.t("sec.hover")) {
             Toggle(settings.t("hover.enable"), isOn: $settings.hoverInfoEnabled)
             Text(settings.t("hover.enableDesc")).font(.caption).foregroundStyle(.secondary)
+            // 호버 영역 지정: 변 전체 / 꼭짓점 구간(#호버 영역).
+            Group {
+                Text(settings.t("hoverArea.edges")).font(.subheadline)
+                HStack(spacing: 14) {
+                    ForEach(BorderEdge.allCases, id: \.self) { e in
+                        Toggle(e.label(settings.language), isOn: memberBinding(\.hoverEdges, e))
+                    }
+                }
+                Text(settings.t("hoverArea.corners")).font(.subheadline)
+                HStack(spacing: 14) {
+                    ForEach([BorderCorner.topLeft, .topRight, .bottomLeft, .bottomRight], id: \.self) { c in
+                        Toggle(c.label(settings.language), isOn: memberBinding(\.hoverCorners, c))
+                    }
+                }
+                sliderRow(settings.t("hoverArea.cornerSize"), value: $settings.hoverCornerSize, range: 20...300, step: 5)
+                    .disabled(settings.hoverCorners.isEmpty)
+                Text(settings.t("hoverArea.desc")).font(.caption).foregroundStyle(.secondary)
+            }
+            .disabled(!settings.hoverInfoEnabled)
+            Toggle(settings.t("menuHover.enable"), isOn: $settings.menuBarHoverInfoEnabled)
+            Text(settings.t("menuHover.enableDesc")).font(.caption).foregroundStyle(.secondary)
         }
         section(settings.t("sec.menuIcon")) {
             Picker(settings.t("disp.iconBaseAI"), selection: $settings.menuBarIconID) {
@@ -312,6 +333,15 @@ struct SettingsView: View {
             Text(settings.t("notify.desc"))
                 .font(.caption).foregroundStyle(.secondary)
         }
+    }
+
+    /// Set 설정값에서 한 원소의 포함 여부를 토글로 바인딩.
+    private func memberBinding<T: Hashable>(_ path: ReferenceWritableKeyPath<OverlaySettings, Set<T>>,
+                                            _ v: T) -> Binding<Bool> {
+        Binding(get: { settings[keyPath: path].contains(v) },
+                set: { on in
+                    if on { settings[keyPath: path].insert(v) } else { settings[keyPath: path].remove(v) }
+                })
     }
 
     /// 체크박스 항목들을 2열 그리드로 배치(세로로만 길어지는 것 방지).
@@ -372,6 +402,7 @@ struct SettingsView: View {
             sliderRow(settings.t("line.thickness"), value: $settings.thickness, range: 1...15, step: 0.5)
             sliderRow(settings.t("line.opacity"), value: transparencyBinding, range: 0...100, step: 1)
             Toggle(settings.t("line.track"), isOn: $settings.showTrack)
+            Toggle(settings.t("line.hideOnLaunch"), isOn: $settings.hideOverlayOnLaunch)
             Toggle(settings.t("line.fade"), isOn: $settings.fadeEnabled)
             sliderRow(settings.t("line.fadeLen"), value: fadeBinding, range: 0...20, step: 1)
                 .disabled(!settings.fadeEnabled)
