@@ -97,6 +97,21 @@ enum Loc {
         "tab.notch":   ("노치", "Notch", "ノッチ"),
 
         // 섹션 제목
+        // 멀티 모니터(디스플레이별 테두리)
+        "sec.displays":       ("디스플레이별 테두리", "Per-Display Border", "ディスプレイ別の枠線"),
+        "display.editing":    ("편집할 화면", "Editing display", "編集する画面"),
+        "display.primary":    ("주 화면", "Main", "メイン"),
+        "display.show":       ("이 화면에 테두리 표시", "Show border on this display", "この画面に枠線を表示"),
+        "display.desc":       ("선·화면 분할·배치·모서리·노치 탭은 선택한 화면에만 적용됩니다. 언어·메뉴바·AI 색 등은 모든 화면 공통입니다.",
+                               "The Line, Partition, Layout, Corner and Notch tabs apply only to the selected display. Language, menu bar, AI colors and other options are shared.",
+                               "線・画面分割・配置・角・ノッチのタブは選択した画面にのみ適用されます。言語・メニューバー・AIの色などは全画面共通です。"),
+        "display.copyToOthers":     ("다른 화면에 복사", "Copy to other displays", "他の画面にコピー"),
+        "display.copyToOthersHelp": ("이 화면의 테두리 설정으로 연결된 다른 모든 화면의 테두리를 덮어씁니다.",
+                                     "Overwrites the border settings of all other connected displays with this display's.",
+                                     "この画面の枠線設定で、接続中の他のすべての画面の枠線を上書きします。"),
+        "preset.displayNote": ("다른 화면을 편집 중이면 불러온 프리셋은 그 화면의 테두리에만 적용되고, 저장 시에는 그 화면의 테두리가 저장됩니다.",
+                               "While editing another display, loading a preset changes only that display's border, and saving stores that display's border.",
+                               "他の画面を編集中は、読み込んだプリセットはその画面の枠線にのみ適用され、保存時はその画面の枠線が保存されます。"),
         "sec.baseState":    ("기본 상태", "Default State", "既定の状態"),
         "sec.login":        ("로그인", "Login", "ログイン"),
         "sec.presets":      ("프리셋 (최대 %d개)", "Presets (max %d)", "プリセット（最大%d個）"),

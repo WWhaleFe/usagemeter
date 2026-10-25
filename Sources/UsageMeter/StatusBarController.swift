@@ -8,6 +8,7 @@ final class StatusBarController: NSObject {
 
     private let statusItem: NSStatusItem
     private let settings: OverlaySettings
+    private let displays: DisplayRegistry
     private let manager: ProviderManager
     private let history: HistoryStore
     private let updater: UpdateChecker
@@ -27,7 +28,7 @@ final class StatusBarController: NSObject {
     private let aiSubmenu = NSMenu()
 
     /// 설정 창 컨트롤러(지연 생성).
-    private lazy var settingsWC = SettingsWindowController(settings: settings, manager: manager, updater: updater)
+    private lazy var settingsWC = SettingsWindowController(settings: settings, displays: displays, manager: manager, updater: updater)
 
     /// 분석 대시보드 창(지연 생성).
     private lazy var analyticsWC = AnalyticsWindowController(settings: settings, manager: manager, history: history)
@@ -42,13 +43,15 @@ final class StatusBarController: NSObject {
 
     private var cancellables: Set<AnyCancellable> = []
 
-    init(settings: OverlaySettings, manager: ProviderManager, history: HistoryStore, updater: UpdateChecker) {
+    init(settings: OverlaySettings, displays: DisplayRegistry, manager: ProviderManager,
+         history: HistoryStore, updater: UpdateChecker) {
         self.settings = settings
+        self.displays = displays
         self.manager = manager
         self.history = history
         self.updater = updater
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        hoverInfo = HoverInfoController(settings: settings)
+        hoverInfo = HoverInfoController(settings: settings, displays: displays)
         super.init()
 
         updateStatusIcon()
@@ -656,8 +659,8 @@ final class StatusBarController: NSObject {
     /// 테두리(오버레이) 임시 숨김 토글. 저장 안 됨(재시작 시 `hideOverlayOnLaunch` 값으로 복귀).
     @objc private func toggleHideOverlay() { settings.hideOverlay.toggle() }
 
-    /// "이 기기에 맞춤" — 현재 디바이스/해상도에 맞는 노치·곡률로 재설정.
-    @objc private func applyDeviceFitClicked() { settings.applyDeviceFit() }
+    /// "이 기기에 맞춤" — 연결된 각 디스플레이를 자기 화면에 맞는 노치·곡률로 재설정.
+    @objc private func applyDeviceFitClicked() { displays.applyDeviceFitAll() }
 
     /// 숫자 하나를 입력받는 간단한 프롬프트(모서리 곡률·노치 크기 정밀 조정용).
     private func promptNumber(_ title: String, current: CGFloat) -> CGFloat? {

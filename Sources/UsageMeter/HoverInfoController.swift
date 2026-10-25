@@ -9,6 +9,8 @@ import AppKit
 final class HoverInfoController: NSObject {
 
     private let settings: OverlaySettings
+    /// 커서가 있는 화면의 테두리 설정(굵기·그려진 변)을 찾기 위한 디스플레이 목록.
+    private let displays: DisplayRegistry
     /// 표시할 현재 정보(사용량 새로고침 때 갱신).
     var infoText: String = "로그인이 필요합니다"
 
@@ -24,8 +26,9 @@ final class HoverInfoController: NSObject {
         didSet { if suppressed { hide() } }
     }
 
-    init(settings: OverlaySettings) {
+    init(settings: OverlaySettings, displays: DisplayRegistry) {
         self.settings = settings
+        self.displays = displays
 
         label = NSTextField(labelWithString: "")
         label.font = .systemFont(ofSize: 12, weight: .medium)
@@ -87,8 +90,12 @@ final class HoverInfoController: NSObject {
         }
         guard settings.hoverInfoEnabled else { hide(); return }
         guard let screen = NSScreen.screens.first(where: { $0.frame.contains(p) }) else { hide(); return }
+        // 테두리 모양(굵기·그려진 변)은 화면마다 다르다 — 그 화면의 설정으로 판정.
+        let screenID = DisplayRegistry.uuid(for: screen)
+        guard displays.isEnabled(screenID) else { hide(); return }
+        let border = displays.settings(for: screenID)
         let f = screen.frame
-        let th = max(6, settings.thickness) + 7      // 선 근처로 볼 여유
+        let th = max(6, border.thickness) + 7      // 선 근처로 볼 여유
         // 세그먼트 모델 기준: 어느 AI든 그 변에 선이 있어야 호버 대상(#스키마 일원화).
         // 그 위에서 사용자가 고른 호버 영역(변 전체 / 꼭짓점 구간)만 반응한다.
         let cs = settings.hoverCornerSize
@@ -100,7 +107,7 @@ final class HoverInfoController: NSObject {
             (.right,  abs(p.x - f.maxX) <= th && (f.minY...f.maxY).contains(p.y), .bottomRight, .topRight, p.y - f.minY, f.maxY - p.y),
         ]
         let near = checks.contains { edge, onEdge, c1, c2, d1, d2 in
-            guard onEdge, settings.edgeActive(edge) else { return false }
+            guard onEdge, border.edgeActive(edge) else { return false }
             if settings.hoverEdges.contains(edge) { return true }
             return (settings.hoverCorners.contains(c1) && d1 <= cs)
                 || (settings.hoverCorners.contains(c2) && d2 <= cs)

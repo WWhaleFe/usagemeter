@@ -6,11 +6,13 @@ import SwiftUI
 final class SettingsWindowController: NSObject {
     private var window: NSWindow?
     private let settings: OverlaySettings
+    private let displays: DisplayRegistry
     private let manager: ProviderManager
     private let updater: UpdateChecker
 
-    init(settings: OverlaySettings, manager: ProviderManager, updater: UpdateChecker) {
+    init(settings: OverlaySettings, displays: DisplayRegistry, manager: ProviderManager, updater: UpdateChecker) {
         self.settings = settings
+        self.displays = displays
         self.manager = manager
         self.updater = updater
         super.init()
@@ -19,7 +21,8 @@ final class SettingsWindowController: NSObject {
     /// 설정 창을 앞으로 가져온다(없으면 생성).
     func show() {
         if window == nil {
-            let hosting = NSHostingController(rootView: SettingsView(settings: settings, manager: manager, updater: updater))
+            let hosting = NSHostingController(rootView: SettingsRootView(
+                settings: settings, displays: displays, manager: manager, updater: updater))
             let win = NSWindow(contentViewController: hosting)
             win.title = "UsageMeter 설정"
             win.styleMask = [.titled, .closable, .miniaturizable]

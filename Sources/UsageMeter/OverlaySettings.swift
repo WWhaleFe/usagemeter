@@ -219,6 +219,30 @@ struct SettingsSnapshot: Codable {
     var hoverCornerSize: Double?
 }
 
+extension SettingsSnapshot {
+    /// 테두리 모양에 해당하는 값만 `o`에서 가져온다. 디스플레이마다 따로 갖는 값들이며,
+    /// 나머지(언어·메뉴바·알림·갱신 주기·AI 색 등)는 앱 전역 값으로 그대로 둔다.
+    mutating func copyBorder(from o: SettingsSnapshot) {
+        thickness = o.thickness; colorRGBA = o.colorRGBA; edges = o.edges
+        cornerRadii = o.cornerRadii; showTrack = o.showTrack
+        notchEnabled = o.notchEnabled; notchWidth = o.notchWidth; notchHeight = o.notchHeight
+        notchRadii = o.notchRadii
+        anchorCorner = o.anchorCorner; anchorSide = o.anchorSide; anchorClockwise = o.anchorClockwise
+        lineOpacity = o.lineOpacity
+        extendStartCorner = o.extendStartCorner; extendEndCorner = o.extendEndCorner
+        startCornerAbove = o.startCornerAbove
+        fadeEnabled = o.fadeEnabled; fadeFraction = o.fadeFraction
+        separateByAI = o.separateByAI; providerLayouts = o.providerLayouts
+        menuLineEnabled = o.menuLineEnabled; menuLineHeight = o.menuLineHeight
+        dockLineEnabled = o.dockLineEnabled; dockLineHeight = o.dockLineHeight
+        globalZones = o.globalZones
+        menuZoneRadii = o.menuZoneRadii; dockZoneRadii = o.dockZoneRadii
+        globalSegments = o.globalSegments; segCapStart = o.segCapStart; segCapEnd = o.segCapEnd
+        noOverlapLines = o.noOverlapLines; splitOverlapLines = o.splitOverlapLines
+        linkMenuMainRadii = o.linkMenuMainRadii; linkMainDockRadii = o.linkMainDockRadii
+    }
+}
+
 /// 이름이 붙은 저장 프리셋.
 struct SavedPreset: Codable, Identifiable {
     var id: UUID
@@ -403,8 +427,8 @@ final class OverlaySettings: ObservableObject {
 
     /// UI 언어(한국어/영어/일본어). 바뀌면 설정 창·메뉴 문자열이 즉시 갱신.
     @Published var language: AppLanguage = .english   // 처음 설치 시 영문 기본
-    /// 현재 언어로 문자열 조회.
-    func t(_ key: String) -> String { Loc.tr(key, language) }
+    /// 현재 언어로 문자열 조회(디스플레이별 설정이면 앱 전역 언어를 따른다).
+    func t(_ key: String) -> String { Loc.tr(key, parent?.language ?? language) }
     /// %@ 를 인자로 치환.
     func tf(_ key: String, _ arg: String) -> String { t(key).replacingOccurrences(of: "%@", with: arg) }
     /// %d 를 숫자로 치환.
@@ -851,8 +875,10 @@ final class OverlaySettings: ObservableObject {
     }
 
     /// provider 색 조회(없으면 스펙 기본색).
+    /// 디스플레이별 설정이면 AI 색은 앱 전역(주 설정) 값을 따른다 — 메뉴바·분석 창과 같은 색.
     func color(forProvider id: String) -> Color {
-        providerColors[id] ?? ProviderSpec.spec(id)?.defaultColor ?? color
+        if let parent { return parent.color(forProvider: id) }
+        return providerColors[id] ?? ProviderSpec.spec(id)?.defaultColor ?? color
     }
 
     /// 저장된 사용자 프리셋(최대 5개, 재시작해도 유지).
@@ -860,6 +886,8 @@ final class OverlaySettings: ObservableObject {
     static let maxPresets = 10
     private static let presetsKey = "usagemeter.savedPresets"
     private static let currentKey = "usagemeter.currentSettings"
+    /// 디스플레이별 설정 저장 키 접두어(뒤에 디스플레이 UUID).
+    static let displayKeyPrefix = "usagemeter.display."
     private static let defaultKey = "usagemeter.defaultSettings"
     private var autosave: AnyCancellable?
 
@@ -881,7 +909,35 @@ final class OverlaySettings: ObservableObject {
         apply(snap)
     }
 
+    /// 이 설정이 저장되는 UserDefaults 키. 주 설정 = currentKey, 디스플레이별 = displayKeyPrefix+UUID.
+    private let storageKey: String
+    /// 디스플레이별 설정이면 앱 전역(주) 설정. 언어·AI 색·임시 숨김 등 전역 값은 여기서 읽는다.
+    private(set) weak var parent: OverlaySettings?
+    /// 이 설정이 테두리를 그리는 화면(노치 감지·해상도 적응 기준). 연결 안 됐으면 nil.
+    var screenResolver: () -> NSScreen? = { NSScreen.main }
+
+    /// 디스플레이별 테두리 설정. 저장된 값이 있으면 불러오고, 없으면 `seed`(주 설정)를
+    /// 복사한 뒤 그 화면에 맞게(노치·곡률) 조정해 시작한다. 프리셋 목록은 주 설정만 가진다.
+    init(displayID: String, seed: OverlaySettings, screen: @escaping () -> NSScreen?) {
+        storageKey = Self.displayKeyPrefix + displayID
+        parent = seed
+        screenResolver = screen
+        if let data = UserDefaults.standard.data(forKey: storageKey),
+           let snap = try? JSONDecoder().decode(SettingsSnapshot.self, from: data) {
+            apply(snap)
+            lastScreenWidth = screen()?.frame.width ?? 0
+        } else {
+            apply(seed.snapshot())
+            applyDeviceFit()
+            persistCurrent()
+        }
+        autosave = objectWillChange
+            .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
+            .sink { [weak self] in self?.persistCurrent() }
+    }
+
     init() {
+        storageKey = Self.currentKey
         loadSavedPresets()
         // 설정 스키마 버전이 오르면 저장된 라이브 설정을 1회 초기화(프리셋은 유지).
         let version = 11
@@ -914,7 +970,7 @@ final class OverlaySettings: ObservableObject {
     /// 현재 설정을 디스크에 저장(잔여율 등 실시간 값 제외).
     private func persistCurrent() {
         if let data = try? JSONEncoder().encode(snapshot()) {
-            UserDefaults.standard.set(data, forKey: Self.currentKey)
+            UserDefaults.standard.set(data, forKey: storageKey)
         }
     }
 
@@ -927,13 +983,15 @@ final class OverlaySettings: ObservableObject {
     /// - 노치: 실기기 감지값으로 갱신(없으면 끔).
     /// - 곡률: 해상도 폭 비율(0.5~2.0로 제한)로 비례 스케일 후 유효 범위로 클램프.
     func adaptToScreenChange() {
-        let newW = NSScreen.main?.frame.width ?? 0
+        // 이 설정의 화면이 지금 연결돼 있지 않으면 건드리지 않는다(다시 연결될 때 그대로 복귀).
+        guard let screen = screenResolver() else { return }
+        let newW = screen.frame.width
         guard newW > 0 else { return }
         let old = lastScreenWidth
         lastScreenWidth = newW
 
         // 노치: 물리 기기 기준 재감지.
-        if let n = Self.detectNotch() {
+        if let n = Self.detectNotch(on: screen) {
             notchEnabled = true; notchWidth = n.width; notchHeight = n.height
         } else {
             notchEnabled = false
@@ -954,9 +1012,10 @@ final class OverlaySettings: ObservableObject {
     /// 노치가 있는 모델이면 노치 감싸기를 켜고 감지 크기 + 화면 모서리에 어울리는 상단 곡률을 적용,
     /// 노치가 없으면(외장 모니터 등) 노치를 끈다.
     func applyDeviceFit() {
-        let w = NSScreen.main?.frame.width ?? lastScreenWidth
+        let screen = screenResolver()
+        let w = screen?.frame.width ?? lastScreenWidth
         lastScreenWidth = w > 0 ? w : lastScreenWidth
-        if let n = Self.detectNotch() {
+        if let n = Self.detectNotch(on: screen) {
             notchEnabled = true; notchWidth = n.width; notchHeight = n.height
             // 노치 모델은 화면 네 모서리가 둥그므로 상단 곡률을 둥글게(해상도 비례, 기준 폭 1710pt).
             let s = max(0.5, min(2.0, (lastScreenWidth > 0 ? lastScreenWidth : 1710) / 1710))
@@ -969,11 +1028,17 @@ final class OverlaySettings: ObservableObject {
     }
 
     /// 노치가 있는 기기인지(메뉴 항목 표시/활성 판단용).
-    var deviceHasNotch: Bool { Self.detectNotch() != nil }
+    var deviceHasNotch: Bool { Self.detectNotch(on: screenResolver()) != nil }
 
-    /// 현재 주 화면의 노치 크기를 감지한다(없으면 nil). safeAreaInsets/보조영역 이용.
-    static func detectNotch() -> (width: CGFloat, height: CGFloat)? {
-        guard let screen = NSScreen.main else { return nil }
+    /// 이 설정이 그리는 화면을 새로 지정한다(해상도 적응 기준 폭도 그 화면으로 맞춘다).
+    func bindScreen(_ resolver: @escaping () -> NSScreen?) {
+        screenResolver = resolver
+        if let w = resolver()?.frame.width, w > 0 { lastScreenWidth = w }
+    }
+
+    /// 화면의 노치 크기를 감지한다(없으면 nil). safeAreaInsets/보조영역 이용.
+    static func detectNotch(on screen: NSScreen? = NSScreen.main) -> (width: CGFloat, height: CGFloat)? {
+        guard let screen else { return nil }
         let top = screen.safeAreaInsets.top
         guard top > 0 else { return nil }              // 노치 없음
         let full = screen.frame.width
@@ -1178,7 +1243,25 @@ final class OverlaySettings: ObservableObject {
         return true
     }
 
+    /// 스냅샷을 그대로 이름 붙여 저장(디스플레이별 테두리를 합친 스냅샷 저장용).
+    @discardableResult
+    func saveSnapshot(_ snap: SettingsSnapshot, name: String) -> Bool {
+        guard savedPresets.count < Self.maxPresets else { return false }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let finalName = trimmed.isEmpty ? "프리셋 \(savedPresets.count + 1)" : trimmed
+        savedPresets.append(SavedPreset(id: UUID(), name: finalName, snapshot: snap))
+        persistPresets()
+        return true
+    }
+
     func loadPreset(_ preset: SavedPreset) { apply(preset.snapshot) }
+
+    /// 다른 설정의 **테두리 관련 값만** 가져온다(언어·메뉴·알림 등 전역 값은 유지).
+    func copyBorder(from other: OverlaySettings) {
+        var s = snapshot()
+        s.copyBorder(from: other.snapshot())
+        apply(s)
+    }
 
     func deletePreset(_ preset: SavedPreset) {
         savedPresets.removeAll { $0.id == preset.id }

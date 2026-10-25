@@ -22,14 +22,17 @@ final class OverlayFrameController {
     }
 
     private let screen: NSScreen
+    private let displayID: String
+    /// 이 화면의 테두리 설정(디스플레이마다 독립).
     private let settings: OverlaySettings
+    private let displays: DisplayRegistry
     private let manager: ProviderManager
 
     /// 세로 좌·우(항상) + 가로 상·하(항상) + 메뉴선·Dock선(옵션).
     private enum Strip: CaseIterable { case vLeft, vRight, hTop, hBottom, hMenu, hDock }
     private var windows: [Strip: StripWindow] = [:]
     private var hosts: [Strip: NSHostingView<BorderView>] = [:]
-    private var cancellable: AnyCancellable?
+    private var cancellables: Set<AnyCancellable> = []
 
     /// 스트립 두께(잉크가 가장자리에서 뻗는 최대치 + 여유).
     /// 세로 폭: inset(≤7.5)+선½(≤7.5)+곡률(≤80) ≈ 95 → 150. 가로 높이: +노치(≤100) ≈ 115 → 170.
@@ -38,9 +41,11 @@ final class OverlayFrameController {
     /// 스트립 경계(직선 구간)에서 이음매가 안 보이게 하는 미세 겹침.
     private let seam: CGFloat = 2
 
-    init(screen: NSScreen, settings: OverlaySettings, manager: ProviderManager) {
+    init(screen: NSScreen, displays: DisplayRegistry, manager: ProviderManager) {
         self.screen = screen
-        self.settings = settings
+        self.displayID = DisplayRegistry.uuid(for: screen)
+        self.settings = displays.settings(for: displayID)
+        self.displays = displays
         self.manager = manager
         for s in Strip.allCases {
             let w = StripWindow(contentRect: .zero, styleMask: [.borderless], backing: .buffered, defer: false)
@@ -63,15 +68,22 @@ final class OverlayFrameController {
         reconfigure()   // 유효한 스트립만 앞으로, 비활성 선(메뉴/Dock 꺼짐)은 내린다.
 
         // 선 위치·표시 여부가 바뀌면(메뉴선/Dock선 드래그·토글 등) 스트립 배치를 갱신.
-        cancellable = settings.objectWillChange
+        settings.objectWillChange
             .receive(on: RunLoop.main)
             .sink { [weak self] in self?.reconfigure() }
+            .store(in: &cancellables)
+        // 임시 숨김(전역)·이 화면 테두리 끄기가 바뀌어도 갱신.
+        displays.main.$hideOverlay.combineLatest(displays.$disabledIDs)
+            .dropFirst()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.reconfigure() }
+            .store(in: &cancellables)
     }
 
     /// 현재 설정 기준으로 각 스트립 창의 프레임과 내부 호스팅 뷰 오프셋을 다시 계산한다.
     func reconfigure() {
-        // 임시 숨김이면 모든 스트립 창을 내린다(팝업 메뉴 '테두리 숨기기').
-        if settings.hideOverlay {
+        // 임시 숨김(팝업 메뉴 '테두리 숨기기')이거나 이 화면 테두리를 꺼 두었으면 모든 스트립 창을 내린다.
+        if displays.main.hideOverlay || !displays.isEnabled(displayID) {
             for w in windows.values { w.orderOut(nil) }
             return
         }
@@ -120,8 +132,7 @@ final class OverlayFrameController {
 
     /// 해상도·모니터 구성 변경 등으로 이 컨트롤러를 폐기할 때 창과 구독을 정리한다.
     func invalidate() {
-        cancellable?.cancel()
-        cancellable = nil
+        cancellables.removeAll()
         for w in windows.values { w.orderOut(nil); w.close() }
         windows.removeAll()
         hosts.removeAll()

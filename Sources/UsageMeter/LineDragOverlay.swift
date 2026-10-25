@@ -9,8 +9,10 @@ final class LineDragOverlay {
     static let shared = LineDragOverlay()
     private var window: NSWindow?
 
-    func show(settings: OverlaySettings) {
-        guard window == nil, let screen = NSScreen.main else { return }
+    /// `screen`: 조정할 테두리가 있는 화면(디스플레이별 설정). nil이면 주 화면.
+    func show(settings: OverlaySettings, screen: NSScreen? = nil) {
+        hide()   // 다른 화면에서 조정 중이었다면 닫고 새 화면에서 연다.
+        guard let screen = screen ?? NSScreen.main else { return }
         let win = NSWindow(contentRect: screen.frame, styleMask: [.borderless],
                            backing: .buffered, defer: false)
         win.backgroundColor = .clear

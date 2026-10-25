@@ -1,11 +1,28 @@
 import SwiftUI
 import ServiceManagement
 
+/// 설정 창 루트: 편집 중인 디스플레이가 바뀌면 그 화면의 테두리 설정으로 `SettingsView`를 다시 묶는다.
+struct SettingsRootView: View {
+    @ObservedObject var settings: OverlaySettings
+    @ObservedObject var displays: DisplayRegistry
+    @ObservedObject var manager: ProviderManager
+    @ObservedObject var updater: UpdateChecker
+
+    var body: some View {
+        SettingsView(settings: settings, border: displays.editingSettings, displays: displays,
+                     manager: manager, updater: updater)
+    }
+}
+
 /// 전체 설정을 한 화면에서 보고 조절하는 설정 창 내용.
 /// 각 값은 슬라이더 + 숫자 입력칸 + 화살표(Stepper)로 조절할 수 있고,
 /// 공유 `OverlaySettings`에 바로 바인딩되어 오버레이가 실시간으로 바뀐다.
 struct SettingsView: View {
+    /// 앱 전역 설정(언어·메뉴바·알림·AI 색 등).
     @ObservedObject var settings: OverlaySettings
+    /// 편집 중인 디스플레이의 테두리 설정(선·분할·배치·곡률·노치 탭). 단일 화면이면 `settings`와 같다.
+    @ObservedObject var border: OverlaySettings
+    @ObservedObject var displays: DisplayRegistry
     /// 로그인 탭에서 각 AI의 로그인/로그아웃을 다루기 위한 세션 관리자.
     @ObservedObject var manager: ProviderManager
     /// 버전 표시·업데이트 확인.
@@ -36,6 +53,7 @@ struct SettingsView: View {
             // 탭과 무관하게 항상 보이는 상단.
             VStack(alignment: .leading, spacing: 10) {
                 baseStateSection
+                if displays.displays.count > 1 { displaySection }
             }
             .padding(.horizontal, 18)
             .padding(.top, 14)
@@ -105,6 +123,32 @@ struct SettingsView: View {
             }
             Divider().padding(.vertical, 2)
             updateRow
+        }
+    }
+
+    /// 멀티 모니터: 테두리를 편집할 화면 선택 + 그 화면 테두리 켜기/끄기 + 다른 화면에 복사.
+    @ViewBuilder private var displaySection: some View {
+        section(settings.t("sec.displays")) {
+            HStack {
+                Picker(settings.t("display.editing"), selection: $displays.editingID) {
+                    ForEach(displays.displays) { d in
+                        Text(displays.label(for: d)).tag(d.id)
+                    }
+                }
+                .fixedSize()
+                Spacer()
+                Toggle(settings.t("display.show"), isOn: Binding(
+                    get: { displays.isEnabled(displays.editingID) },
+                    set: { displays.setEnabled(displays.editingID, $0) }))
+            }
+            HStack {
+                Text(settings.t("display.desc"))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
+                Button(settings.t("display.copyToOthers")) { displays.copyEditingToOthers() }
+                    .help(settings.t("display.copyToOthersHelp"))
+            }
         }
     }
 
@@ -214,7 +258,7 @@ struct SettingsView: View {
         section(settings.tn("sec.presets", OverlaySettings.maxPresets)) {
             ForEach(settings.savedPresets) { preset in
                 HStack {
-                    Button(preset.name) { settings.loadPreset(preset) }
+                    Button(preset.name) { loadPreset(preset) }
                     Spacer()
                     Button(role: .destructive) { settings.deletePreset(preset) } label: {
                         Image(systemName: "trash")
@@ -224,10 +268,27 @@ struct SettingsView: View {
             HStack {
                 TextField(settings.t("preset.newName"), text: $newPresetName).textFieldStyle(.roundedBorder)
                 Button(settings.t("preset.save")) {
-                    settings.saveCurrent(name: newPresetName); newPresetName = ""
+                    savePreset(name: newPresetName); newPresetName = ""
                 }.disabled(settings.savedPresets.count >= OverlaySettings.maxPresets)
             }
+            if border !== settings {
+                Text(settings.t("preset.displayNote"))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         }
+    }
+
+    /// 프리셋 불러오기: 다른 화면을 편집 중이면 그 화면의 테두리에만 적용한다.
+    private func loadPreset(_ preset: SavedPreset) {
+        if border === settings { settings.loadPreset(preset) } else { border.apply(preset.snapshot) }
+    }
+
+    /// 프리셋 저장: 전역 값 + 편집 중인 화면의 테두리를 합쳐 저장한다.
+    private func savePreset(name: String) {
+        if border === settings { settings.saveCurrent(name: name); return }
+        var snap = settings.snapshot()
+        snap.copyBorder(from: border.snapshot())
+        settings.saveSnapshot(snap, name: name)
     }
 
     // MARK: - 탭들
@@ -399,19 +460,19 @@ struct SettingsView: View {
 
     @ViewBuilder private var lineTab: some View {
         section(settings.t("sec.line")) {
-            sliderRow(settings.t("line.thickness"), value: $settings.thickness, range: 1...15, step: 0.5)
+            sliderRow(settings.t("line.thickness"), value: $border.thickness, range: 1...15, step: 0.5)
             sliderRow(settings.t("line.opacity"), value: transparencyBinding, range: 0...100, step: 1)
-            Toggle(settings.t("line.track"), isOn: $settings.showTrack)
+            Toggle(settings.t("line.track"), isOn: $border.showTrack)
             Toggle(settings.t("line.hideOnLaunch"), isOn: $settings.hideOverlayOnLaunch)
-            Toggle(settings.t("line.fade"), isOn: $settings.fadeEnabled)
+            Toggle(settings.t("line.fade"), isOn: $border.fadeEnabled)
             sliderRow(settings.t("line.fadeLen"), value: fadeBinding, range: 0...20, step: 1)
-                .disabled(!settings.fadeEnabled)
+                .disabled(!border.fadeEnabled)
         }
         // 겹침 표시(#겹침 규칙): 레이어 순서 + 굵기 분할 옵션.
         section(settings.t("sec.overlap")) {
             Text(settings.t("overlap.layerDesc"))
                 .font(.caption).foregroundStyle(.secondary)
-            Toggle(settings.t("lay.splitOverlap"), isOn: $settings.splitOverlapLines)
+            Toggle(settings.t("lay.splitOverlap"), isOn: $border.splitOverlapLines)
             Text(settings.t("overlap.splitDesc"))
                 .font(.caption).foregroundStyle(.secondary)
         }
@@ -450,20 +511,20 @@ struct SettingsView: View {
     /// 화면 분할 탭(분리): 가로 경계선 켜기/위치 + 드래그 조정.
     @ViewBuilder private var partitionTab: some View {
         section(settings.t("sec.partition")) {
-            Toggle(settings.t("part.menuLine"), isOn: $settings.menuLineEnabled)
-            sliderRow(settings.t("part.menuHeight"), value: $settings.menuLineHeight, range: 5...200)
-                .disabled(!settings.menuLineEnabled)
-                .opacity(settings.menuLineEnabled ? 1 : 0.4)
+            Toggle(settings.t("part.menuLine"), isOn: $border.menuLineEnabled)
+            sliderRow(settings.t("part.menuHeight"), value: $border.menuLineHeight, range: 5...200)
+                .disabled(!border.menuLineEnabled)
+                .opacity(border.menuLineEnabled ? 1 : 0.4)
             Divider().padding(.vertical, 2)
-            Toggle(settings.t("part.dockLine"), isOn: $settings.dockLineEnabled)
-            sliderRow(settings.t("part.dockHeight"), value: $settings.dockLineHeight, range: 5...400)
-                .disabled(!settings.dockLineEnabled)
-                .opacity(settings.dockLineEnabled ? 1 : 0.4)
+            Toggle(settings.t("part.dockLine"), isOn: $border.dockLineEnabled)
+            sliderRow(settings.t("part.dockHeight"), value: $border.dockLineHeight, range: 5...400)
+                .disabled(!border.dockLineEnabled)
+                .opacity(border.dockLineEnabled ? 1 : 0.4)
             // 화면 위에서 경계선을 직접 드래그로 조정(#드래그 조정).
             Button(settings.t("part.dragAdjust")) {
-                LineDragOverlay.shared.show(settings: settings)
+                LineDragOverlay.shared.show(settings: border, screen: displays.editingScreen)
             }
-            .disabled(!settings.menuLineEnabled && !settings.dockLineEnabled)
+            .disabled(!border.menuLineEnabled && !border.dockLineEnabled)
             Text(settings.t("part.desc"))
                 .font(.caption).foregroundStyle(.secondary)
         }
@@ -472,10 +533,10 @@ struct SettingsView: View {
     @ViewBuilder private var layoutTab: some View {
         // 헤더 없는 박스(#섹션 제목 줄 제거 — 스크롤 축소): 겹치는 선 없음 체크박스만.
         Toggle(settings.t("lay.noOverlap"), isOn: Binding(
-            get: { settings.noOverlapLines },
+            get: { border.noOverlapLines },
             set: { on in
-                settings.noOverlapLines = on
-                if on { settings.enforceNoOverlap() }
+                border.noOverlapLines = on
+                if on { border.enforceNoOverlap() }
             }))
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -510,7 +571,7 @@ struct SettingsView: View {
             ForEach(zoneOrder, id: \.self) { z in
                 if z == .main || zoneAvailable(z) {
                     VStack(alignment: .leading, spacing: 4) {
-                        if settings.menuLineEnabled || settings.dockLineEnabled {
+                        if border.menuLineEnabled || border.dockLineEnabled {
                             Text(z.label(settings.language)).font(.subheadline).bold()
                         }
                         // 직관적 배치: 왼쪽 열 = 좌상 위·좌하 아래, 오른쪽 열 = 우상 위·우하 아래.
@@ -518,7 +579,7 @@ struct SettingsView: View {
                         LazyVGrid(columns: cols, alignment: .leading, spacing: 4) {
                             ForEach([BorderCorner.topLeft, .topRight, .bottomLeft, .bottomRight], id: \.self) { c in
                                 // 현재 선택에서 실제로 쓰이는 꼭짓점만 활성화.
-                                let used = settings.cornerUsed(z, c)
+                                let used = border.cornerUsed(z, c)
                                 sliderRow(c.label(settings.language),
                                           value: zoneRadiusBinding(z, c), range: 0...80)
                                     .disabled(!used)
@@ -528,11 +589,11 @@ struct SettingsView: View {
                     }
                     // 곡률 연결(#연결): 경계선을 공유하는 이웃 영역과 맞닿은 꼭짓점을 함께 조절.
                     if z == .menuBar {
-                        Toggle(settings.t("corner.linkMenuMain"), isOn: $settings.linkMenuMainRadii)
+                        Toggle(settings.t("corner.linkMenuMain"), isOn: $border.linkMenuMainRadii)
                             .padding(.vertical, 2)
                     }
                     if z == .main && zoneAvailable(.dock) {
-                        Toggle(settings.t("corner.linkMainDock"), isOn: $settings.linkMainDockRadii)
+                        Toggle(settings.t("corner.linkMainDock"), isOn: $border.linkMainDockRadii)
                             .padding(.vertical, 2)
                     }
                     if z != zoneOrder.last(where: { $0 == .main || zoneAvailable($0) }) {
@@ -546,33 +607,33 @@ struct SettingsView: View {
     /// 노치 탭(부활): 감싸기 켜기/끄기 + 크기 + 노치 모서리 곡률 + 자동 감지.
     @ViewBuilder private var notchTab: some View {
         section(settings.t("sec.notch")) {
-            Toggle(settings.t("notch.enable"), isOn: $settings.notchEnabled)
+            Toggle(settings.t("notch.enable"), isOn: $border.notchEnabled)
             Group {
-                sliderRow(settings.t("notch.width"), value: $settings.notchWidth, range: 0...500)
-                sliderRow(settings.t("notch.height"), value: $settings.notchHeight, range: 0...100)
+                sliderRow(settings.t("notch.width"), value: $border.notchWidth, range: 0...500)
+                sliderRow(settings.t("notch.height"), value: $border.notchHeight, range: 0...100)
                 Divider().padding(.vertical, 2)
                 Text(settings.t("notch.cornerRadius")).font(.caption).foregroundStyle(.secondary)
                 ForEach(NotchCorner.allCases, id: \.self) { c in
                     sliderRow(c.label(settings.language), value: notchBinding(c), range: 0...40)
                 }
             }
-            .disabled(!settings.notchEnabled)                 // 꺼지면 노치 세부 비활성화
-            .opacity(settings.notchEnabled ? 1 : 0.4)
+            .disabled(!border.notchEnabled)                 // 꺼지면 노치 세부 비활성화
+            .opacity(border.notchEnabled ? 1 : 0.4)
             // 이 화면의 노치를 자동 감지해 크기를 채운다(노치 없으면 끔).
             Button(settings.t("notch.detect")) {
-                if let n = OverlaySettings.detectNotch() {
-                    settings.notchEnabled = true
-                    settings.notchWidth = n.width
-                    settings.notchHeight = n.height
+                if let n = OverlaySettings.detectNotch(on: displays.editingScreen) {
+                    border.notchEnabled = true
+                    border.notchWidth = n.width
+                    border.notchHeight = n.height
                 } else {
-                    settings.notchEnabled = false
+                    border.notchEnabled = false
                 }
             }
         }
     }
 
     private func notchBinding(_ c: NotchCorner) -> Binding<CGFloat> {
-        Binding(get: { settings.notchRadii[c] ?? 0 }, set: { settings.notchRadii[c] = $0 })
+        Binding(get: { border.notchRadii[c] ?? 0 }, set: { border.notchRadii[c] = $0 })
     }
 
     // MARK: - 후원 탭
@@ -585,7 +646,7 @@ struct SettingsView: View {
 
     @ViewBuilder
     private func segmentEditor(id: String?) -> some View {
-        let menuOn = settings.menuLineEnabled, dockOn = settings.dockLineEnabled
+        let menuOn = border.menuLineEnabled, dockOn = border.dockLineEnabled
         let segs = currentSegs(id)
         // 좌측: 끝 모서리 + 차감 방향 반전 (프리셋·다이어그램은 우측 블록 #올리기).
         VStack(alignment: .leading, spacing: 8) {
@@ -626,7 +687,7 @@ struct SettingsView: View {
                 presetButton(id, "zone.menuBar", zones: [.menuBar],
                              caps: [OverlaySettings.hCapKey(.hMenu, right: false): .down,
                                     OverlaySettings.hCapKey(.hMenu, right: true): .down])
-                    .disabled(!settings.menuLineEnabled)
+                    .disabled(!border.menuLineEnabled)
             }
             .frame(width: Self.diagW)
             HStack(spacing: 5) {
@@ -634,7 +695,7 @@ struct SettingsView: View {
                 presetButton(id, "zone.dock", zones: [.dock],
                              caps: [OverlaySettings.hCapKey(.hDock, right: false): .up,
                                     OverlaySettings.hCapKey(.hDock, right: true): .up])
-                    .disabled(!settings.dockLineEnabled)
+                    .disabled(!border.dockLineEnabled)
             }
             .frame(width: Self.diagW)
             segDiagram(id: id)
@@ -650,9 +711,9 @@ struct SettingsView: View {
                               zones: Set<ScreenZone>, caps: [String: SegCap]) -> some View {
         Button {
             guard let id else { return }
-            let menuOn = settings.menuLineEnabled, dockOn = settings.dockLineEnabled
+            let menuOn = border.menuLineEnabled, dockOn = border.dockLineEnabled
             let segs = OverlaySettings.zonePerimeter(zones, menuOn: menuOn, dockOn: dockOn)
-            guard settings.canUseSegments(id, segs) else { return }
+            guard border.canUseSegments(id, segs) else { return }
             mutateLayout(id) { $0.zones = zones; $0.segments = segs; $0.hCaps = caps }
         } label: { Text(settings.t(key)).frame(maxWidth: .infinity) }
             .controlSize(.small)
@@ -688,7 +749,7 @@ struct SettingsView: View {
     private func hCapFlag(_ id: String?, _ h: SegPart, right: Bool, dir: SegCap) -> Binding<Bool> {
         Binding(get: {
             guard let id else { return false }
-            return settings.hCap(id, h, right: right) == dir
+            return border.hCap(id, h, right: right) == dir
         }, set: { on in
             guard let id else { return }
             mutateLayout(id) { l in
@@ -703,9 +764,9 @@ struct SettingsView: View {
     /// 직접 클릭해 토글한다. 선택 = AI 색, 미선택 = 회색, 선택 불가 = 흐리게.
     @ViewBuilder
     private func segDiagram(id: String?) -> some View {
-        let menuOn = settings.menuLineEnabled, dockOn = settings.dockLineEnabled
+        let menuOn = border.menuLineEnabled, dockOn = border.dockLineEnabled
         let W = Self.diagW, H = Self.diagH
-        let color = id.map { settings.color(forProvider: $0) } ?? .accentColor
+        let color = id.map { border.color(forProvider: $0) } ?? .accentColor
         let frames = diagramFrames(menuOn: menuOn, dockOn: dockOn, W: W, H: H)
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 10).fill(Color.secondary.opacity(0.07))
@@ -747,11 +808,11 @@ struct SettingsView: View {
     /// '겹치는 선 없음' 상태에서 다른 AI가 쓰는 선이면 경고만 잠깐 띄우고 진행하지 않는다.
     private func exclusiveSelect(_ id: String?, _ s: SegPart) {
         guard let id else { return }
-        guard OverlaySettings.segAvailable(s, menuOn: settings.menuLineEnabled,
-                                           dockOn: settings.dockLineEnabled) else { return }
-        if settings.noOverlapLines {
+        guard OverlaySettings.segAvailable(s, menuOn: border.menuLineEnabled,
+                                           dockOn: border.dockLineEnabled) else { return }
+        if border.noOverlapLines {
             for spec in ProviderSpec.all where spec.id != id {
-                if settings.segs(for: spec.id).contains(s) {
+                if border.segs(for: spec.id).contains(s) {
                     showSegWarning(id, settings.t("lay.overlapWarn"))
                     return
                 }
@@ -797,17 +858,17 @@ struct SettingsView: View {
     // MARK: - 세그먼트 바인딩
 
     private func currentSegs(_ id: String?) -> Set<SegPart> {
-        if let id { return settings.segs(for: id) }
-        return settings.segParts
+        if let id { return border.segs(for: id) }
+        return border.segParts
     }
     private func setSegs(_ id: String?, _ s: Set<SegPart>) {
-        guard OverlaySettings.isValidSegments(s, menuOn: settings.menuLineEnabled,
-                                              dockOn: settings.dockLineEnabled) else { return }
+        guard OverlaySettings.isValidSegments(s, menuOn: border.menuLineEnabled,
+                                              dockOn: border.dockLineEnabled) else { return }
         if let id {
-            guard settings.canUseSegments(id, s) else { return }
+            guard border.canUseSegments(id, s) else { return }
             mutateLayout(id) { $0.segments = s }
         } else {
-            settings.segParts = s
+            border.segParts = s
         }
     }
     private func segBinding(_ id: String?, _ s: SegPart) -> Binding<Bool> {
@@ -820,20 +881,20 @@ struct SettingsView: View {
     }
     /// 한 줄로 이어지는 선택만 허용(#요청4): 토글 결과가 유효해야 누를 수 있다.
     private func segCanToggle(_ id: String?, _ s: SegPart) -> Bool {
-        let menuOn = settings.menuLineEnabled, dockOn = settings.dockLineEnabled
+        let menuOn = border.menuLineEnabled, dockOn = border.dockLineEnabled
         guard OverlaySettings.segAvailable(s, menuOn: menuOn, dockOn: dockOn) else { return false }
         var next = currentSegs(id)
         if next.contains(s) { next.remove(s) } else { next.insert(s) }
-        if let id { return settings.canUseSegments(id, next) }
+        if let id { return border.canUseSegments(id, next) }
         return OverlaySettings.isValidSegments(next, menuOn: menuOn, dockOn: dockOn)
     }
     private func cwBinding(_ id: String?) -> Binding<Bool> {
         if let id { return layoutClockwiseBinding(id) }
-        return $settings.anchorClockwise
+        return $border.anchorClockwise
     }
     private func anchorCornerBinding(_ id: String?) -> Binding<BorderCorner> {
         if let id { return layoutAnchorBinding(id) }
-        return $settings.anchorCorner
+        return $border.anchorCorner
     }
 
     /// 영역(파티션) 버튼 순서: 메뉴바 · 본문 · Dock.
@@ -842,8 +903,8 @@ struct SettingsView: View {
     /// 이 영역을 선택할 수 있는지(해당 경계선이 켜져 있어야 의미가 있다).
     private func zoneAvailable(_ z: ScreenZone) -> Bool {
         switch z {
-        case .menuBar: return settings.menuLineEnabled
-        case .dock: return settings.dockLineEnabled
+        case .menuBar: return border.menuLineEnabled
+        case .dock: return border.dockLineEnabled
         case .main: return true
         }
     }
@@ -884,10 +945,10 @@ struct SettingsView: View {
     }
     private func anchorSideBinding(_ id: String?) -> Binding<AnchorSide> {
         if let id {
-            return Binding(get: { settings.layout(for: id).anchorSide },
+            return Binding(get: { border.layout(for: id).anchorSide },
                            set: { v in mutateLayout(id) { $0.anchorSide = v } })
         }
-        return Binding(get: { settings.anchorSide }, set: { settings.anchorSide = $0 })
+        return Binding(get: { border.anchorSide }, set: { border.anchorSide = $0 })
     }
 
     private enum AnchorSideKind { case hidden, round, scoop }
@@ -895,14 +956,14 @@ struct SettingsView: View {
     /// 시작 모서리의 종류: 곡률 0 → 숨김, 스쿱 → 3지점, 일반 곡률 → 2지점.
     private func anchorSideKind(_ id: String?) -> AnchorSideKind {
         guard let id else { return .hidden }
-        let menuOn = settings.menuLineEnabled, dockOn = settings.dockLineEnabled
-        let segs = settings.segs(for: id)
+        let menuOn = border.menuLineEnabled, dockOn = border.dockLineEnabled
+        let segs = border.segs(for: id)
         guard OverlaySettings.isValidSegments(segs, menuOn: menuOn, dockOn: dockOn),
               OverlaySettings.chainEnds(segs, menuOn: menuOn, dockOn: dockOn) == nil else { return .hidden }
         let adj = OverlaySettings.segAdjacency(segs, menuOn: menuOn, dockOn: dockOn)
         let levels = adj.keys.map(\.level)
         guard let tl = levels.min(), let bl = levels.max() else { return .hidden }
-        let l = settings.layout(for: id)
+        let l = border.layout(for: id)
         let node: SegNode = {
             switch l.anchorCorner {
             case .topLeft: return SegNode(right: false, level: tl)
@@ -914,9 +975,9 @@ struct SettingsView: View {
         guard let incident = adj[node],
               let h = incident.first(where: { $0.isHorizontal }),
               let v = incident.first(where: { !$0.isHorizontal }) else { return .hidden }
-        guard settings.bendRadiusEstimate(for: id, h: h, v: v, node: node) > 0.01 else { return .hidden }
+        guard border.bendRadiusEstimate(for: id, h: h, v: v, node: node) > 0.01 else { return .hidden }
         // 스쿱 판정: 가로선 캡 방향이 세로선 진행 방향과 반대.
-        let cap = settings.hCap(id, h, right: node.right)
+        let cap = border.hCap(id, h, right: node.right)
         if cap == .up || cap == .down {
             let (a, b) = OverlaySettings.segEnds(v, menuOn: menuOn, dockOn: dockOn)
             let vDown = ((a == node) ? b.level : a.level) > node.level
@@ -954,7 +1015,7 @@ struct SettingsView: View {
                 let c = OverlaySettings.presetColors[i]
                 Circle().fill(c.1).frame(width: 20, height: 20)
                     .overlay(Circle().stroke(.secondary.opacity(0.4), lineWidth: 1))
-                    .onTapGesture { settings.color = c.1 }
+                    .onTapGesture { border.color = c.1 }
                     .help(c.0)
             }
         }
@@ -977,18 +1038,18 @@ struct SettingsView: View {
     }
     /// 0~20(%) 그라데이션 길이 ↔ fadeFraction(0~0.2).
     private var fadeBinding: Binding<CGFloat> {
-        Binding(get: { settings.fadeFraction * 100 },
-                set: { settings.fadeFraction = max(0, min(0.2, $0 / 100)) })
+        Binding(get: { border.fadeFraction * 100 },
+                set: { border.fadeFraction = max(0, min(0.2, $0 / 100)) })
     }
     /// 0~100 투명도(클수록 투명) ↔ lineOpacity(1=불투명).
     private var transparencyBinding: Binding<CGFloat> {
-        Binding(get: { (1 - settings.lineOpacity) * 100 },
-                set: { settings.lineOpacity = max(0, min(1, 1 - $0 / 100)) })
+        Binding(get: { (1 - border.lineOpacity) * 100 },
+                set: { border.lineOpacity = max(0, min(1, 1 - $0 / 100)) })
     }
     /// 영역별 꼭짓점 곡률(#요청3,4).
     private func zoneRadiusBinding(_ z: ScreenZone, _ c: BorderCorner) -> Binding<CGFloat> {
-        Binding(get: { settings.zoneRadiiDict(z)[c] ?? 0 },
-                set: { settings.setZoneRadius(z, c, $0) })
+        Binding(get: { border.zoneRadiiDict(z)[c] ?? 0 },
+                set: { border.setZoneRadius(z, c, $0) })
     }
     private func providerColorBinding(_ id: String) -> Binding<Color> {
         Binding(get: { settings.color(forProvider: id) }, set: { settings.providerColors[id] = $0 })
@@ -1013,16 +1074,16 @@ struct SettingsView: View {
     // MARK: - AI별 레이아웃 바인딩
 
     private func mutateLayout(_ id: String, _ f: (inout ProviderLayout) -> Void) {
-        var l = settings.layout(for: id)
+        var l = border.layout(for: id)
         f(&l)
-        settings.providerLayouts[id] = l
+        border.providerLayouts[id] = l
     }
     private func layoutAnchorBinding(_ id: String) -> Binding<BorderCorner> {
-        Binding(get: { settings.layout(for: id).anchorCorner },
+        Binding(get: { border.layout(for: id).anchorCorner },
                 set: { v in mutateLayout(id) { $0.anchorCorner = v } })
     }
     private func layoutClockwiseBinding(_ id: String) -> Binding<Bool> {
-        Binding(get: { settings.layout(for: id).clockwise },
+        Binding(get: { border.layout(for: id).clockwise },
                 set: { v in mutateLayout(id) { $0.clockwise = v } })
     }
 }

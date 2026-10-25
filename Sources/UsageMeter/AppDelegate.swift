@@ -17,6 +17,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let settings = OverlaySettings()
     /// 여러 AI 세션 관리자.
     private let manager = ProviderManager()
+    /// 디스플레이별 테두리 설정(주 설정 + 화면마다 독립 설정).
+    private lazy var displays = DisplayRegistry(main: settings)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // 외형(라이트/다크/시스템) 적용 + 변경 구독.
@@ -40,7 +42,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         notificationManager = NotificationManager(settings: settings, manager: manager)
         let updater = UpdateChecker(settings: settings)
         updateChecker = updater
-        statusBar = StatusBarController(settings: settings, manager: manager, history: history, updater: updater)
+        statusBar = StatusBarController(settings: settings, displays: displays, manager: manager,
+                                        history: history, updater: updater)
         manager.start(clearFirst: !settings.keepLoggedIn)
         refreshScheduler = RefreshScheduler(settings: settings, manager: manager)
 
@@ -49,17 +52,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
-    /// 연결된 각 화면마다 오버레이 스트립 프레임을 (재)생성한다.
+    /// 연결된 각 화면마다 그 화면의 테두리 설정으로 오버레이 스트립 프레임을 (재)생성한다.
     private func rebuildOverlays() {
         overlayFrames.forEach { $0.invalidate() }
+        displays.refresh()
         overlayFrames = NSScreen.screens.map {
-            OverlayFrameController(screen: $0, settings: settings, manager: manager)
+            OverlayFrameController(screen: $0, displays: displays, manager: manager)
         }
     }
 
-    /// 해상도·모니터 구성이 바뀌면: 노치·곡률을 새 화면에 맞게 조정하고 오버레이를 다시 만든다.
+    /// 해상도·모니터 구성이 바뀌면: 새로 연결된 화면 설정을 만들고, 각 화면의 노치·곡률을
+    /// 그 화면에 맞게 조정한 뒤 오버레이를 다시 만든다.
     @objc private func screenParametersChanged() {
-        settings.adaptToScreenChange()
+        displays.refresh()
+        displays.adaptAll()
         rebuildOverlays()
     }
 
