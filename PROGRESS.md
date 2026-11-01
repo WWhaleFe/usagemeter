@@ -4,6 +4,20 @@
 
 ---
 
+## 🛠 유지보수 기록 (최신이 위)
+
+**v1.2.9 — Gemini 리셋 시각·남은 시간 표시 (2026-11-01, 사용자 문의 `error/261101`):**
+- 증상: 표시 정보에서 "리셋 시각"·"리셋까지 남은 시간"을 켜도 **Gemini 줄에만** 안 나옴(재실행해도 동일). 문의자 환경 M4 MacBook Air — 환경과 무관한 앱 문제.
+- 원인 ①: Gemini `usageJS`가 `resets_at`을 **항상 null**로 넘김 → `StatusBarController.infoLines`의 `resetSuffix`가 nil이면 조용히 생략. Claude·Codex는 서버가 시각을 줘서 정상.
+- 원인 ②: `gemini.google.com/usage` 개편으로 옛 셀렉터 `[data-test-id=gxu-currently/weekly]`가 **사라짐**. %는 키워드 폴백(“사용” 근처 %)으로 겨우 읽히던 상태라 리셋 문구는 못 읽었다.
+- 현재 DOM(2026-11 확인, 클래스는 StyleX 난수라 쓰지 말 것): `<li data-testid="current-usage">`(현재 사용량 · "0% 사용됨" · "오후 11:18에 초기화"), `<li data-testid="weekly-usage">`(주간 한도 · "11월 3일 오후 5:18에 초기화" · "0% 사용됨"). 속성명이 `data-test-id` → **`data-testid`**로 바뀜. 영어(`?hl=en`): "Resets at 11:18 PM", "Resets Nov 3 at 5:18 PM".
+- 수정(`Providers.swift` Gemini `usageJS`): 새 셀렉터 우선(옛 것은 호환용 유지). 각 `li` 안의 리셋 문구(초기화/reset/リセット 등)를 로컬 시각으로 파싱 → `resets_at`(ISO). 오전/오후·AM/PM·午前/午後·24시간, 날짜 없음=오늘(지났으면 내일), 날짜 있음=올해(지났으면 내년).
+- 검증: 로그인된 실제 페이지에서 JS 실행 → 11/1 23:18·11/3 17:18로 화면과 일치. 빌드한 .app 메뉴에서 `5시간 잔여 100% · 리셋 11/1 23:18 · 3시간 2분 후`, `주간 잔여 100% · 리셋 11/3 17:18 · 45시간 2분 후` 확인. **일본어 페이지는 렌더가 안 돼 실화면 문구 미확인**(예시 문구로 파서만 확인).
+- 배포: 커밋 `4902f80`(수정) + `6292e8f`(v1.2.9 / BUILD 15, README 한·영), `/Applications` 설치, `dist/UsageMeter-v1.2.9.zip`(2,829,483 bytes, codesign·유니버설 확인), GitHub 릴리스 v1.2.9(Latest). 문의자 답장 초안 작성(발송은 직접).
+- 다음에 Gemini가 또 깨지면: Chrome으로 `gemini.google.com/usage`를 열어 `[data-testid]` 목록부터 확인. 실패 로그는 `NSLog "[UsageMeter] gemini fetch failed reason=… snippet=…"`.
+
+---
+
 ## 🔖 다음 세션에서 여기부터 시작 (2026-07-03 마지막 지점)
 
 **상태:** PoC ①② 합격 + **MVP 그룹 1~4 + 로그인 실동작 완료.** 메뉴바에 실제 잔여율(예 5시간 95%) 표시 + 오버레이 띠가 잔여율만큼 깎여 렌더 + **앱 재시작해도 세션 유지** 확인(2026-07-04).
