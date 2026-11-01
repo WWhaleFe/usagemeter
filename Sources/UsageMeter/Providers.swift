@@ -110,14 +110,52 @@ struct ProviderSpec: Identifiable {
             const m = (el.textContent || '').match(/(\\d+(?:\\.\\d+)?)\\s*%/);
             return m ? parseFloat(m[1]) : null;
           };
-          const curSels = ['[data-test-id=\\"gxu-currently\\"]', '.gxu-currently', '[data-test-id*=\\"current\\"]'];
-          const wkSels  = ['[data-test-id=\\"gxu-weekly\\"]', '.gxu-weekly', '[data-test-id*=\\"weekly\\"]'];
-          const firstMatch = (sels) => { for (const s of sels) { const v = pctFrom(document.querySelector(s)); if (v != null) return v; } return null; };
+          // 2026-11 개편: <li data-testid="current-usage"> / <li data-testid="weekly-usage">
+          // (속성명이 data-test-id → data-testid로 바뀜). 옛 셀렉터는 호환용으로 뒤에 둔다.
+          const curSels = ['[data-testid="current-usage"]', '[data-test-id=\\"gxu-currently\\"]', '.gxu-currently', '[data-test-id*=\\"current\\"]'];
+          const wkSels  = ['[data-testid="weekly-usage"]', '[data-test-id=\\"gxu-weekly\\"]', '.gxu-weekly', '[data-test-id*=\\"weekly\\"]'];
+          const firstMatch = (sels) => { for (const s of sels) { const el = document.querySelector(s); const v = pctFrom(el); if (v != null) return {v: v, el: el}; } return null; };
+          // 리셋 문구 → ISO 시각. 화면은 절대 시각만 준다(로컬 시간대):
+          //   ko "오후 11:18에 초기화" / "11월 3일 오후 5:18에 초기화"
+          //   en "Resets at 11:18 PM" / "Resets Nov 3 at 5:18 PM"
+          // 날짜가 없으면 오늘(이미 지났으면 내일), 날짜가 있으면 올해(이미 지났으면 내년).
+          const RESET_KW = /(초기화|재설정|reset|リセット|重置|重設)/i;
+          const MONTHS = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+          const parseReset = (txt) => {
+            const t = txt.match(/(\\d{1,2})[:：](\\d{2})/);
+            if (!t) return null;
+            let h = parseInt(t[1], 10); const mi = parseInt(t[2], 10);
+            if (/(오후|PM|p\\.m\\.|午後|下午)/i.test(txt) && h < 12) h += 12;
+            else if (/(오전|AM|a\\.m\\.|午前|上午)/i.test(txt) && h === 12) h = 0;
+            let mo = null, d = null, m;
+            if ((m = txt.match(/(\\d{1,2})\\s*[월月]\\s*(\\d{1,2})\\s*[일日]/))) { mo = +m[1]; d = +m[2]; }
+            else if ((m = txt.match(/\\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\.?\\s+(\\d{1,2})\\b/i))) { mo = MONTHS[m[1].toLowerCase()]; d = +m[2]; }
+            else if ((m = txt.match(/\\b(\\d{1,2})\\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*/i))) { mo = MONTHS[m[2].toLowerCase()]; d = +m[1]; }
+            const now = new Date();
+            let at;
+            if (mo != null) {
+              at = new Date(now.getFullYear(), mo - 1, d, h, mi);
+              if (at.getTime() < now.getTime() - 86400000) at.setFullYear(at.getFullYear() + 1);
+            } else {
+              at = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, mi);
+              if (/(내일|tomorrow|明日)/i.test(txt) || at.getTime() < now.getTime() - 60000) at.setDate(at.getDate() + 1);
+            }
+            return isNaN(at.getTime()) ? null : at.toISOString();
+          };
+          const resetIn = (el) => {
+            if (!el) return null;
+            for (const n of el.querySelectorAll('*')) {
+              if (n.children.length > 0) continue;
+              const txt = (n.textContent || '').trim();
+              if (RESET_KW.test(txt)) { const iso = parseReset(txt); if (iso) return iso; }
+            }
+            return null;
+          };
           // 1) 클라이언트 렌더 대기: 셀렉터가 나타날 때까지 최대 ~6초 폴링.
-          let cur = null, wk = null;
+          let cur = null, wk = null, curReset = null, wkReset = null;
           for (let i = 0; i < 12; i++) {
-            if (cur == null) cur = firstMatch(curSels);
-            if (wk == null)  wk  = firstMatch(wkSels);
+            if (cur == null) { const r = firstMatch(curSels); if (r) { cur = r.v; curReset = resetIn(r.el); } }
+            if (wk == null)  { const r = firstMatch(wkSels);  if (r) { wk = r.v;  wkReset = resetIn(r.el); } }
             if (cur != null && wk != null) break;
             await sleep(500);
           }
@@ -151,8 +189,8 @@ struct ProviderSpec: Identifiable {
             const snippet = (document.body ? (document.body.innerText || '') : '').slice(0, 200).replace(/\\s+/g, ' ').trim();
             return {ok:false, reason:'parse_failed', host: host, snippet: snippet};
           }
-          const pick = (p) => (p == null) ? null : {utilization: p, resets_at: null};
-          return {ok:true, five_hour: pick(cur), seven_day: pick(wk)};
+          const pick = (p, r) => (p == null) ? null : {utilization: p, resets_at: r};
+          return {ok:true, five_hour: pick(cur, curReset), seven_day: pick(wk, wkReset)};
         } catch (e) { return {ok:false, reason:'exception', message: String(e)}; }
         """,
         defaultColor: Color(red: 0.26, green: 0.52, blue: 0.96)   // Google 블루
