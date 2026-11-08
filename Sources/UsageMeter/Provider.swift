@@ -14,11 +14,13 @@ enum UsageStatus: Equatable {
     case unavailable(String) // 이 소스는 사용량을 못 준다(예: ChatGPT) 또는 기타 오류
 }
 
-/// 모델별 주간 한도 버킷(예: Claude "Fable"). 서버가 주는 display_name과 잔여율.
+/// 모델별 한도 버킷(예: Claude "Fable", Antigravity "Gemini 4 Argon"). 서버가 주는 display_name과 잔여율.
 struct UsageModelBucket: Equatable {
     let label: String
     let remainingRatio: Double   // 0.0~1.0
     let resetAt: Date?
+    /// true면 5시간 한도 버킷, false면 주간 한도 버킷(기본).
+    var isFiveHour: Bool = false
 }
 
 /// 한 AI의 "지금 남은 사용량" 스냅샷. 오버레이가 소비하는 최종 단위.
@@ -59,8 +61,18 @@ struct UsageSnapshot: Equatable {
     /// 구독 플랜/티어(예: "Max (5x)", "Pro"). 없으면 nil.
     var plan: String? = nil
 
-    /// 모델별 주간 한도 버킷(예: Claude "Fable"). 없으면 nil.
+    /// 모델별 주간/5시간 한도 버킷(예: Claude "Fable", Antigravity "Gemini 4 Argon"). 없으면 nil.
     var modelBuckets: [UsageModelBucket]? = nil
+
+    /// `remainingRatio`가 가장 급한 모델 버킷(예: Gemini 4 Argon)을 가리킬 때,
+    /// 드롭다운 '5시간 잔여' 줄에 원래 5시간 버킷 값을 그대로 표시하기 위한 값. nil이면 `remainingRatio` 사용.
+    var fiveHourRatio: Double? = nil
+
+    /// 원래 5시간 버킷의 리셋 시각. nil이면 `resetAt` 사용.
+    var fiveHourResetAt: Date? = nil
+
+    /// 세부 버킷별 잔여 비율(id -> 0.0~1.0). HistoryStore가 다중 버킷 소모량을 놓치지 않고 집계하는 데 쓴다.
+    var rawBuckets: [String: Double]? = nil
 }
 
 /// 각 AI 수집기가 구현하는 프로토콜. 폴링 주기마다 `fetch()`가 호출된다.

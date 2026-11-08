@@ -280,15 +280,18 @@ final class StatusBarController: NSObject {
             return out
         }
         if settings.menuShow5h {
-            lines.append(settings.t("menu.line5h") + "  \(Int((s.remainingRatio * 100).rounded()))%" + resetSuffix(s.resetAt))
+            let fiveRatio = s.fiveHourRatio ?? s.remainingRatio
+            let fiveReset = s.fiveHourResetAt ?? s.resetAt
+            lines.append(settings.t("menu.line5h") + "  \(Int((fiveRatio * 100).rounded()))%" + resetSuffix(fiveReset))
         }
         if settings.menuShowWeekly, let w = s.secondaryRatio {
             lines.append(settings.t("menu.lineWeekly") + "  \(Int((w * 100).rounded()))%" + resetSuffix(s.secondaryResetAt))
         }
-        // 모델별 주간 한도(예: Fable) — 서버가 주는 각 버킷을 표시.
+        // 모델별 한도(예: Claude "Fable", Antigravity "Gemini 4 Argon") — 서버가 주는 각 버킷을 표시.
         if settings.menuShowOpus, let buckets = s.modelBuckets {
             for b in buckets {
-                lines.append(b.label + " " + settings.t("menu.lineWeekly") + "  \(Int((b.remainingRatio * 100).rounded()))%" + resetSuffix(b.resetAt))
+                let kindLabel = b.isFiveHour ? settings.t("menu.line5h") : settings.t("menu.lineWeekly")
+                lines.append(b.label + " " + kindLabel + "  \(Int((b.remainingRatio * 100).rounded()))%" + resetSuffix(b.resetAt))
             }
         }
         if settings.menuShowPace, let p = history.pace(for: a.spec.id) {

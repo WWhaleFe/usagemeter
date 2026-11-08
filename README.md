@@ -44,7 +44,7 @@
 ## 🧩 동작 원리
 
 - 로그인 세션이 살아있는 **WKWebView 안에서 in-page `fetch`** 로 사용량을 읽어 Cloudflare를 통과한다(curl/URLSession은 403).
-- Claude: `GET /api/organizations/{uuid}/usage` (5시간·주간 + `limits`의 모델별 `weekly_scoped` 버킷) + `rate_limit_tier`로 플랜 판별. Gemini: `gemini.google.com/usage` DOM(사용률 % + "…에 초기화" 문구로 리셋 시각, v1.2.9). Codex: chatgpt.com 세션으로 공식 대시보드가 쓰는 내부 API(`backend-api/wham/usage`) 호출.
+- Claude: `GET /api/organizations/{uuid}/usage` (5시간·주간 + `limits`의 모델별 `weekly_scoped` 버킷) + `rate_limit_tier`로 플랜 판별. Gemini: Google Antigravity CLI(`agy`)가 설치·로그인돼 있으면 `agy -p /usage --output-format json`으로 실시간 쿼터(5시간·주간 + `Gemini 4 Argon`·`Claude·GPT (agy)` 버킷)를 직접 조회하고 `~/.gemini/antigravity-cli` 대화 DB 변경(FSEvents) 감지 시 즉시 갱신하며, `agy`가 없으면 `gemini.google.com/usage` DOM(사용률 % + 리셋 시각, v1.2.9)으로 폴백(v1.3.0). Codex: chatgpt.com 세션으로 공식 대시보드가 쓰는 내부 API(`backend-api/wham/usage`) 호출.
 - **웹뷰는 최소한만 띄운다(v1.2.6)** — Claude·Codex는 `fetch`만 쓰므로 서비스 페이지를 로드하지 않고 **해당 오리진에 속한 빈 문서**만 띄운다(쿠키·Cloudflare 통과는 그대로). DOM을 읽어야 하는 Gemini는 **조회할 때만 웹뷰를 만들었다가 곧바로 파기**한다(5분 주기에서 4~6초만 존재). 그 결과 웹뷰가 쓰던 약 1.1GB가 **약 26MB**로 줄었고, 아래 오버레이 개선과 합쳐 상주 시 앱 전체가 **약 1.5GB → 약 100MB**가 됐다.
 - 오버레이는 borderless 투명 창(클릭 통과, 메뉴바·일반 앱 위 레벨)에 SwiftUI **Canvas** 로 그린다. **화면 중앙을 덮지 않도록 가장자리·선만 감싸는 얇은 스트립 창들(오목 프레임)로 구성**되어, App Store·Music·TV·Books·System Settings·웹 Apple Pay 등 화면 중앙에 뜨는 결제·설치·인증 버튼(Touch ID 포함)을 가리지 않는다(v1.2.2 — macOS의 오버레이 방지 동작 회피). 각 스트립은 **자기 크기만큼의 Canvas**에 그리기 원점만 옮겨 화면 전체 좌표로 그린다(v1.2.6 — 화면 한 장짜리 레이어 백스토어를 스트립마다 잡던 문제 해결). 테두리는 세그먼트 그래프로 모델링되고, 겹침 구간은 경로 트림 스팬으로 계산해 가우시안 평활로 굵기를 섞는다.
 - 쿠키는 `WKWebsiteDataStore.default()`(로컬)에만 저장되고 **외부로 전송하지 않는다**.
@@ -85,6 +85,7 @@ usagemeter/
     OverlaySettings.swift       공유 설정(영속화)
     Localization.swift          한/영/일 문자열
     Providers.swift / WebSession.swift / ProviderManager.swift
+    AgyIntegration.swift        Antigravity CLI(agy) 쿼터 조회 + FSEvents 실시간 감지(v1.3.0)
     StatusBarController.swift   메뉴바
     MenuInfoCardView.swift      드롭다운 정보 카드(고대비·플랜/모델 표시)
     SettingsView.swift / SettingsWindowController.swift

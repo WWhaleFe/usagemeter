@@ -6,6 +6,15 @@
 
 ## 🛠 유지보수 기록 (최신이 위)
 
+**v1.3.0 — Google Antigravity CLI(`agy`) 실시간 사용량 모니터링 연동 (2026-11-08):**
+- 증상: `agy` 사용 시 토큰 소모가 `UsageMeter`에 반영되지 않거나 매우 늦게 반영됨.
+- 원인 ①: 기존 Gemini 조회는 `gemini.google.com/usage` 웹 화면만 파싱했으나, `agy`는 별도 Antigravity 쿼터 버킷(`Gemini Models` 5h/주간, `Gemini 4 Argon` 주간, `Claude and GPT models` 5h/주간)을 사용함.
+- 원인 ②: 분 단위 타이머 폴링(기본 5분) 및 `HistoryStore` 최소 간격(45초)으로 인해 실시간 반영이 지연됨.
+- 수정(`AgyIntegration.swift`, `WebSession.swift`, `Provider.swift`, `StatusBarController.swift`, `HistoryStore.swift`, `RefreshScheduler.swift`):
+  - `AgyQuotaFetcher`: `agy --log-file /dev/null -p /usage --output-format json`을 비동기 호출해 소수점 정밀도 잔여율과 리셋 시각을 기존 Gemini 항목에 통합(가장 급한 Gemini 버킷을 대표 비율로 사용하고, 드롭다운·호버에는 5시간·주간·`Gemini 4 Argon`·`Claude·GPT (agy)` 버킷 및 `Antigravity` 뱃지 표시). 백엔드 레플리카 간 캐시 차이로 인한 잔여율 역전(깜빡임·중복 집계) 단조 보정 포함.
+  - `AgyActivityWatcher`: `~/.gemini/antigravity-cli`의 `conversations/`·`brain/`·`history.jsonl` 변경을 `FSEventStream`으로 감시해 턴 진행·완료 직후 1.2~2.5초 내 즉시 갱신 + 25초 보조 폴링 병행.
+  - `HistoryStore`: 실제 잔여율/버킷 변화 시 `minGap`(45초) 대기 없이 즉시 기록하고, 다중 버킷 소모량을 추적하도록 개선.
+
 **v1.2.9 — Gemini 리셋 시각·남은 시간 표시 (2026-11-01, 사용자 문의 `error/261101`):**
 - 증상: 표시 정보에서 "리셋 시각"·"리셋까지 남은 시간"을 켜도 **Gemini 줄에만** 안 나옴(재실행해도 동일). 문의자 환경 M4 MacBook Air — 환경과 무관한 앱 문제.
 - 원인 ①: Gemini `usageJS`가 `resets_at`을 **항상 null**로 넘김 → `StatusBarController.infoLines`의 `resetSuffix`가 nil이면 조용히 생략. Claude·Codex는 서버가 시각을 줘서 정상.

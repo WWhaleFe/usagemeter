@@ -308,6 +308,14 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         // (사용자가 본 "Gemini 로그인 창이 흰 화면으로 멈춤"의 원인).
         if loginWindowVisible { return snapshot(.unavailable("logging_in"), Date()) }
 
+        // Gemini는 Google Antigravity CLI(`agy`)가 설치·로그인돼 있으면 `agy` 쿼터 API를 우선 조회한다.
+        // `gemini.google.com/usage` 웹 화면은 `agy` 토큰 소모(Gemini 4 Argon / Gemini Pro 등)를
+        // 반영하지 않거나 매우 늦게 집계하지만, `agy -p /usage --output-format json`은
+        // 소수점 정밀도의 실시간 잔여율과 리셋 시각을 웹뷰 생성(300~500MB) 없이 즉시 돌려준다.
+        if spec.id == "gemini", let agySnap = await AgyQuotaFetcher.shared.fetch(providerID: spec.id) {
+            return agySnap
+        }
+
         // 이번 조회에서 웹뷰를 새로 만들었다면(= 상주하지 않는 provider), 끝나고 반드시 파기한다.
         let freshlyCreated = (webView == nil)
         defer { if spec.needsRenderedDOM { releaseWebView() } }

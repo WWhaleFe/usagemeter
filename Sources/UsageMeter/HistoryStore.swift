@@ -5,6 +5,9 @@ import Combine
 struct UsageSample: Codable {
     let t: Date
     let ratios: [String: Double]   // providerId -> 잔여 비율(0~1)
+    /// AI별 세부 버킷 잔여 비율(예: Antigravity의 gemini-5h, gemini-argon-wtu-weekly 등).
+    /// 구버전 history.json 호환을 위해 옵셔널.
+    var buckets: [String: [String: Double]]? = nil
 }
 
 /// 소진 예측 결과.
@@ -44,11 +47,36 @@ final class HistoryStore: ObservableObject {
         let active = manager.active
         guard !active.isEmpty else { return }
         let now = Date()
-        guard now.timeIntervalSince(lastRecord) >= minGap else { return }
-        lastRecord = now
+
         var ratios: [String: Double] = [:]
-        for a in active { ratios[a.spec.id] = a.snap.remainingRatio }
-        samples.append(UsageSample(t: now, ratios: ratios))
+        var buckets: [String: [String: Double]] = [:]
+        for a in active {
+            ratios[a.spec.id] = a.snap.remainingRatio
+            if let rb = a.snap.rawBuckets, !rb.isEmpty {
+                buckets[a.spec.id] = rb
+            }
+        }
+
+        // 직전 표본 대비 실제 잔여율/버킷 변화가 있으면 minGap(45초)을 기다리지 않고 즉시 기록한다.
+        // (`agy` 사용 직후 수 초 내 실시간 갱신된 소모량이 차트·분석에 즉시 반영되도록)
+        let changed: Bool = {
+            guard let prev = samples.last else { return true }
+            for (k, v) in ratios {
+                guard let pv = prev.ratios[k] else { return true }
+                if abs(pv - v) > 0.0005 { return true }
+            }
+            for (k, bmap) in buckets {
+                guard let pbmap = prev.buckets?[k] else { return true }
+                for (bk, bv) in bmap {
+                    if let pbv = pbmap[bk], abs(pbv - bv) > 0.0005 { return true }
+                }
+            }
+            return false
+        }()
+
+        guard changed || now.timeIntervalSince(lastRecord) >= minGap else { return }
+        lastRecord = now
+        samples.append(UsageSample(t: now, ratios: ratios, buckets: buckets.isEmpty ? nil : buckets))
         let cutoff = now.addingTimeInterval(-maxAge)
         samples.removeAll { $0.t < cutoff }
         save()
@@ -68,17 +96,29 @@ final class HistoryStore: ObservableObject {
 
     /// 소비(사용) 이벤트: 연속 표본에서 잔여율이 **줄어든 만큼**(양수)을 나중 시각에 기록.
     /// (잔여율이 오르는 구간 = 리셋이므로 소비로 치지 않는다.) 5시간 창 기준 상대 소비량.
+    /// 세부 버킷(`buckets`)이 있는 경우(예: Antigravity 다중 모델 버킷), 대표 비율과 개별 버킷 중
+    /// 실제로 소모된 최대 하락분을 반영해 어떤 모델을 쓰든 소비가 누락되지 않게 한다.
     func consumptionEvents(for id: String, since: Date) -> [(t: Date, amount: Double)] {
         let s = samples
-            .compactMap { smp -> (Date, Double)? in
+            .compactMap { smp -> (Date, Double, [String: Double]?)? in
                 guard smp.t >= since, let r = smp.ratios[id] else { return nil }
-                return (smp.t, r)
+                return (smp.t, r, smp.buckets?[id])
             }
             .sorted { $0.0 < $1.0 }
         guard s.count >= 2 else { return [] }
         var out: [(t: Date, amount: Double)] = []
         for i in 1..<s.count {
-            let drop = s[i - 1].1 - s[i].1
+            var drop = max(0, s[i - 1].1 - s[i].1)
+            if let prevB = s[i - 1].2, let curB = s[i].2 {
+                var bucketDropMax = 0.0
+                for (bk, curVal) in curB {
+                    if let prevVal = prevB[bk] {
+                        let d = prevVal - curVal
+                        if d > bucketDropMax { bucketDropMax = d }
+                    }
+                }
+                drop = max(drop, bucketDropMax)
+            }
             if drop > 0.0005 { out.append((s[i].0, drop)) }
         }
         return out
