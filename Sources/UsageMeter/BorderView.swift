@@ -584,7 +584,7 @@ struct BorderView: View {
         let ratio: Double
         let color: Color
         let split: Bool          // 구간 굵기(widthSpans) 사용 여부
-        /// 세부 항목별 색 띠(뒤→앞 순서로 겹쳐 그림). 비어 있으면 ratio·color로 한 줄을 그린다.
+        /// 세부 항목별 색 띠. 비어 있으면 ratio·color로 한 줄을 그린다.
         let parts: [(ratio: Double, color: Color)]
     }
 
@@ -696,7 +696,8 @@ struct BorderView: View {
             // AI별 (경로, 굵기 구간) 준비. 노치 우회가 있으면 분할이 없어도 구간을 계산해
             // 노치를 별도 레이어(가장 뒤)로 분리한다(#노치 레이어 뒤).
             typealias WSpan = (from: CGFloat, to: CGFloat, width: CGFloat, notch: Bool)
-            var prepared: [(item: DrawItem, path: Path, spans: [WSpan])] = []
+            typealias Prepared = (item: DrawItem, path: Path, spans: [WSpan])
+            var prepared: [Prepared] = []
             for item in items {
                 let path = item.shape.path(in: rect)
                 var spans: [WSpan] = [(0, 1, t, false)]
@@ -710,48 +711,51 @@ struct BorderView: View {
                 }
                 prepared.append((item, path, spans))
             }
-            // 트랙 → 본체 → 그라데이션을 노치(뒤)·본체(앞) 두 레이어로 나눠 그린다.
-            func draw(_ item: DrawItem, _ path: Path, _ spans: [WSpan], notchLayer: Bool) {
-                // roundAll: 불투명 동일색(본체)은 모든 조각 끝을 둥글게(이음매 무해, 끝이 자연스러움).
-                // 그 외(트랙·페이드)는 반투명 겹침 얼룩을 피해 butt 유지(#선 끝 둥글게).
-                func strokeRange(_ a: CGFloat, _ b: CGFloat, _ color: Color, roundAll: Bool = false) {
-                    guard b > a else { return }
-                    for sp in spans where sp.notch == notchLayer {
-                        let lo = max(a, sp.from), hi = min(b, sp.to)
-                        // 테이퍼 슬라이스(~0.3pt)도 그려야 하므로 아주 미세한 것만 거른다(#끊김 수정).
-                        guard hi > lo + 0.000001 else { continue }
-                        let cap: CGLineCap = roundAll ? .round : .butt
-                        context.stroke(path.trimmedPath(from: lo, to: hi), with: .color(color),
-                                       style: StrokeStyle(lineWidth: sp.width, lineCap: cap, lineJoin: .round))
-                    }
-                }
-                /// 경로 시작부터 잔여율만큼 채운다.
-                func fill(ratio: Double, color: Color) {
-                    let r = CGFloat(max(0, min(1, ratio)))
-                    let fade = fadeOn ? min(fadeFrac, r) : 0
-                    let solid = max(0, r - fade)
-                    strokeRange(0, solid, color, roundAll: true)
-                    if fade > 0 {
-                        for i in 0..<fadeSteps {
-                            let a = solid + fade * CGFloat(i) / CGFloat(fadeSteps)
-                            let b = solid + fade * CGFloat(i + 1) / CGFloat(fadeSteps)
-                            let opStep = 1 - Double(i + 1) / Double(fadeSteps)
-                            strokeRange(a, b, color.opacity(opStep))
-                        }
-                    }
-                }
-                // 트랙은 AI당 한 번만 — 항목 수만큼 겹치면 반투명이 쌓여 진해진다.
-                if showTrack { strokeRange(0, 1, item.color.opacity(0.18)) }
-                if item.parts.isEmpty {
-                    fill(ratio: item.ratio, color: item.color)
-                } else {
-                    for part in item.parts { fill(ratio: part.ratio, color: part.color) }
+            // roundAll: 불투명 동일색(본체)은 모든 조각 끝을 둥글게(이음매 무해, 끝이 자연스러움).
+            // 그 외(트랙·페이드)는 반투명 겹침 얼룩을 피해 butt 유지(#선 끝 둥글게).
+            func strokeRange(_ pr: Prepared, _ a: CGFloat, _ b: CGFloat, _ color: Color,
+                             notchLayer: Bool, roundAll: Bool = false) {
+                guard b > a else { return }
+                for sp in pr.spans where sp.notch == notchLayer {
+                    let lo = max(a, sp.from), hi = min(b, sp.to)
+                    // 테이퍼 슬라이스(~0.3pt)도 그려야 하므로 아주 미세한 것만 거른다(#끊김 수정).
+                    guard hi > lo + 0.000001 else { continue }
+                    let cap: CGLineCap = roundAll ? .round : .butt
+                    context.stroke(pr.path.trimmedPath(from: lo, to: hi), with: .color(color),
+                                   style: StrokeStyle(lineWidth: sp.width, lineCap: cap, lineJoin: .round))
                 }
             }
-            // 1) 노치 우회 — 모든 선보다 뒤(메뉴바선 등과 겹치면 뒤에 깔린다).
-            for pr in prepared { draw(pr.item, pr.path, pr.spans, notchLayer: true) }
-            // 2) 본체.
-            for pr in prepared { draw(pr.item, pr.path, pr.spans, notchLayer: false) }
+            /// 경로 시작부터 잔여율만큼 채운다.
+            func fill(_ pr: Prepared, ratio: Double, color: Color, notchLayer: Bool) {
+                let r = CGFloat(max(0, min(1, ratio)))
+                let fade = fadeOn ? min(fadeFrac, r) : 0
+                let solid = max(0, r - fade)
+                strokeRange(pr, 0, solid, color, notchLayer: notchLayer, roundAll: true)
+                if fade > 0 {
+                    for i in 0..<fadeSteps {
+                        let a = solid + fade * CGFloat(i) / CGFloat(fadeSteps)
+                        let b = solid + fade * CGFloat(i + 1) / CGFloat(fadeSteps)
+                        let opStep = 1 - Double(i + 1) / Double(fadeSteps)
+                        strokeRange(pr, a, b, color.opacity(opStep), notchLayer: notchLayer)
+                    }
+                }
+            }
+            // 세부 항목까지 펼쳐 잔여율 높은 띠부터(뒤) 그린다. AI 단위로 쌓으면 대표값이 낮은 AI의
+            // 긴 세부 항목이 다른 AI의 선을 통째로 덮는다(#규칙1 — 가장 짧은 띠가 최상단).
+            typealias Band = (pr: Prepared, ratio: Double, color: Color)
+            let bands: [Band] = prepared.flatMap { pr -> [Band] in
+                pr.item.parts.isEmpty ? [(pr, pr.item.ratio, pr.item.color)]
+                    : pr.item.parts.map { (pr, $0.ratio, $0.color) }
+            }.sorted { $0.ratio > $1.ratio }
+            // 노치 우회(메뉴바선 등과 겹치면 뒤에 깔린다) → 본체 순서. 트랙은 AI당 한 번, 모든 띠 아래.
+            for notchLayer in [true, false] {
+                if showTrack {
+                    for pr in prepared {
+                        strokeRange(pr, 0, 1, pr.item.color.opacity(0.18), notchLayer: notchLayer)
+                    }
+                }
+                for band in bands { fill(band.pr, ratio: band.ratio, color: band.color, notchLayer: notchLayer) }
+            }
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)

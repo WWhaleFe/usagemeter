@@ -937,14 +937,12 @@ final class OverlaySettings: ObservableObject {
         !subItemRoot.subItemBarHidden.contains(Self.subItemKey(providerID, itemID))
     }
 
-    /// 띠에 겹쳐 그릴 항목들(잔여율 + 색). AI끼리 겹칠 때와 같이 잔여율 높은 것부터(뒤) 정렬한다.
-    /// 겹침 모드가 아니거나 전부 뺐으면 빈 배열 = 대표 한 줄.
+    /// 띠에 겹쳐 그릴 항목들(잔여율 + 색). 겹침 모드가 아니거나 전부 뺐으면 빈 배열 = 대표 한 줄.
     func subItemBarParts(_ providerID: String, _ snap: UsageSnapshot) -> [(ratio: Double, color: Color)] {
         guard isSubItemSplit(providerID) else { return [] }
         let items = snap.subItems
         return items.filter { isSubItemShownOnBar(providerID, $0.id) }
             .map { ($0.remainingRatio, subItemColor(providerID, $0, in: items)) }
-            .sorted { $0.ratio > $1.ratio }
     }
 
     /// 저장된 사용자 프리셋(최대 5개, 재시작해도 유지).

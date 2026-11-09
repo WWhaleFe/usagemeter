@@ -4,8 +4,8 @@
 set -e
 cd "$(dirname "$0")"
 
-VERSION="1.4.1"
-BUILD="18"
+VERSION="1.4.2"
+BUILD="19"
 
 DEPLOY_TARGET="14.0"
 

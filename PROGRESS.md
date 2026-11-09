@@ -6,6 +6,11 @@
 
 ## 🛠 유지보수 기록 (최신이 위)
 
+**v1.4.2 — 세부 항목이 다른 AI 선을 가리던 문제 수정 (2026-11-09):**
+- 증상: Claude·Gemini가 같은 테두리를 공유할 때 Claude 선이 안 보임(수집은 정상). 대표값이 낮은 AI가 통째로 앞에 그려져, 그 AI의 긴 세부 항목(Gemini 5시간 99%)이 다른 AI를 덮었다.
+- 수정(`BorderView`): AI 단위가 아니라 세부 항목까지 펼친 띠 전체를 잔여율 높은 순으로 그린다. 트랙은 AI당 한 번, 모든 띠 아래.
+- 검증: 수정 전 재현(분홍+파랑뿐) → 수정 후 잔여율 순서대로 표시. 설치본의 실제 화면에서 Claude 5시간 선 확인.
+
 **v1.4.1 — 세부 항목 겹침 표시 + 재시작 후 `brew uninstall` 수정 (2026-11-09):**
 - 사용자 피드백: 구간 분리는 별로, 기존 Claude·Gemini 선 겹침처럼. `BorderView`에서 항목별로 경로 시작부터 잔여율만큼 그리고 잔여율 높은 것부터(뒤) 쌓는다. 트랙은 AI당 한 번만 그린다. 저장 키 `subItemSplitIDs`는 호환을 위해 이름 유지.
 - 버그: 업데이트로 재시작한 앱이 `brew uninstall`에 종료되지 않음. `createsNewApplicationInstance`로 띄우면 launchd 라벨에 UUID가 붙는데, Homebrew의 `running_processes`는 숫자 접미사만 인식한다. 앱 종료 후 셸이 `open`으로 재실행하도록 변경(`UpdateChecker.relaunchIfBundleReplaced`).
