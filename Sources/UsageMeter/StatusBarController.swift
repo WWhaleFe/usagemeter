@@ -268,9 +268,9 @@ final class StatusBarController: NSObject {
     }
 
     /// 드롭다운에 표시할 AI 정보 줄들(표시 옵션에 따라).
-    private func infoLines(_ a: (spec: ProviderSpec, snap: UsageSnapshot)) -> [String] {
+    private func infoLines(_ a: (spec: ProviderSpec, snap: UsageSnapshot)) -> [MenuInfoLine] {
         let s = a.snap
-        var lines: [String] = []
+        var lines: [MenuInfoLine] = []
         // 리셋 시각 + 카운트다운을 붙이는 헬퍼.
         func resetSuffix(_ date: Date?) -> String {
             guard let r = date else { return "" }
@@ -279,28 +279,24 @@ final class StatusBarController: NSObject {
             if settings.menuShowCountdown { out += "   ·   " + countdownString(to: r) }
             return out
         }
-        if settings.menuShow5h {
-            let fiveRatio = s.fiveHourRatio ?? s.remainingRatio
-            let fiveReset = s.fiveHourResetAt ?? s.resetAt
-            lines.append(settings.t("menu.line5h") + "  \(Int((fiveRatio * 100).rounded()))%" + resetSuffix(fiveReset))
-        }
-        if settings.menuShowWeekly, let w = s.secondaryRatio {
-            lines.append(settings.t("menu.lineWeekly") + "  \(Int((w * 100).rounded()))%" + resetSuffix(s.secondaryResetAt))
-        }
-        // 모델별 한도(예: Claude "Fable", Antigravity "Gemini 4 Argon") — 서버가 주는 각 버킷을 표시.
-        if settings.menuShowOpus, let buckets = s.modelBuckets {
-            for b in buckets {
-                let kindLabel = b.isFiveHour ? settings.t("menu.line5h") : settings.t("menu.lineWeekly")
-                lines.append(b.label + " " + kindLabel + "  \(Int((b.remainingRatio * 100).rounded()))%" + resetSuffix(b.resetAt))
-            }
+        // 5시간 → 주간 → 모델별 한도(예: Claude "Fable", Antigravity "Gemini 4 Argon") 순서.
+        let items = s.subItems
+        let colored = settings.isSubItemSplit(a.spec.id)
+        for item in items where settings.isSubItemShownInMenu(a.spec.id, item.id) {
+            let kindOn = item.modelLabel != nil ? settings.menuShowOpus
+                : (item.isFiveHour ? settings.menuShow5h : settings.menuShowWeekly)
+            guard kindOn else { continue }
+            let text = settings.subItemName(item) + "  \(Int((item.remainingRatio * 100).rounded()))%" + resetSuffix(item.resetAt)
+            lines.append(MenuInfoLine(text: text,
+                                      color: colored ? settings.subItemColor(a.spec.id, item, in: items) : nil))
         }
         if settings.menuShowPace, let p = history.pace(for: a.spec.id) {
-            lines.append(paceString(p, resetAt: s.resetAt))
+            lines.append(MenuInfoLine(text: paceString(p, resetAt: s.resetAt)))
         }
         if settings.menuShowUpdated {
-            lines.append(settings.t("menu.lineUpdated") + "  " + Self.timeFmt.string(from: s.lastUpdated))
+            lines.append(MenuInfoLine(text: settings.t("menu.lineUpdated") + "  " + Self.timeFmt.string(from: s.lastUpdated)))
         }
-        if lines.isEmpty { lines.append(settings.t("menu.pickInfo")) }
+        if lines.isEmpty { lines.append(MenuInfoLine(text: settings.t("menu.pickInfo"))) }
         return lines
     }
 
@@ -884,8 +880,24 @@ final class StatusBarController: NSObject {
     /// 호버 정보: 팝업 카드와 동일한 내용·순서(#호버=팝업).
     private func updateHoverInfo() {
         let infos = buildAIInfos()
-        hoverInfo.infoText = infos.isEmpty ? settings.t("hover.noAI")
-            : infos.map { ([$0.name] + $0.lines).joined(separator: "\n") }.joined(separator: "\n\n")
+        let font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        func run(_ s: String, _ color: NSColor = .labelColor) -> NSAttributedString {
+            NSAttributedString(string: s, attributes: [.font: font, .foregroundColor: color])
+        }
+        guard !infos.isEmpty else {
+            hoverInfo.infoText = run(settings.t("hover.noAI"))
+            return
+        }
+        let out = NSMutableAttributedString()
+        for (i, info) in infos.enumerated() {
+            out.append(run((i > 0 ? "\n\n" : "") + info.name))
+            for line in info.lines {
+                out.append(run("\n"))
+                if let c = line.color { out.append(run("● ", NSColor(c))) }
+                out.append(run(line.text))
+            }
+        }
+        hoverInfo.infoText = out
     }
 
     /// 잔여율만큼 채워지는 원형 링 아이콘.

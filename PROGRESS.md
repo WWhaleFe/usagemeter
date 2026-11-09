@@ -6,6 +6,17 @@
 
 ## 🛠 유지보수 기록 (최신이 위)
 
+**v1.4.0 — 세부 항목별 색상·차감 표시 + Homebrew 설치·업데이트 (2026-11-09):**
+- 요청: Claude·Gemini의 하위 한도(5시간·주간·모델별)를 각각 모니터링하고, 항목별 색을 정해 차감 바에서도 색마다 따로 차감되게.
+- 공통 모델: `UsageSnapshot.subItems`(`Provider.swift`) — 대표 5시간 → 대표 주간 → `modelBuckets` 순서. id는 설정 저장 키(`model:<라벨>:5h|weekly`)라 라벨이 바뀌면 그 항목 설정은 초기화된다.
+- 설정(`OverlaySettings`, AI 색처럼 앱 전역): `subItemSplitIDs`(분할 켠 AI, 기본 없음 = 기존 한 줄 그대로), `subItemColors`, `subItemBarHidden`, `subItemMenuHidden`. 기본 색은 첫 항목 = AI 색, 이후 `subItemPalette`.
+- 렌더(`BorderView.fillSlot`): 경로를 표시 항목 수로 균등 분할, 구간마다 앞에서부터 잔여율만큼 채움. 구간 사이 틈 = 굵기 + 3pt. 항목을 전부 끄면 대표 한 줄로 복귀.
+- UI: 설정 창 '세부 항목' 탭(잔여·차감 %, 색, 바/메뉴 표시). 탭 11개가 되어 창 폭 680 → 760. 분할을 켠 AI는 드롭다운·호버 줄 앞에 색 점 표시.
+- Claude: `seven_day_opus`·`seven_day_sonnet`을 `limits`에 같은 모델이 없을 때만 세부 항목으로 추가.
+- 검증: 분리 빌드(별도 프로세스명으로 설정·이력 격리)에서 실제 `agy` 데이터로 Gemini 5개 항목 — 띠 구간별 길이가 잔여율과 일치, 드롭다운 카드·호버 텍스트·탭 표시 확인. **Claude 항목은 테스트 빌드가 미로그인이라 실데이터 미확인.**
+- Homebrew(`WWhaleFe/homebrew-tap`의 `Casks/usagemeter.rb`): `auto_updates`를 넣지 않음(넣으면 `brew upgrade`가 건너뜀). `postflight_steps`는 Homebrew 샌드박스에서 돌아 `open`이 -10810으로 실패하므로, 업그레이드 때는 앱을 종료하지 않고 앱이 번들 교체를 감지해 스스로 재실행(`UpdateChecker.relaunchIfBundleReplaced`, 10초 주기·빌드 번호 비교). 격리 속성 제거만 postflight_steps에서 한다. 새 버전 확인은 탭의 `bump.yml`(30분 주기)이 하고, 사용자는 `brew update && brew upgrade --cask usagemeter`(Homebrew 자동 갱신이 하루 한 번이라 `brew update` 필요).
+- 업그레이드 검증: 임시 버전 zip을 로컬 cask로 설치해 실제 `brew upgrade` 실행 → 약 20초 뒤 실행 중이던 앱이 새 바이너리로 재실행됨(PID·inode 변경, 인스턴스 1개). 1.3.x 이하에는 감지 코드가 없어 1.4.0으로 올릴 때는 한 번 직접 실행해야 한다.
+
 **v1.3.0 — Google Antigravity CLI(`agy`) 실시간 사용량 모니터링 연동 (2026-11-08):**
 - 증상: `agy` 사용 시 토큰 소모가 `UsageMeter`에 반영되지 않거나 매우 늦게 반영됨.
 - 원인 ①: 기존 Gemini 조회는 `gemini.google.com/usage` 웹 화면만 파싱했으나, `agy`는 별도 Antigravity 쿼터 버킷(`Gemini Models` 5h/주간, `Gemini 4 Argon` 주간, `Claude and GPT models` 5h/주간)을 사용함.

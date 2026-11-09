@@ -75,6 +75,36 @@ struct UsageSnapshot: Equatable {
     var rawBuckets: [String: Double]? = nil
 }
 
+/// 한 AI의 세부 사용량 항목(5시간·주간·모델별 버킷). 설정 탭·드롭다운·분할 띠가 공유한다.
+struct UsageSubItem: Equatable, Identifiable {
+    /// 설정 저장 키로 쓰는 안정적인 식별자(예: "5h", "model:Gemini 4 Argon:weekly").
+    let id: String
+    /// 모델 버킷 이름(서버 제공). 대표 5시간·주간 항목은 nil.
+    let modelLabel: String?
+    let isFiveHour: Bool
+    let remainingRatio: Double
+    let resetAt: Date?
+}
+
+extension UsageSnapshot {
+    /// 표시 순서: 대표 5시간 → 대표 주간 → 모델별 버킷(서버가 준 순서).
+    var subItems: [UsageSubItem] {
+        var out = [UsageSubItem(id: "5h", modelLabel: nil, isFiveHour: true,
+                                remainingRatio: fiveHourRatio ?? remainingRatio,
+                                resetAt: fiveHourResetAt ?? resetAt)]
+        if let w = secondaryRatio {
+            out.append(UsageSubItem(id: "weekly", modelLabel: nil, isFiveHour: false,
+                                    remainingRatio: w, resetAt: secondaryResetAt))
+        }
+        for b in modelBuckets ?? [] {
+            out.append(UsageSubItem(id: "model:\(b.label):\(b.isFiveHour ? "5h" : "weekly")",
+                                    modelLabel: b.label, isFiveHour: b.isFiveHour,
+                                    remainingRatio: b.remainingRatio, resetAt: b.resetAt))
+        }
+        return out
+    }
+}
+
 /// 각 AI 수집기가 구현하는 프로토콜. 폴링 주기마다 `fetch()`가 호출된다.
 protocol UsageProvider {
     /// Provider 식별자 (UsageSnapshot.id 와 동일).

@@ -12,7 +12,7 @@ final class HoverInfoController: NSObject {
     /// 커서가 있는 화면의 테두리 설정(굵기·그려진 변)을 찾기 위한 디스플레이 목록.
     private let displays: DisplayRegistry
     /// 표시할 현재 정보(사용량 새로고침 때 갱신).
-    var infoText: String = "로그인이 필요합니다"
+    var infoText = NSAttributedString(string: "로그인이 필요합니다")
 
     private let panel: NSWindow
     private let label: NSTextField
@@ -135,7 +135,7 @@ final class HoverInfoController: NSObject {
 
     /// 메뉴바 아래, 커서 x 기준으로 패널을 띄운다(화면 밖으로 안 나가게 보정).
     private func showBelowMenuBar(zone: NSRect, cursorX: CGFloat, on screen: NSScreen) {
-        label.stringValue = infoText
+        label.attributedStringValue = infoText
         let size = label.intrinsicContentSize
         let winW = size.width + 20, winH = size.height + 12
         let f = screen.frame
@@ -146,7 +146,7 @@ final class HoverInfoController: NSObject {
     }
 
     private func show(at p: NSPoint, on screen: NSScreen) {
-        label.stringValue = infoText
+        label.attributedStringValue = infoText
         let size = label.intrinsicContentSize
         let winW = size.width + 20, winH = size.height + 12
         // 커서 우상단에 띄우되 화면 밖으로 나가지 않게 보정.

@@ -7,10 +7,32 @@ As you use up your quota, the band gets shorter — so you can tell how much is 
 
 ## ⬇️ Download (macOS)
 
+**🍺 Homebrew (recommended)**
+
+```sh
+brew install --cask wwhalefe/tap/usagemeter
+```
+
+Update:
+
+```sh
+brew update && brew upgrade --cask usagemeter
+```
+
+This quits the running app, replaces it with the new version and starts it again (settings and logins are kept). Run `brew update` as well so a new version shows up right away — Homebrew refreshes taps on its own only once a day.
+Remove: `brew uninstall --cask usagemeter` (add `--zap` to also delete settings and history).
+The tap ([WWhaleFe/homebrew-tap](https://github.com/WWhaleFe/homebrew-tap)) checks for new releases every 30 minutes and follows them automatically.
+
+> 💡 If you already installed from the zip and get an `already an App` error, overwrite it with `brew install --cask --force wwhalefe/tap/usagemeter` (settings and logins are kept).
+
+> 💡 If Homebrew refuses with an `untrusted tap` error, run `brew trust --cask wwhalefe/tap/usagemeter` first, then install again.
+
+**Direct download**
+
 **[Get the latest release](https://github.com/WWhaleFe/usagemeter/releases/latest)** — download `UsageMeter-vX.X.X.zip` → unzip → drag the app into **Applications**.
 Universal binary (Apple Silicon + Intel), macOS 14+.
 
-> ⚠️ The app is not notarized yet, so the first launch requires **right-click → Open**. If it still won't open, go to System Settings → Privacy & Security and click "Open Anyway".
+> ⚠️ The app is not notarized yet, so when installed from the zip the first launch requires **right-click → Open** (not needed with Homebrew). If it still won't open, go to System Settings → Privacy & Security and click "Open Anyway".
 
 > 🪟 **A Windows version** is also in development — but it's expected to take a **considerable amount of time** to complete.
 
@@ -35,6 +57,7 @@ Universal binary (Apple Silicon + Intel), macOS 14+.
 - **Light memory footprint (v1.2.6)** — sitting in the menu bar just refreshing usage, the app uses about **100 MB** (earlier versions used 1.5 GB+). After you open and use the Settings/Analytics windows it settles around **150–200 MB** (SwiftUI window memory isn't returned right away). Idle CPU is essentially 0%. See [MEMORY-REPORT.md](MEMORY-REPORT.md) for the full investigation.
 - **Temporarily hide the border** — a "Hide border" toggle in the menu bar turns the overlay (usage display) off and on (not persisted). Turn on **"Hide border on launch"** in Settings to start hidden every time (v1.2.7).
 - **Hover info (v1.2.7)** — hover over the colored border bands or near the menu-bar icon/% to show a usage panel; each can be turned off in Settings. For the border you can choose which areas react — **whole edges (top/bottom/left/right)** or **corner zones only** (adjustable length). The menu-bar hover area is sized from the actual menu-bar height and width of the display the icon is on.
+- **Per-item colors and depletion (v1.4.0)** — the **Details** tab in Settings shows remaining/used % for each AI's 5-hour, weekly and per-model limits (e.g. `Gemini 4 Argon`, `Claude·GPT (agy)`, Claude `Fable`). With color sections on, the border bar is divided by item and **each color depletes with its own limit**; you choose each item's color and whether it appears on the bar and in the menu. The dropdown and hover show matching color dots.
 - **Multi-monitor — per-display borders (v1.2.8)** — every connected display gets a border, and each display has its own line, partition, layout, corner and notch settings. Pick the display to edit at the top of Settings, turn the border off per display, or copy one display's settings to the others. A newly connected display starts from the main display's settings fitted to that screen (notch, corner radius), and each monitor's settings are remembered. Language, menu bar, AI colors and similar options are shared.
 - **Convenience** — login tab for per-AI sign in/out, auto-refresh interval (1 min–2 h or custom), 10 named presets + default-state save, launch at login, Korean / English / Japanese UI. While a Settings/Analytics window is open, a Dock icon lets you bring it back.
 - Every setting persists across restarts.

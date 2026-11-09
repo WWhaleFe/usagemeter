@@ -43,6 +43,9 @@ final class UpdateChecker: NSObject, ObservableObject {
     /// 같은 버전으로 두 번 알리지 않기 위해 마지막으로 알린 버전을 기억한다.
     private let notifiedKey = "usagemeter.lastNotifiedVersion"
     private var timer: Timer?
+    private var replacedBundleTimer: Timer?
+    /// 직전 확인 때 디스크에서 읽은 빌드 번호.
+    private var lastBundleBuild: String?
 
     /// 표시용 버전 문자열(번들이 아니면 "dev").
     var displayVersion: String { currentVersion ?? "dev" }
@@ -56,6 +59,28 @@ final class UpdateChecker: NSObject, ObservableObject {
             UNUserNotificationCenter.current().delegate = self
         }
         scheduleAuto()
+        replacedBundleTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.relaunchIfBundleReplaced() }
+        }
+    }
+
+    /// 디스크의 앱이 다른 빌드로 바뀌면(brew upgrade, zip 덮어쓰기) 새 버전으로 다시 실행한다.
+    /// Homebrew는 설치 단계를 샌드박스에서 돌려 앱을 띄울 수 없으므로(open -10810) 앱이 직접 한다.
+    /// 복사 중인 번들을 띄우지 않도록 같은 빌드 번호가 연속 두 번 보일 때만 실행한다.
+    private func relaunchIfBundleReplaced() {
+        guard let running = Bundle.main.infoDictionary?["CFBundleVersion"] as? String else { return }
+        let plist = Bundle.main.bundleURL.appendingPathComponent("Contents/Info.plist")
+        let onDisk = NSDictionary(contentsOf: plist)?["CFBundleVersion"] as? String
+        defer { lastBundleBuild = onDisk }
+        guard let onDisk, onDisk != running, onDisk == lastBundleBuild else { return }
+        replacedBundleTimer?.invalidate()
+        let config = NSWorkspace.OpenConfiguration()
+        config.createsNewApplicationInstance = true
+        config.activates = false
+        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: config) { _, error in
+            guard error == nil else { return }
+            Task { @MainActor in NSApp.terminate(nil) }
+        }
     }
 
     /// 자동 확인: 시작 직후 1회 + 24시간마다. 설정이 꺼져 있으면 아무것도 하지 않는다.

@@ -1,5 +1,11 @@
 import SwiftUI
 
+/// 정보 줄 하나. color가 있으면 줄 앞에 그 색의 점을 찍는다(세부 항목 색 구분).
+struct MenuInfoLine {
+    let text: String
+    var color: Color? = nil
+}
+
 /// 드롭다운에 넣는 AI별 사용량 정보 한 항목의 데이터.
 struct MenuAIInfo: Identifiable {
     let id: String
@@ -8,7 +14,7 @@ struct MenuAIInfo: Identifiable {
     /// 구독 플랜/모델(예: "Max (5x)"). 없으면 nil.
     let plan: String?
     /// 표시할 정보 줄들(예: "5시간 잔여  95% · 34분 후").
-    let lines: [String]
+    let lines: [MenuInfoLine]
 }
 
 /// 메뉴바 드롭다운의 AI 정보 카드.
@@ -34,11 +40,16 @@ struct MenuInfoCardView: View {
                         }
                     }
                     ForEach(Array(info.lines.enumerated()), id: \.offset) { _, line in
-                        Text(line)
-                            .font(.callout)
-                            .foregroundStyle(.primary)      // 고대비 — 라이트/다크 자동
-                            .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)   // 줄바꿈 금지(#Fable 줄 안 넘어가게)
+                        HStack(spacing: 6) {
+                            if let dot = line.color {
+                                Circle().fill(dot).frame(width: 8, height: 8)
+                            }
+                            Text(line.text)
+                                .font(.callout)
+                                .foregroundStyle(.primary)      // 고대비 — 라이트/다크 자동
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)   // 줄바꿈 금지(#Fable 줄 안 넘어가게)
+                        }
                     }
                 }
             }

@@ -217,6 +217,11 @@ struct SettingsSnapshot: Codable {
     var hoverEdges: [String]?
     var hoverCorners: [String]?
     var hoverCornerSize: Double?
+    // 세부 항목(5시간·주간·모델별) 색상·표시. 키 = OverlaySettings.subItemKey.
+    var subItemSplitIDs: [String]?
+    var subItemColors: [String: [Double]]?
+    var subItemBarHidden: [String]?
+    var subItemMenuHidden: [String]?
 }
 
 extension SettingsSnapshot {
@@ -881,6 +886,65 @@ final class OverlaySettings: ObservableObject {
         return providerColors[id] ?? ProviderSpec.spec(id)?.defaultColor ?? color
     }
 
+    // MARK: - 세부 항목(5시간·주간·모델별) 색상·표시
+
+    /// 띠를 세부 항목별 색 구간으로 나눠 그릴 AI들. 없는 AI는 기존처럼 대표 잔여율 한 줄.
+    @Published var subItemSplitIDs: Set<String> = []
+    /// 사용자가 지정한 세부 항목 색. 없으면 subItemColor의 기본 색을 쓴다.
+    @Published var subItemColors: [String: Color] = [:]
+    /// 분할 띠에서 뺄 세부 항목들.
+    @Published var subItemBarHidden: Set<String> = []
+    /// 드롭다운·호버에서 뺄 세부 항목들.
+    @Published var subItemMenuHidden: Set<String> = []
+
+    /// 세부 항목 기본 색(첫 항목은 AI 색, 둘째부터 이 순서).
+    static let subItemPalette: [Color] = [
+        Color(red: 0.65, green: 0.45, blue: 0.95),   // 보라
+        Color(red: 0.96, green: 0.70, blue: 0.10),   // 호박
+        Color(red: 0.08, green: 0.72, blue: 0.65),   // 청록
+        Color(red: 0.93, green: 0.30, blue: 0.60),   // 분홍
+        Color(red: 0.52, green: 0.80, blue: 0.20),   // 연두
+    ]
+
+    /// 세부 항목 설정 키: "gemini/weekly" 형태.
+    static func subItemKey(_ providerID: String, _ itemID: String) -> String { "\(providerID)/\(itemID)" }
+
+    /// 세부 항목 값은 AI 색처럼 앱 전역(주 설정)을 따른다.
+    private var subItemRoot: OverlaySettings { parent ?? self }
+
+    func isSubItemSplit(_ providerID: String) -> Bool {
+        subItemRoot.subItemSplitIDs.contains(providerID)
+    }
+
+    func subItemName(_ item: UsageSubItem) -> String {
+        let kind = t(item.isFiveHour ? "menu.line5h" : "menu.lineWeekly")
+        return item.modelLabel.map { $0 + " " + kind } ?? kind
+    }
+
+    /// 세부 항목 색: 사용자 지정 → 없으면 `items` 안의 위치로 정한 기본 색.
+    func subItemColor(_ providerID: String, _ item: UsageSubItem, in items: [UsageSubItem]) -> Color {
+        if let c = subItemRoot.subItemColors[Self.subItemKey(providerID, item.id)] { return c }
+        let i = items.firstIndex { $0.id == item.id } ?? 0
+        if i == 0 { return color(forProvider: providerID) }
+        return Self.subItemPalette[(i - 1) % Self.subItemPalette.count]
+    }
+
+    func isSubItemShownInMenu(_ providerID: String, _ itemID: String) -> Bool {
+        !subItemRoot.subItemMenuHidden.contains(Self.subItemKey(providerID, itemID))
+    }
+
+    func isSubItemShownOnBar(_ providerID: String, _ itemID: String) -> Bool {
+        !subItemRoot.subItemBarHidden.contains(Self.subItemKey(providerID, itemID))
+    }
+
+    /// 분할 띠에 그릴 항목들(잔여율 + 색). 분할 모드가 아니거나 전부 뺐으면 빈 배열 = 대표 한 줄.
+    func subItemBarParts(_ providerID: String, _ snap: UsageSnapshot) -> [(ratio: Double, color: Color)] {
+        guard isSubItemSplit(providerID) else { return [] }
+        let items = snap.subItems
+        return items.filter { isSubItemShownOnBar(providerID, $0.id) }
+            .map { ($0.remainingRatio, subItemColor(providerID, $0, in: items)) }
+    }
+
     /// 저장된 사용자 프리셋(최대 5개, 재시작해도 유지).
     @Published var savedPresets: [SavedPreset] = []
     static let maxPresets = 10
@@ -1119,7 +1183,14 @@ final class OverlaySettings: ObservableObject {
             menuBarHoverInfoEnabled: menuBarHoverInfoEnabled,
             hoverEdges: hoverEdges.map { $0.rawValue },
             hoverCorners: hoverCorners.map { $0.rawValue },
-            hoverCornerSize: Double(hoverCornerSize)
+            hoverCornerSize: Double(hoverCornerSize),
+            subItemSplitIDs: Array(subItemSplitIDs),
+            subItemColors: subItemColors.mapValues { c in
+                let ns = NSColor(c).usingColorSpace(.sRGB) ?? .green
+                return [ns.redComponent, ns.greenComponent, ns.blueComponent, ns.alphaComponent].map(Double.init)
+            },
+            subItemBarHidden: Array(subItemBarHidden),
+            subItemMenuHidden: Array(subItemMenuHidden)
         )
     }
 
@@ -1215,6 +1286,12 @@ final class OverlaySettings: ObservableObject {
         hoverEdges = s.hoverEdges.map { Set($0.compactMap { BorderEdge(rawValue: $0) }) } ?? Set(BorderEdge.allCases)
         hoverCorners = s.hoverCorners.map { Set($0.compactMap { BorderCorner(rawValue: $0) }) } ?? []
         hoverCornerSize = CGFloat(s.hoverCornerSize ?? 80)
+        subItemSplitIDs = Set(s.subItemSplitIDs ?? [])
+        subItemColors = (s.subItemColors ?? [:]).compactMapValues { a in
+            a.count == 4 ? Color(.sRGB, red: a[0], green: a[1], blue: a[2], opacity: a[3]) : nil
+        }
+        subItemBarHidden = Set(s.subItemBarHidden ?? [])
+        subItemMenuHidden = Set(s.subItemMenuHidden ?? [])
         if let po = s.providerOrder {
             var seen = Set<String>()
             var out = po.filter { ProviderSpec.spec($0) != nil && seen.insert($0).inserted }

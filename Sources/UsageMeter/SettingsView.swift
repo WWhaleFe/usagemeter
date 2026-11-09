@@ -64,6 +64,7 @@ struct SettingsView: View {
                 tabScroll { displayTab }.tabItem { Label(settings.t("tab.display"), systemImage: "menubar.rectangle") }.tag("display")
                 tabScroll { intervalTab }.tabItem { Label(settings.t("tab.interval"), systemImage: "arrow.clockwise") }.tag("interval")
                 tabScroll { lineTab }.tabItem { Label(settings.t("tab.line"), systemImage: "paintbrush") }.tag("line")
+                tabScroll { subItemsTab }.tabItem { Label(settings.t("tab.subItems"), systemImage: "list.bullet.rectangle") }.tag("subItems")
                 tabScroll { partitionTab }.tabItem { Label(settings.t("tab.partition"), systemImage: "square.split.1x2") }.tag("partition")
                 tabScroll { layoutTab }.tabItem { Label(settings.t("tab.layout"), systemImage: "square.dashed") }.tag("layout")
                 tabScroll { cornerTab }.tabItem { Label(settings.t("tab.corner"), systemImage: "rectangle.roundedtop") }.tag("corner")
@@ -73,7 +74,7 @@ struct SettingsView: View {
             .padding(.horizontal, 10)
             .padding(.bottom, 10)
         }
-        .frame(width: 680, height: 880)
+        .frame(width: 760, height: 880)
         .onAppear { consumeRequestedTab() }
         .onChange(of: settings.requestedTab) { _, _ in consumeRequestedTab() }
     }
@@ -506,6 +507,70 @@ struct SettingsView: View {
             }
             Spacer(minLength: 0)
         }
+    }
+
+    /// 세부 항목 탭: AI별 5시간·주간·모델별 한도의 실시간 잔여/차감 + 색·표시 설정.
+    @ViewBuilder private var subItemsTab: some View {
+        Text(settings.t("subItems.desc"))
+            .font(.caption).foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        ForEach(ProviderSpec.all) { spec in
+            section(spec.name) {
+                Toggle(settings.t("subItems.split"), isOn: memberBinding(\.subItemSplitIDs, spec.id))
+                if let snap = manager.states[spec.id]?.snapshot, snap.status == .ok {
+                    let items = snap.subItems
+                    ForEach(items) { subItemRow(spec.id, $0, in: items) }
+                } else {
+                    Text(settings.t("subItems.noData")).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    /// 세부 항목 한 줄: [색] [이름] [미니 바] [잔여·차감 %] [바/메뉴 표시] [색 되돌리기]
+    @ViewBuilder
+    private func subItemRow(_ providerID: String, _ item: UsageSubItem, in items: [UsageSubItem]) -> some View {
+        let split = settings.isSubItemSplit(providerID)
+        let key = OverlaySettings.subItemKey(providerID, item.id)
+        let color = settings.subItemColor(providerID, item, in: items)
+        let custom = settings.subItemColors[key] != nil
+        let name = settings.subItemName(item)
+        let pct = Int((item.remainingRatio * 100).rounded())
+        HStack(spacing: 8) {
+            ColorPicker("", selection: Binding(get: { color }, set: { settings.subItemColors[key] = $0 }),
+                        supportsOpacity: false)
+                .labelsHidden()
+                .disabled(!split)
+            Text(name).font(.subheadline).lineLimit(1)
+                .frame(width: 230, alignment: .leading)
+                .help(name)
+            ZStack(alignment: .leading) {
+                Capsule().fill(color.opacity(0.18))
+                Capsule().fill(color).frame(width: 70 * CGFloat(item.remainingRatio))
+            }
+            .frame(width: 70, height: 6)
+            Text("\(pct)% · \(settings.t("subItems.used")) \(100 - pct)%")
+                .font(.caption).monospacedDigit().foregroundStyle(.secondary)
+                .frame(width: 92, alignment: .trailing)
+            Toggle(settings.t("subItems.bar"), isOn: shownBinding(\.subItemBarHidden, key))
+                .disabled(!split)
+            Toggle(settings.t("subItems.menu"), isOn: shownBinding(\.subItemMenuHidden, key))
+            Button { settings.subItemColors[key] = nil } label: { Image(systemName: "arrow.uturn.backward") }
+                .buttonStyle(.borderless)
+                .help(settings.t("subItems.resetColor"))
+                .opacity(custom ? 1 : 0)
+                .disabled(!custom)
+            Spacer(minLength: 0)
+        }
+    }
+
+    /// '숨김' Set 설정값을 '표시' 토글로 바인딩.
+    private func shownBinding(_ path: ReferenceWritableKeyPath<OverlaySettings, Set<String>>,
+                              _ key: String) -> Binding<Bool> {
+        Binding(get: { !settings[keyPath: path].contains(key) },
+                set: { on in
+                    if on { settings[keyPath: path].remove(key) } else { settings[keyPath: path].insert(key) }
+                })
     }
 
     /// 화면 분할 탭(분리): 가로 경계선 켜기/위치 + 드래그 조정.

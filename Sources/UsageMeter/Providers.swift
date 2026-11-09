@@ -73,7 +73,7 @@ struct ProviderSpec: Identifiable {
           const buckets = Array.isArray(u.limits) ? u.limits
             .filter(l => l && l.kind === 'weekly_scoped' && l.scope && l.scope.model && l.scope.model.display_name && typeof l.percent === 'number')
             .map(l => ({label: l.scope.model.display_name, utilization: l.percent, resets_at: l.resets_at || null})) : [];
-          return {ok:true, plan: planLabel, five_hour: pick(u.five_hour), seven_day: pick(u.seven_day), seven_day_opus: pick(u.seven_day_opus), model_buckets: buckets};
+          return {ok:true, plan: planLabel, five_hour: pick(u.five_hour), seven_day: pick(u.seven_day), seven_day_opus: pick(u.seven_day_opus), seven_day_sonnet: pick(u.seven_day_sonnet), model_buckets: buckets};
         } catch (e) { return {ok:false, reason:'exception', message: String(e)}; }
         """,
         defaultColor: Color(red: 0.85, green: 0.47, blue: 0.34)   // Anthropic 코랄

@@ -349,9 +349,15 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         let opus = raw["seven_day_opus"] as? [String: Any]
         // 구독 플랜 + 모델별 주간 버킷(예: Claude "Fable") — 제공자가 주면 반영.
         let plan = (raw["plan"] as? String).flatMap { $0.isEmpty ? nil : $0 }
-        let buckets = (raw["model_buckets"] as? [[String: Any]])?.compactMap { b -> UsageModelBucket? in
+        var buckets = (raw["model_buckets"] as? [[String: Any]])?.compactMap { b -> UsageModelBucket? in
             guard let label = b["label"] as? String, !label.isEmpty else { return nil }
             return UsageModelBucket(label: label, remainingRatio: remaining(b), resetAt: resetDate(b))
+        } ?? []
+        // Opus·Sonnet 주간 필드는 limits(weekly_scoped)에 같은 모델이 없을 때만 세부 항목으로 보탠다.
+        for (key, label) in [("seven_day_opus", "Opus"), ("seven_day_sonnet", "Sonnet")] {
+            guard let b = raw[key] as? [String: Any],
+                  !buckets.contains(where: { $0.label.localizedCaseInsensitiveContains(label) }) else { continue }
+            buckets.append(UsageModelBucket(label: label, remainingRatio: remaining(b), resetAt: resetDate(b)))
         }
         return UsageSnapshot(
             id: spec.id, remainingRatio: remaining(five), secondaryRatio: week.map(remaining),
@@ -359,7 +365,7 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
             resetAt: resetDate(five), secondaryResetAt: resetDate(week),
             opusResetAt: resetDate(opus),
             status: .ok, lastUpdated: now,
-            plan: plan, modelBuckets: (buckets?.isEmpty == true ? nil : buckets)
+            plan: plan, modelBuckets: (buckets.isEmpty ? nil : buckets)
         )
     }
 
