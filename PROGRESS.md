@@ -6,6 +6,10 @@
 
 ## 🛠 유지보수 기록 (최신이 위)
 
+**v1.4.1 — 세부 항목 겹침 표시 + 재시작 후 `brew uninstall` 수정 (2026-11-09):**
+- 사용자 피드백: 구간 분리는 별로, 기존 Claude·Gemini 선 겹침처럼. `BorderView`에서 항목별로 경로 시작부터 잔여율만큼 그리고 잔여율 높은 것부터(뒤) 쌓는다. 트랙은 AI당 한 번만 그린다. 저장 키 `subItemSplitIDs`는 호환을 위해 이름 유지.
+- 버그: 업데이트로 재시작한 앱이 `brew uninstall`에 종료되지 않음. `createsNewApplicationInstance`로 띄우면 launchd 라벨에 UUID가 붙는데, Homebrew의 `running_processes`는 숫자 접미사만 인식한다. 앱 종료 후 셸이 `open`으로 재실행하도록 변경(`UpdateChecker.relaunchIfBundleReplaced`).
+
 **v1.4.0 — 세부 항목별 색상·차감 표시 + Homebrew 설치·업데이트 (2026-11-09):**
 - 요청: Claude·Gemini의 하위 한도(5시간·주간·모델별)를 각각 모니터링하고, 항목별 색을 정해 차감 바에서도 색마다 따로 차감되게.
 - 공통 모델: `UsageSnapshot.subItems`(`Provider.swift`) — 대표 5시간 → 대표 주간 → `modelBuckets` 순서. id는 설정 저장 키(`model:<라벨>:5h|weekly`)라 라벨이 바뀌면 그 항목 설정은 초기화된다.

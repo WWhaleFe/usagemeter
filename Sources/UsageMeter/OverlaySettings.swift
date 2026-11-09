@@ -888,11 +888,11 @@ final class OverlaySettings: ObservableObject {
 
     // MARK: - 세부 항목(5시간·주간·모델별) 색상·표시
 
-    /// 띠를 세부 항목별 색 구간으로 나눠 그릴 AI들. 없는 AI는 기존처럼 대표 잔여율 한 줄.
+    /// 띠에 세부 항목별 색을 겹쳐 그릴 AI들. 없는 AI는 기존처럼 대표 잔여율 한 줄.
     @Published var subItemSplitIDs: Set<String> = []
     /// 사용자가 지정한 세부 항목 색. 없으면 subItemColor의 기본 색을 쓴다.
     @Published var subItemColors: [String: Color] = [:]
-    /// 분할 띠에서 뺄 세부 항목들.
+    /// 띠에서 뺄 세부 항목들.
     @Published var subItemBarHidden: Set<String> = []
     /// 드롭다운·호버에서 뺄 세부 항목들.
     @Published var subItemMenuHidden: Set<String> = []
@@ -937,12 +937,14 @@ final class OverlaySettings: ObservableObject {
         !subItemRoot.subItemBarHidden.contains(Self.subItemKey(providerID, itemID))
     }
 
-    /// 분할 띠에 그릴 항목들(잔여율 + 색). 분할 모드가 아니거나 전부 뺐으면 빈 배열 = 대표 한 줄.
+    /// 띠에 겹쳐 그릴 항목들(잔여율 + 색). AI끼리 겹칠 때와 같이 잔여율 높은 것부터(뒤) 정렬한다.
+    /// 겹침 모드가 아니거나 전부 뺐으면 빈 배열 = 대표 한 줄.
     func subItemBarParts(_ providerID: String, _ snap: UsageSnapshot) -> [(ratio: Double, color: Color)] {
         guard isSubItemSplit(providerID) else { return [] }
         let items = snap.subItems
         return items.filter { isSubItemShownOnBar(providerID, $0.id) }
             .map { ($0.remainingRatio, subItemColor(providerID, $0, in: items)) }
+            .sorted { $0.ratio > $1.ratio }
     }
 
     /// 저장된 사용자 프리셋(최대 5개, 재시작해도 유지).

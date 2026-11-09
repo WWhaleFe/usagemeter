@@ -584,7 +584,7 @@ struct BorderView: View {
         let ratio: Double
         let color: Color
         let split: Bool          // 구간 굵기(widthSpans) 사용 여부
-        /// 세부 항목별 색 구간(앞→뒤). 비어 있으면 ratio·color로 한 줄을 그린다.
+        /// 세부 항목별 색 띠(뒤→앞 순서로 겹쳐 그림). 비어 있으면 ratio·color로 한 줄을 그린다.
         let parts: [(ratio: Double, color: Color)]
     }
 
@@ -696,24 +696,22 @@ struct BorderView: View {
             // AI별 (경로, 굵기 구간) 준비. 노치 우회가 있으면 분할이 없어도 구간을 계산해
             // 노치를 별도 레이어(가장 뒤)로 분리한다(#노치 레이어 뒤).
             typealias WSpan = (from: CGFloat, to: CGFloat, width: CGFloat, notch: Bool)
-            var prepared: [(item: DrawItem, path: Path, spans: [WSpan], total: CGFloat)] = []
+            var prepared: [(item: DrawItem, path: Path, spans: [WSpan])] = []
             for item in items {
                 let path = item.shape.path(in: rect)
                 var spans: [WSpan] = [(0, 1, t, false)]
-                var total: CGFloat = 0
                 let hasNotch = item.shape.notchDetour && item.shape.notchEnabled
                     && item.shape.segments.contains(.hTop)
-                if item.split || hasNotch || item.parts.count > 1 {
+                if item.split || hasNotch {
                     let m = item.shape.widthSpans(in: rect)
-                    total = m.total
                     if !m.spans.isEmpty {
                         spans = Self.tapered(m.spans, total: m.total, thickness: t)
                     }
                 }
-                prepared.append((item, path, spans, total))
+                prepared.append((item, path, spans))
             }
             // 트랙 → 본체 → 그라데이션을 노치(뒤)·본체(앞) 두 레이어로 나눠 그린다.
-            func draw(_ item: DrawItem, _ path: Path, _ spans: [WSpan], total: CGFloat, notchLayer: Bool) {
+            func draw(_ item: DrawItem, _ path: Path, _ spans: [WSpan], notchLayer: Bool) {
                 // roundAll: 불투명 동일색(본체)은 모든 조각 끝을 둥글게(이음매 무해, 끝이 자연스러움).
                 // 그 외(트랙·페이드)는 반투명 겹침 얼룩을 피해 butt 유지(#선 끝 둥글게).
                 func strokeRange(_ a: CGFloat, _ b: CGFloat, _ color: Color, roundAll: Bool = false) {
@@ -727,40 +725,33 @@ struct BorderView: View {
                                        style: StrokeStyle(lineWidth: sp.width, lineCap: cap, lineJoin: .round))
                     }
                 }
-                /// 경로의 [lo, hi] 구간을 lo부터 잔여율만큼 채운다. 한 줄이면 구간 = 경로 전체.
-                func fillSlot(_ lo: CGFloat, _ hi: CGFloat, ratio: Double, color: Color) {
-                    if showTrack { strokeRange(lo, hi, color.opacity(0.18)) }
-                    let filled = (hi - lo) * CGFloat(max(0, min(1, ratio)))
-                    let fade = fadeOn ? min(fadeFrac, filled) : 0
-                    let solid = max(0, filled - fade)
-                    strokeRange(lo, lo + solid, color, roundAll: true)
+                /// 경로 시작부터 잔여율만큼 채운다.
+                func fill(ratio: Double, color: Color) {
+                    let r = CGFloat(max(0, min(1, ratio)))
+                    let fade = fadeOn ? min(fadeFrac, r) : 0
+                    let solid = max(0, r - fade)
+                    strokeRange(0, solid, color, roundAll: true)
                     if fade > 0 {
                         for i in 0..<fadeSteps {
-                            let a = lo + solid + fade * CGFloat(i) / CGFloat(fadeSteps)
-                            let b = lo + solid + fade * CGFloat(i + 1) / CGFloat(fadeSteps)
+                            let a = solid + fade * CGFloat(i) / CGFloat(fadeSteps)
+                            let b = solid + fade * CGFloat(i + 1) / CGFloat(fadeSteps)
                             let opStep = 1 - Double(i + 1) / Double(fadeSteps)
                             strokeRange(a, b, color.opacity(opStep))
                         }
                     }
                 }
-                guard !item.parts.isEmpty else {
-                    fillSlot(0, 1, ratio: item.ratio, color: item.color)
-                    return
-                }
-                // 구간 사이 틈: 둥근 끝(양쪽 t/2)이 맞닿지 않도록 굵기 + 3pt.
-                let n = item.parts.count
-                let slot = 1 / CGFloat(n)
-                let halfGap = total > 0 ? (t + 3) / total / 2 : 0
-                for (i, part) in item.parts.enumerated() {
-                    let lo = CGFloat(i) * slot + (i > 0 ? halfGap : 0)
-                    let hi = CGFloat(i + 1) * slot - (i < n - 1 ? halfGap : 0)
-                    fillSlot(lo, hi, ratio: part.ratio, color: part.color)
+                // 트랙은 AI당 한 번만 — 항목 수만큼 겹치면 반투명이 쌓여 진해진다.
+                if showTrack { strokeRange(0, 1, item.color.opacity(0.18)) }
+                if item.parts.isEmpty {
+                    fill(ratio: item.ratio, color: item.color)
+                } else {
+                    for part in item.parts { fill(ratio: part.ratio, color: part.color) }
                 }
             }
             // 1) 노치 우회 — 모든 선보다 뒤(메뉴바선 등과 겹치면 뒤에 깔린다).
-            for pr in prepared { draw(pr.item, pr.path, pr.spans, total: pr.total, notchLayer: true) }
+            for pr in prepared { draw(pr.item, pr.path, pr.spans, notchLayer: true) }
             // 2) 본체.
-            for pr in prepared { draw(pr.item, pr.path, pr.spans, total: pr.total, notchLayer: false) }
+            for pr in prepared { draw(pr.item, pr.path, pr.spans, notchLayer: false) }
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)

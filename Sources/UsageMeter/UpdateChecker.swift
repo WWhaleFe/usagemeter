@@ -74,13 +74,14 @@ final class UpdateChecker: NSObject, ObservableObject {
         defer { lastBundleBuild = onDisk }
         guard let onDisk, onDisk != running, onDisk == lastBundleBuild else { return }
         replacedBundleTimer?.invalidate()
-        let config = NSWorkspace.OpenConfiguration()
-        config.createsNewApplicationInstance = true
-        config.activates = false
-        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: config) { _, error in
-            guard error == nil else { return }
-            Task { @MainActor in NSApp.terminate(nil) }
-        }
+        // 새 인스턴스 옵션으로 띄우면 launchd 라벨에 UUID가 붙어 `brew uninstall`의 종료 신호가
+        // 이 프로세스를 못 찾는다. 그래서 내가 끝난 뒤 셸이 보통 방식(open)으로 다시 띄운다.
+        let relaunch = Process()
+        relaunch.executableURL = URL(fileURLWithPath: "/bin/sh")
+        relaunch.arguments = ["-c", "while kill -0 \"$0\" 2>/dev/null; do sleep 0.2; done; exec /usr/bin/open -g \"$1\"",
+                              String(ProcessInfo.processInfo.processIdentifier), Bundle.main.bundlePath]
+        guard (try? relaunch.run()) != nil else { return }
+        NSApp.terminate(nil)
     }
 
     /// 자동 확인: 시작 직후 1회 + 24시간마다. 설정이 꺼져 있으면 아무것도 하지 않는다.
