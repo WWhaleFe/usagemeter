@@ -1,6 +1,67 @@
 <script lang="ts">
-  // TODO(5단계): Swift SettingsView.swift의 'subItems' 탭 이식.
-  import { t } from '../../lib/api.svelte';
+  // 세부 항목 탭(Swift SettingsView.swift:513-579): AI별 분리 토글, 항목별 색·미니 바·바/메뉴 표시.
+  import { ui, t, set, fromHex } from '../../lib/api.svelte';
+  import Section from '../../components/Section.svelte';
+  import Toggle from '../../components/Toggle.svelte';
+  const s = $derived(ui.s!);
+  const m = $derived(s.main);
+  const splitIDs = $derived<string[]>(m.subItemSplitIDs ?? []);
+  const colors = $derived((m.subItemColors ?? {}) as Record<string, number[]>);
+  const barHidden = $derived<string[]>(m.subItemBarHidden ?? []);
+  const menuHidden = $derived<string[]>(m.subItemMenuHidden ?? []);
+  const member = (list: string[], v: string, on: boolean) => (on ? (list.includes(v) ? list : [...list, v]) : list.filter((x) => x !== v));
+  function setColor(key: string, hex: string) {
+    set('main', { subItemColors: { ...colors, [key]: fromHex(hex) } });
+  }
+  function resetColor(key: string) {
+    const { [key]: _drop, ...rest } = colors;
+    set('main', { subItemColors: rest });
+  }
 </script>
 
-<p class="caption">{t('tab.subItems')}</p>
+<span class="caption desc">{t('subItems.desc')}</span>
+
+{#each s.providers as p (p.id)}
+  {@const split = splitIDs.includes(p.id)}
+  <Section title={p.name}>
+    <Toggle label={t('subItems.split')} checked={split} onchange={(v) => set('main', { subItemSplitIDs: member(splitIDs, p.id, v) })} />
+    {#if p.items.length === 0}
+      <span class="caption">{t('subItems.noData')}</span>
+    {:else}
+      {#if !p.itemsLive}<span class="caption warn">{t('subItems.lastKnown')}</span>{/if}
+      {#each p.items as it (it.key)}
+        {@const pct = Math.round(it.ratio * 100)}
+        {@const custom = it.key in colors}
+        <div class="item" style:opacity={p.itemsLive ? 1 : 0.6}>
+          <div class="row">
+            <input type="color" value={it.color} disabled={!split} aria-label={it.name} onchange={(e) => setColor(it.key, e.currentTarget.value)} />
+            <span class="name grow" title={it.name}>{it.name}</span>
+            <span class="bar" style:background={it.color + '2e'} aria-hidden="true"><span style:background={it.color} style:width="{pct}%"></span></span>
+            <span class="caption pct">{pct}% · {t('subItems.used')} {100 - pct}%</span>
+          </div>
+          <div class="row opts">
+            <label class="chk"><input type="checkbox" checked={!barHidden.includes(it.key)} disabled={!split} onchange={(e) => set('main', { subItemBarHidden: member(barHidden, it.key, !e.currentTarget.checked) })} />{t('subItems.bar')}</label>
+            <label class="chk"><input type="checkbox" checked={!menuHidden.includes(it.key)} onchange={(e) => set('main', { subItemMenuHidden: member(menuHidden, it.key, !e.currentTarget.checked) })} />{t('subItems.menu')}</label>
+            <span class="grow"></span>
+            <button class="reset" style:visibility={custom ? 'visible' : 'hidden'} disabled={!custom} aria-label={t('subItems.resetColor')} title={t('subItems.resetColor')} onclick={() => resetColor(it.key)}>&#8630;</button>
+          </div>
+        </div>
+      {/each}
+    {/if}
+  </Section>
+{/each}
+
+<style>
+  .desc { display: block; margin-bottom: 10px; }
+  .item { display: flex; flex-direction: column; gap: 2px; padding: 4px 0; }
+  .item + .item { border-top: 1px solid var(--surface-stroke); }
+  input[type="color"] { width: 32px; height: 22px; padding: 0; border: 1px solid var(--control-stroke); border-radius: var(--r-control); background: none; flex: none; }
+  .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .bar { width: 70px; height: 6px; border-radius: 3px; overflow: hidden; flex: none; }
+  .bar span { display: block; height: 100%; border-radius: 3px; }
+  .pct { width: 112px; text-align: right; font-variant-numeric: tabular-nums; flex: none; }
+  .opts { padding-left: 40px; gap: 16px; min-height: 26px; }
+  .chk { display: inline-flex; align-items: center; gap: 6px; }
+  .chk input { accent-color: var(--accent); margin: 0; }
+  .reset { min-height: 22px; padding: 0 8px; }
+</style>

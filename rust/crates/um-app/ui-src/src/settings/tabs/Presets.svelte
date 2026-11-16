@@ -1,6 +1,31 @@
 <script lang="ts">
-  // TODO(5단계): Swift SettingsView.swift의 'presets' 탭 이식.
-  import { t } from '../../lib/api.svelte';
+  // 프리셋 탭(Swift SettingsView.swift:258-293): 저장된 프리셋 불러오기·삭제, 새 이름으로 저장.
+  import { ui, t, tn, act } from '../../lib/api.svelte';
+  import Section from '../../components/Section.svelte';
+  const s = $derived(ui.s!);
+  let name = $state('');
+  const full = $derived(s.presets.length >= s.maxPresets);
+  async function save() {
+    await act('presetSave', { name });
+    name = '';
+  }
 </script>
 
-<p class="caption">{t('tab.presets')}</p>
+<Section title={tn('sec.presets', s.maxPresets)}>
+  {#each s.presets as p (p.id)}
+    <div class="row">
+      <button class="grow name" onclick={() => act('presetLoad', { id: p.id })}>{p.name}</button>
+      <button class="danger" aria-label={p.name} title="delete" onclick={() => act('presetDelete', { id: p.id })}>&#128465;</button>
+    </div>
+  {/each}
+  <form class="row" onsubmit={(e) => { e.preventDefault(); if (!full) save(); }}>
+    <input class="grow" type="text" placeholder={t('preset.newName')} aria-label={t('preset.newName')} bind:value={name} />
+    <button type="submit" disabled={full}>{t('preset.save')}</button>
+  </form>
+  {#if s.editing}<span class="caption">{t('preset.displayNote')}</span>{/if}
+</Section>
+
+<style>
+  .name { text-align: left; }
+  .danger { color: var(--danger); }
+</style>
