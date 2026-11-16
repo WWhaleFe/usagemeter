@@ -1,0 +1,7069 @@
+[
+ {
+  "name": "default_3ai",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22,
+    "topRight": 22,
+    "bottomRight": 0,
+    "bottomLeft": 0
+   },
+   "showTrack": true,
+   "notchEnabled": true,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22,
+    "topRight": 22,
+    "bottomRight": 0,
+    "bottomLeft": 0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.8
+   },
+   {
+    "id": "gemini",
+    "ratio": 0.5
+   },
+   {
+    "id": "codex",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "default_3ai_no_notch",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22,
+    "topRight": 22,
+    "bottomRight": 0,
+    "bottomLeft": 0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.8
+   },
+   {
+    "id": "gemini",
+    "ratio": 0.5
+   },
+   {
+    "id": "codex",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "loop_TL_cw",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "loop_TL_ccw",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": false,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "loop_TR_cw",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topRight",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "loop_TR_ccw",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topRight",
+     "anchorSide": "center",
+     "clockwise": false,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "loop_BR_cw",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "bottomRight",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "loop_BR_ccw",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "bottomRight",
+     "anchorSide": "center",
+     "clockwise": false,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "loop_BL_cw",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "loop_BL_ccw",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": false,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "loop_TL_side_left",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "left",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "loop_TL_side_right",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "right",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "ratio_0_loop",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.0
+   }
+  ]
+ },
+ {
+  "name": "ratio_1_loop",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 1.0
+   }
+  ]
+ },
+ {
+  "name": "chain_htop_cap_down_both",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop"
+     ],
+     "hCaps": {
+      "hTop.L": "down",
+      "hTop.R": "down"
+     }
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.62
+   }
+  ]
+ },
+ {
+  "name": "chain_hbottom_cap_up_both",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ],
+     "hCaps": {
+      "hBottom.L": "up",
+      "hBottom.R": "up"
+     }
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.62
+   }
+  ]
+ },
+ {
+  "name": "chain_hbottom_cap_up_right_rev",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": false,
+     "segments": [
+      "hBottom"
+     ],
+     "hCaps": {
+      "hBottom.R": "up"
+     }
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.62
+   }
+  ]
+ },
+ {
+  "name": "chain_U",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain",
+      "hBottom",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.5
+   }
+  ]
+ },
+ {
+  "name": "chain_L_cap_down_left",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "rMain"
+     ],
+     "hCaps": {
+      "hTop.L": "down"
+     }
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.5
+   }
+  ]
+ },
+ {
+  "name": "chain_vertical_left",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.5
+   }
+  ]
+ },
+ {
+  "name": "radius_0_loop",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 0.0,
+    "topRight": 0.0,
+    "bottomRight": 0.0,
+    "bottomLeft": 0.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "radius_12_loop",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "radius_22_loop",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "radius_40_loop",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 40.0,
+    "topRight": 40.0,
+    "bottomRight": 40.0,
+    "bottomLeft": 40.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "notch_on_htop",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22,
+    "topRight": 22,
+    "bottomRight": 0,
+    "bottomLeft": 0
+   },
+   "showTrack": true,
+   "notchEnabled": true,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.5
+   }
+  ]
+ },
+ {
+  "name": "notch_off_htop",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22,
+    "topRight": 22,
+    "bottomRight": 0,
+    "bottomLeft": 0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.5
+   }
+  ]
+ },
+ {
+  "name": "notch_loop_radii_0",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": true,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 0.0,
+    "outerRight": 0.0,
+    "innerLeft": 0.0,
+    "innerRight": 0.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.5
+   }
+  ]
+ },
+ {
+  "name": "notch_loop_radii_big",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": true,
+   "notchWidth": 260.0,
+   "notchHeight": 45.0,
+   "notchRadii": {
+    "outerLeft": 14.0,
+    "outerRight": 14.0,
+    "innerLeft": 24.0,
+    "innerRight": 24.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.5
+   }
+  ]
+ },
+ {
+  "name": "notch_loop_TR_ccw",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": true,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topRight",
+     "anchorSide": "center",
+     "clockwise": false,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "fade_off",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": false,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "fade_big",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.15,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "track_off",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": false,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "line_opacity_0.5",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22,
+    "topRight": 22,
+    "bottomRight": 0,
+    "bottomLeft": 0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 0.5,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.8
+   },
+   {
+    "id": "gemini",
+    "ratio": 0.5
+   },
+   {
+    "id": "codex",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "thick_6",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 6.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.37
+   }
+  ]
+ },
+ {
+  "name": "menu_line_loop",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMenuBar",
+      "lMain",
+      "rMenuBar",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": true,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.5
+   }
+  ]
+ },
+ {
+  "name": "menu_line_loop_small",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hMenu",
+      "lMenuBar",
+      "rMenuBar"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": true,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.5
+   }
+  ]
+ },
+ {
+  "name": "menu_dock_loop_all",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMenuBar",
+      "lMain",
+      "lDock",
+      "rMenuBar",
+      "rMain",
+      "rDock"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": true,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": true,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.5
+   }
+  ]
+ },
+ {
+  "name": "menu_dock_inner_loop",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hMenu",
+      "hDock",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": true,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": true,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 10.0,
+    "topRight": 10.0,
+    "bottomRight": 10.0,
+    "bottomLeft": 10.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 30.0,
+    "topRight": 30.0,
+    "bottomRight": 30.0,
+    "bottomLeft": 30.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.5
+   }
+  ]
+ },
+ {
+  "name": "scoop_chain_menu_right",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topRight",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "rMenuBar",
+      "hMenu"
+     ],
+     "hCaps": {
+      "hMenu.R": "down"
+     }
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": true,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.5
+   }
+  ]
+ },
+ {
+  "name": "scoop_chain_menu_left",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": false,
+     "segments": [
+      "lMenuBar",
+      "hMenu"
+     ],
+     "hCaps": {
+      "hMenu.L": "down"
+     }
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": true,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.5
+   }
+  ]
+ },
+ {
+  "name": "scoop_loop_TR_left",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topRight",
+     "anchorSide": "left",
+     "clockwise": true,
+     "segments": [
+      "hMenu",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ],
+     "hCaps": {
+      "hMenu.L": "up",
+      "hMenu.R": "up"
+     }
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": true,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.45
+   }
+  ]
+ },
+ {
+  "name": "scoop_loop_TR_center",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topRight",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hMenu",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ],
+     "hCaps": {
+      "hMenu.L": "up",
+      "hMenu.R": "up"
+     }
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": true,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.45
+   }
+  ]
+ },
+ {
+  "name": "scoop_loop_TR_right",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topRight",
+     "anchorSide": "right",
+     "clockwise": true,
+     "segments": [
+      "hMenu",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ],
+     "hCaps": {
+      "hMenu.L": "up",
+      "hMenu.R": "up"
+     }
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": true,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.45
+   }
+  ]
+ },
+ {
+  "name": "scoop_loop_TL_ccw",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": false,
+     "segments": [
+      "hMenu",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ],
+     "hCaps": {
+      "hMenu.L": "up",
+      "hMenu.R": "up"
+     }
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": true,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.45
+   }
+  ]
+ },
+ {
+  "name": "split2_off",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.7
+   },
+   {
+    "id": "gemini",
+    "ratio": 0.4
+   }
+  ]
+ },
+ {
+  "name": "split2_on",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": true,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.7
+   },
+   {
+    "id": "gemini",
+    "ratio": 0.4
+   }
+  ]
+ },
+ {
+  "name": "split2_on_notch",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": true,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": true,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.7
+   },
+   {
+    "id": "gemini",
+    "ratio": 0.4
+   }
+  ]
+ },
+ {
+  "name": "split3_off",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomRight",
+     "anchorSide": "center",
+     "clockwise": false,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "rMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.8
+   },
+   {
+    "id": "gemini",
+    "ratio": 0.55
+   },
+   {
+    "id": "codex",
+    "ratio": 0.3
+   }
+  ]
+ },
+ {
+  "name": "split3_on",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 6.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomRight",
+     "anchorSide": "center",
+     "clockwise": false,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "rMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": true,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.8
+   },
+   {
+    "id": "gemini",
+    "ratio": 0.55
+   },
+   {
+    "id": "codex",
+    "ratio": 0.3
+   }
+  ]
+ },
+ {
+  "name": "split3_on_notch",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 6.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": true,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomRight",
+     "anchorSide": "center",
+     "clockwise": false,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "rMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": true,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.8
+   },
+   {
+    "id": "gemini",
+    "ratio": 0.55
+   },
+   {
+    "id": "codex",
+    "ratio": 0.3
+   }
+  ]
+ },
+ {
+  "name": "end_override_half",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22,
+    "topRight": 30,
+    "bottomRight": 0,
+    "bottomLeft": 0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop"
+     ],
+     "hCaps": {
+      "hTop.R": "down"
+     }
+    },
+    "gemini": {
+     "anchorCorner": "topRight",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "rMain"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.6
+   },
+   {
+    "id": "gemini",
+    "ratio": 0.6
+   }
+  ]
+ },
+ {
+  "name": "end_override_half_bottom",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 0,
+    "topRight": 0,
+    "bottomRight": 30,
+    "bottomLeft": 30
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ],
+     "hCaps": {
+      "hBottom.L": "up"
+     }
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.7
+   },
+   {
+    "id": "gemini",
+    "ratio": 0.7
+   }
+  ]
+ },
+ {
+  "name": "subitems_claude",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [
+    "claude"
+   ],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.8,
+    "fiveHour": 0.8,
+    "weekly": 0.5,
+    "models": [
+     {
+      "label": "Fable",
+      "ratio": 0.2,
+      "fiveHour": false
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "subitems_claude_hidden_color",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hBottom"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": false,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [
+    "claude"
+   ],
+   "subItemColors": {
+    "claude/model:Fable:weekly": [
+     0.9,
+     0.1,
+     0.1,
+     1.0
+    ]
+   },
+   "subItemBarHidden": [
+    "claude/weekly"
+   ]
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.8,
+    "fiveHour": 0.8,
+    "weekly": 0.5,
+    "models": [
+     {
+      "label": "Fable",
+      "ratio": 0.2,
+      "fiveHour": false
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "subitems_two_ais",
+  "screen": [
+   600,
+   400
+  ],
+  "settings": {
+   "thickness": 3.0,
+   "colorRGBA": [
+    0.3,
+    0.82,
+    0.45,
+    1.0
+   ],
+   "edges": [
+    "top",
+    "right",
+    "bottom",
+    "left"
+   ],
+   "cornerRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "showTrack": true,
+   "notchEnabled": false,
+   "notchWidth": 186.0,
+   "notchHeight": 33.0,
+   "notchRadii": {
+    "outerLeft": 5.0,
+    "outerRight": 5.0,
+    "innerLeft": 12.0,
+    "innerRight": 12.0
+   },
+   "anchorCorner": "topLeft",
+   "anchorSide": "center",
+   "anchorClockwise": true,
+   "lineOpacity": 1.0,
+   "fadeEnabled": true,
+   "fadeFraction": 0.012,
+   "providerColors": {
+    "claude": [
+     0.85,
+     0.47,
+     0.34,
+     1.0
+    ],
+    "gemini": [
+     0.26,
+     0.52,
+     0.96,
+     1.0
+    ],
+    "codex": [
+     0.06,
+     0.64,
+     0.5,
+     1.0
+    ]
+   },
+   "providerLayouts": {
+    "claude": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop",
+      "hBottom",
+      "lMain",
+      "rMain"
+     ]
+    },
+    "gemini": {
+     "anchorCorner": "topLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "hTop"
+     ]
+    },
+    "codex": {
+     "anchorCorner": "bottomLeft",
+     "anchorSide": "center",
+     "clockwise": true,
+     "segments": [
+      "lMain"
+     ]
+    }
+   },
+   "menuLineEnabled": false,
+   "menuLineHeight": 25.0,
+   "dockLineEnabled": false,
+   "dockLineHeight": 70.0,
+   "menuZoneRadii": {
+    "topLeft": 22.0,
+    "topRight": 22.0,
+    "bottomRight": 22.0,
+    "bottomLeft": 22.0
+   },
+   "dockZoneRadii": {
+    "topLeft": 12.0,
+    "topRight": 12.0,
+    "bottomRight": 12.0,
+    "bottomLeft": 12.0
+   },
+   "globalSegments": [
+    "hTop",
+    "hBottom",
+    "lMain",
+    "rMain"
+   ],
+   "splitOverlapLines": true,
+   "noOverlapLines": false,
+   "subItemSplitIDs": [
+    "claude",
+    "gemini"
+   ],
+   "subItemColors": {},
+   "subItemBarHidden": []
+  },
+  "ais": [
+   {
+    "id": "claude",
+    "ratio": 0.8,
+    "fiveHour": 0.8,
+    "weekly": 0.5,
+    "models": [
+     {
+      "label": "Fable",
+      "ratio": 0.2,
+      "fiveHour": false
+     }
+    ]
+   },
+   {
+    "id": "gemini",
+    "ratio": 0.6,
+    "fiveHour": 0.6,
+    "weekly": 0.35
+   }
+  ]
+ }
+]

@@ -3,6 +3,14 @@ name = "um-render"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+description = "UsageMeter 그리기: 테두리 기하(Swift SegmentChainShape 이식)와 tiny-skia 렌더"
 
 [dependencies]
 um-core.workspace = true
+kurbo.workspace = true
+tiny-skia.workspace = true
+
+[dev-dependencies]
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
