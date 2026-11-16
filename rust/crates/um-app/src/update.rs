@@ -33,6 +33,72 @@ pub fn current_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
+/// Homebrew 등으로 번들이 교체되면 종료 후 다시 연다(Swift UpdateChecker.swift:62-85).
+#[cfg(all(target_os = "macos", not(feature = "store")))]
+pub fn watch_bundle_replacement(app: &tauri::AppHandle) {
+    let Ok(exe) = std::env::current_exe() else { return };
+    // 개발용 실행 파일은 제외하고 .app/Contents/MacOS 안에서 실행 중일 때만 감시한다.
+    let Some(macos) = exe.parent().filter(|p| p.file_name().is_some_and(|n| n == "MacOS")) else { return };
+    let Some(contents) = macos.parent().filter(|p| p.file_name().is_some_and(|n| n == "Contents")) else { return };
+    let Some(bundle) = contents.parent().filter(|p| p.extension().is_some_and(|e| e == "app")) else { return };
+    let plist = contents.join("Info.plist");
+    let Some(running) = bundle_build(&plist) else { return };
+    let bundle = bundle.to_path_buf();
+    let app = app.clone();
+    std::thread::spawn(move || {
+        let mut last = None;
+        loop {
+            std::thread::sleep(Duration::from_secs(10));
+            let on_disk = bundle_build(&plist);
+            // 복사 중인 번들·읽기 실패는 제외한다. 바뀐 번호가 두 번 연속 같아야 한다.
+            let replaced = replacement_ready(&running, last.as_deref(), on_disk.as_deref());
+            last = on_disk;
+            if !replaced {
+                continue;
+            }
+            // 현재 프로세스가 끝난 뒤 보통 방식으로 연다. 새 인스턴스 옵션은 쓰지 않는다.
+            match std::process::Command::new("/bin/sh")
+                .args(["-c", "while kill -0 \"$0\" 2>/dev/null; do sleep 0.2; done; exec /usr/bin/open -g \"$1\""])
+                .arg(std::process::id().to_string())
+                .arg(&bundle)
+                .spawn()
+            {
+                Ok(_) => {
+                    app.exit(0);
+                    return;
+                }
+                Err(e) => tracing::warn!("번들 교체 후 재실행 준비 실패: {e}"),
+            }
+        }
+    });
+}
+
+#[cfg(all(target_os = "macos", not(feature = "store")))]
+fn bundle_build(path: &std::path::Path) -> Option<String> {
+    let plist = plist::Value::from_file(path).ok()?;
+    plist.as_dictionary()?.get("CFBundleVersion")?.as_string().map(String::from)
+}
+
+#[cfg(all(target_os = "macos", not(feature = "store")))]
+fn replacement_ready(running: &str, last: Option<&str>, on_disk: Option<&str>) -> bool {
+    on_disk.is_some_and(|build| build != running && Some(build) == last)
+}
+
+#[cfg(all(test, target_os = "macos", not(feature = "store")))]
+mod bundle_tests {
+    use super::replacement_ready;
+
+    #[test]
+    fn waits_for_two_matching_new_builds() {
+        assert!(!replacement_ready("1", None, Some("2")));
+        assert!(!replacement_ready("1", Some("2"), Some("3")));
+        assert!(replacement_ready("1", Some("2"), Some("2")));
+        assert!(!replacement_ready("1", Some("1"), Some("1")));
+        assert!(!replacement_ready("1", Some("2"), None));
+        assert!(!replacement_ready("1", None, Some("2")));
+    }
+}
+
 /// 이 OS용 내려받기 파일: macOS는 .zip, Windows는 설치 파일(-setup.exe).
 fn pick_asset(assets: &[Value]) -> Option<String> {
     let want: &[&str] = if cfg!(windows) { &["-setup.exe", ".msi"] } else { &[".zip"] };

@@ -5019,7 +5019,7 @@ checksum = "b6f5e870be6c3b371b77fe0ee0bafb859fa4964b4404c27de1d380043c4dda20"
 
 [[package]]
 name = "um-app"
-version = "2.0.0-alpha.0"
+version = "2.0.0-beta.1"
 dependencies = [
  "arboard",
  "chrono",
@@ -5028,6 +5028,7 @@ dependencies = [
  "objc2-foundation",
  "objc2-web-kit",
  "open",
+ "plist",
  "qrcode",
  "reqwest",
  "serde_json",
@@ -5046,7 +5047,7 @@ dependencies = [
 
 [[package]]
 name = "um-core"
-version = "2.0.0-alpha.0"
+version = "2.0.0-beta.1"
 dependencies = [
  "chrono",
  "plist",
@@ -5058,7 +5059,7 @@ dependencies = [
 
 [[package]]
 name = "um-locallogs"
-version = "2.0.0-alpha.0"
+version = "2.0.0-beta.1"
 dependencies = [
  "chrono",
  "directories",
@@ -5072,7 +5073,7 @@ dependencies = [
 
 [[package]]
 name = "um-platform"
-version = "2.0.0-alpha.0"
+version = "2.0.0-beta.1"
 dependencies = [
  "block2",
  "objc2",
@@ -5087,7 +5088,7 @@ dependencies = [
 
 [[package]]
 name = "um-providers"
-version = "2.0.0-alpha.0"
+version = "2.0.0-beta.1"
 dependencies = [
  "chrono",
  "serde",
@@ -5097,7 +5098,7 @@ dependencies = [
 
 [[package]]
 name = "um-render"
-version = "2.0.0-alpha.0"
+version = "2.0.0-beta.1"
 dependencies = [
  "chrono",
  "cosmic-text",

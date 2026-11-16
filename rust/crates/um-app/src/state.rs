@@ -8,7 +8,11 @@ use um_core::model::UsageSnapshot;
 use um_core::settings::{SavedPreset, Settings};
 use um_providers::state::ProviderState;
 
-/// 개발 중에는 Swift 버전과 섞이지 않게 따로 저장한다(번들 id도 `com.usagemeter.app.rs-dev`).
+/// 정식판은 Swift 폴더에 Rust 파일만 추가한다. Swift 설정·history.json은 읽기만 한다.
+#[cfg(feature = "production")]
+const DATA_DIR_NAME: &str = "UsageMeter";
+/// 개발 중에는 Swift 버전과 섞이지 않게 따로 저장한다.
+#[cfg(not(feature = "production"))]
 const DATA_DIR_NAME: &str = "UsageMeter-rs";
 
 pub struct AppState {

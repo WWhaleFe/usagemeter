@@ -15,7 +15,7 @@ CI: macOS, Windows x64, Windows ARM64에서 `cargo test --workspace` + `clippy -
 | 5 설정 창 | 화면 완료(macOS 확인) | 11개 탭 전부(Windows는 9개), 상단 영역, 선 위치 끌기 화면(macOS). 남음: 사람이 직접 눌러 보는 확인(토글·다이어그램·끌기·Esc), Windows 스킨 실기 확인 |
 | 6 분석 + 로컬 기록 | 화면 완료(macOS 확인) | 한도 보기(v1.5.0 분석 이식), 토큰 보기(로컬 기록, 공용 팔레트), 처음 열 때 동의 안내, 설정 표시 탭에서 소스별 켜기. 남음: Antigravity 토큰 필드 의미 검증, 한도 환산·API 환산 비용 |
 | 7 Windows 마무리 | 시작 전 | MSIX(Store)·NSIS, ARM64 |
-| 8 macOS 마무리·전환 | 시작 전 | |
+| 8 macOS 마무리·전환 | 패키징 구현 | 2.0.0-beta.1, 정식판 설정·데이터 경로, 번들 교체 감지, universal·ad-hoc 서명·zip 스크립트. 남음: 베타 운영·전환 확인 |
 
 ## 측정값
 
@@ -39,6 +39,8 @@ CI: macOS, Windows x64, Windows ARM64에서 `cargo test --workspace` + `clippy -
 ## 알아 둘 점
 
 - **푸시 전 검사**: `rust/tools/check.sh`(macOS 테스트·clippy, Windows x64·ARM64 clippy를 `cargo xwin`으로 교차 검사, 경로 구분자 함정 검사). `git config core.hooksPath .githooks`로 pre-push 훅이 rust/ 변경 시 자동 실행한다. 필요: Homebrew `llvm`·`lld`, `cargo install cargo-xwin`.
+- 검증(2026-11-16): `tools/check.sh` 통과(테스트 130개 성공·기존 1개 무시, macOS·Windows x64·ARM64 clippy). `tools/release-mac.sh` 실행 성공, zip 10,656,396바이트. arm64·x86_64, ad-hoc 서명, 번들과 zip 내부의 id·LSUIElement·2.0.0-beta.1·최소 macOS 14.0 확인. 앱은 실행하지 않음. 제한 환경에서는 로컬 npm CLI 캐시와 `/tmp`에 복사한 cargo-xwin 캐시를 사용함.
+- macOS 정식판 패키징: `rust/tools/release-mac.sh`. UI를 빌드한 뒤 `production` 기능과 `tauri.release.conf.json`으로 universal 앱을 만들고 ad-hoc 서명·아키텍처 확인 후 `rust/dist/UsageMeter-v<버전>-macos.zip`에 저장한다. 번들 id는 `com.usagemeter.app`, 데이터는 `UsageMeter` 폴더에 Rust 파일만 추가한다. Swift 설정·`history.json`은 읽기만 하며, `settings.json`이 없을 때만 가져온다. `Info.plist`의 `LSUIElement=true`로 시작부터 Dock 아이콘을 숨긴다.
 - 개발 실행: `cargo run -p um-app --release`. 데이터는 `~/Library/Application Support/UsageMeter-rs/`(Swift 버전과 분리). Swift 앱과 동시에 켜면 테두리가 겹치므로 하나만 켠다.
 
 - `rust/tools/border-fixtures`: 실제 Swift `BorderView`로 기준 이미지를 다시 뽑는 도구(`./build.sh run`).

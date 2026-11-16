@@ -401,6 +401,8 @@ fn main() {
             apply_text_locale(lang);
             let menu = menu::build(app.handle(), &shared_state.lock().unwrap())?;
             if !headless() {
+                #[cfg(all(target_os = "macos", not(feature = "store")))]
+                update::watch_bundle_replacement(app.handle());
                 TrayIconBuilder::with_id(TRAY_ID)
                     .menu(&menu)
                     // macOS: 왼쪽 클릭 = 정보 패널, 오른쪽 클릭 = 메뉴(결정 D1). 그 밖은 아직 왼쪽 클릭 메뉴.
