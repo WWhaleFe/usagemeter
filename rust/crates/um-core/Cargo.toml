@@ -1,0 +1,14 @@
+[package]
+name = "um-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "UsageMeter 순수 로직: 모델, 설정, 세그먼트 그래프, 문자열, 이력, 분석"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+rusqlite.workspace = true
+plist.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
