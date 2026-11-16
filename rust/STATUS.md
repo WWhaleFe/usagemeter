@@ -12,8 +12,8 @@ CI: macOS, Windows x64, Windows ARM64에서 `cargo test --workspace` + `clippy -
 | 2 수집(`um-providers` + `um-app/web.rs`) | 앱에서 동작 | 응답 해석(웹뷰 경로·직접 호출 경로 결과 일치), agy 해석·실행 파일 탐색, 상태 반영 규칙. 남음: 웹뷰·HTTP 전송 계층, 로그인 창, 스케줄러 |
 | 3 테두리 | 앱에서 동작 | `um-render` 기하·그리기(Swift 기준 이미지 55장 비교 통과), `um-platform` 띠 창(macOS NSWindow+CALayer, Windows 레이어드 창, Windows CI에서 실제 창 생성). 남음: 디스플레이 관리·장치 맞춤 연결 |
 | 4 트레이·호버·패널 | macOS 완료 | 테두리·메뉴바 호버, 왼쪽 클릭 정보 카드 + 미니 차트(차트 호버 값), 오른쪽 클릭 전체 메뉴(표시 정보·갱신 주기·언어·로그인·프리셋·테두리 숨기기·기기 맞춤·리포트·후원·버전·업데이트 확인/내려받기·종료), 메뉴 열면 호버 숨김, 닫힌 패널은 그림 해제(50→40 MB). 남음: Windows 플라이아웃(S9), 프리셋 이름 입력(설정 창에서) |
-| 5 설정 창 | 시작 전 | Svelte, macOS·Windows(Fluent) 스킨 |
-| 6 분석 + 로컬 기록 | 수집기 완료 | `um-locallogs`(Claude Code·Codex·Antigravity 증분 수집, 기본 꺼짐). 남음: agy 필드 의미 검증, 분석 화면 |
+| 5 설정 창 | 화면 완료(macOS 확인) | 11개 탭 전부(Windows는 9개), 상단 영역, 선 위치 끌기 화면(macOS). 남음: 사람이 직접 눌러 보는 확인(토글·다이어그램·끌기·Esc), Windows 스킨 실기 확인 |
+| 6 분석 + 로컬 기록 | 화면 완료(macOS 확인) | 한도 보기(v1.5.0 분석 이식), 토큰 보기(로컬 기록, 공용 팔레트), 처음 열 때 동의 안내, 설정 표시 탭에서 소스별 켜기. 남음: Antigravity 토큰 필드 의미 검증, 한도 환산·API 환산 비용 |
 | 7 Windows 마무리 | 시작 전 | MSIX(Store)·NSIS, ARM64 |
 | 8 macOS 마무리·전환 | 시작 전 | |
 
