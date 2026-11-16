@@ -16,7 +16,9 @@ use std::time::Duration;
 
 use tauri::image::Image;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
-use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::tray::TrayIconBuilder;
+#[cfg(target_os = "macos")]
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconEvent};
 use tauri::{AppHandle, Manager, Wry};
 use um_core::i18n::tr;
 use um_core::model::{UsageSnapshot, UsageStatus};
@@ -461,7 +463,7 @@ fn main() {
                             }
                         }
                         #[cfg(not(target_os = "macos"))]
-                        let _ = (tray, e, MouseButton::Left, MouseButtonState::Up);
+                        let _ = (tray, e);
                     })
                     .on_menu_event(move |app, e| match e.id().as_ref() {
                         "refresh" => {
