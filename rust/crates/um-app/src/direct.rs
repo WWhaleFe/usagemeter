@@ -77,7 +77,8 @@ pub fn probe_with(c: &Client, spec: &ProviderSpec) -> Value {
                 Ok(t) => t,
                 Err(v) => return v,
             };
-            let (plan, account) = match token.as_deref() {
+            // 반환 순서는 (계정 ID, 플랜)이다.
+            let (account, plan) = match token.as_deref() {
                 Some(t) => {
                     let (st, body) = send(c, &d::codex_account_request(t));
                     d::codex_account_from_check(st, body.as_ref())

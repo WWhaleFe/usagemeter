@@ -4,6 +4,8 @@
 mod data;
 mod direct;
 mod overlay;
+#[cfg(target_os = "macos")]
+mod panels;
 mod state;
 mod web;
 
@@ -14,7 +16,7 @@ use std::time::Duration;
 
 use tauri::image::Image;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
-use tauri::tray::TrayIconBuilder;
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, Wry};
 use um_core::i18n::tr;
 use um_core::model::{UsageSnapshot, UsageStatus};
@@ -142,7 +144,8 @@ fn update_tray(app: &AppHandle, st: &AppState) {
     if tip.is_empty() {
         tip.push(tr("menu.noAI", lang));
     }
-    let _ = tray.set_tooltip(Some(tip.join("\n")));
+    // macOS는 호버 패널이 같은 정보를 보여주므로 시스템 툴팁을 끈다(겹쳐 보임). Windows는 플라이아웃 전까지 툴팁.
+    let _ = tray.set_tooltip(if cfg!(target_os = "macos") { None } else { Some(tip.join("\n")) });
 }
 
 /// AI 하나 조회. Gemini는 agy를 먼저, 없으면 웹. (Swift WebSession.fetchUsage)
@@ -346,6 +349,25 @@ fn login_and_refresh(
     ok
 }
 
+/// 트레이 아이콘 영역(Tauri: 물리 px, 왼쪽 위 원점) → 전역 AppKit 좌표(pt, 왼쪽 아래 원점).
+#[cfg(target_os = "macos")]
+fn tray_rect(app: &AppHandle, r: &tauri::Rect) -> panels::Rect {
+    let scale = app.primary_monitor().ok().flatten().map(|m| m.scale_factor()).unwrap_or(2.0);
+    let pos = r.position.to_logical::<f64>(scale);
+    let size = r.size.to_logical::<f64>(scale);
+    let primary_h = um_platform::display::displays().first().map(|d| d.height_pt).unwrap_or(0.0);
+    panels::Rect { x: pos.x, y: primary_h - pos.y - size.height, w: size.width, h: size.height }
+}
+
+/// 패널 글꼴 로케일을 앱 언어에 맞춘다(같은 한자도 언어별 글꼴 모양).
+fn apply_text_locale(lang: um_core::types::AppLanguage) {
+    um_render::text::set_locale(match lang {
+        um_core::types::AppLanguage::Korean => "ko-KR",
+        um_core::types::AppLanguage::English => "en-US",
+        um_core::types::AppLanguage::Japanese => "ja-JP",
+    });
+}
+
 fn main() {
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
@@ -381,6 +403,7 @@ fn main() {
                     st.main.provider_order.clone(),
                 )
             };
+            apply_text_locale(lang);
             let hide = CheckMenuItem::with_id(
                 app,
                 "hide",
@@ -422,7 +445,24 @@ fn main() {
             if !headless() {
                 TrayIconBuilder::with_id(TRAY_ID)
                     .menu(&menu)
-                    .show_menu_on_left_click(true)
+                    // macOS: 왼쪽 클릭 = 정보 패널, 오른쪽 클릭 = 메뉴(결정 D1). 그 밖은 아직 왼쪽 클릭 메뉴.
+                    .show_menu_on_left_click(cfg!(not(target_os = "macos")))
+                    .on_tray_icon_event(|tray, e| {
+                        #[cfg(target_os = "macos")]
+                        {
+                            let app = tray.app_handle();
+                            match e {
+                                TrayIconEvent::Enter { rect, .. } => panels::tray_hover(app, tray_rect(app, &rect), true),
+                                TrayIconEvent::Leave { rect, .. } => panels::tray_hover(app, tray_rect(app, &rect), false),
+                                TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, rect, .. } => {
+                                    panels::toggle_card(app, tray_rect(app, &rect))
+                                }
+                                _ => {}
+                            }
+                        }
+                        #[cfg(not(target_os = "macos"))]
+                        let _ = (tray, e, MouseButton::Left, MouseButtonState::Up);
+                    })
                     .on_menu_event(move |app, e| match e.id().as_ref() {
                         "refresh" => {
                             let app = app.clone();
@@ -446,6 +486,8 @@ fn main() {
                         }
                     })
                     .build(app)?;
+                #[cfg(target_os = "macos")]
+                panels::init(app.handle());
             }
             redraw(app.handle());
 
@@ -480,6 +522,8 @@ fn main() {
                     let h2 = h.clone();
                     let _ = h.run_on_main_thread(move || {
                         if OVERLAY.with(|o| o.borrow_mut().check_displays()) {
+                            #[cfg(target_os = "macos")]
+                            panels::refresh_displays();
                             redraw(&h2);
                         }
                     });

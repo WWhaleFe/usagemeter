@@ -18,6 +18,40 @@ pub use mac::panel::InfoPanel;
 #[cfg(windows)]
 pub use win::overlay::OverlayStrip;
 
+/// 시스템이 어두운 모드인지(앱 외관이 "시스템"일 때 패널 글자색을 정한다).
+pub fn system_dark() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        let Some(mtm) = objc2::MainThreadMarker::new() else { return false };
+        let app = objc2_app_kit::NSApplication::sharedApplication(mtm);
+        app.effectiveAppearance().name().to_string().contains("Dark")
+    }
+    #[cfg(windows)]
+    {
+        // HKCU\...\Personalize\AppsUseLightTheme = 0 이면 어두운 모드.
+        use windows::Win32::System::Registry::{HKEY_CURRENT_USER, RRF_RT_REG_DWORD, RegGetValueW};
+        use windows::core::w;
+        let mut v: u32 = 1;
+        let mut n = size_of::<u32>() as u32;
+        let r = unsafe {
+            RegGetValueW(
+                HKEY_CURRENT_USER,
+                w!("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"),
+                w!("AppsUseLightTheme"),
+                RRF_RT_REG_DWORD,
+                None,
+                Some(&mut v as *mut u32 as *mut _),
+                Some(&mut n),
+            )
+        };
+        r.is_ok() && v == 0
+    }
+    #[cfg(not(any(target_os = "macos", windows)))]
+    {
+        false
+    }
+}
+
 /// 띠 창 위치·크기. macOS = 전역 AppKit 좌표(pt, 왼쪽 아래 원점),
 /// Windows = 가상 화면 물리 픽셀(왼쪽 위 원점). 변환은 호출하는 디스플레이 층이 맡는다.
 #[derive(Debug, Clone, Copy, PartialEq)]

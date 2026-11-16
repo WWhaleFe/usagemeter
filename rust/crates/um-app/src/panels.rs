@@ -1,0 +1,322 @@
+//! 호버 패널과 메뉴바 정보 패널(계획서 5-3, 5-4, 결정 D1).
+//! - 테두리 호버: 커서가 선이 있는 변 근처면 커서 옆에 사용량 글을 띄운다(Swift HoverInfoController).
+//! - 메뉴바 아이콘 호버: 같은 글을 아이콘 아래에.
+//! - 메뉴바 아이콘 왼쪽 클릭: 정보 카드(+ 미니 차트) 패널을 열고 닫는다. 오른쪽 클릭은 전체 메뉴.
+//!
+//! macOS 전용(메인 스레드). Windows 플라이아웃은 0단계 S9 확인 뒤 붙인다.
+
+use std::cell::RefCell;
+
+use chrono::{Local, Utc};
+use tauri::AppHandle;
+use um_core::menu_text::{self, ActiveAi, InfoSection};
+use um_core::settings::{AppAppearance, Settings};
+use um_platform::InfoPanel;
+use um_platform::display::{self, DisplayInfo};
+use um_platform::mouse::{MouseKind, MouseMonitor};
+use um_render::border::{provider_color, sub_item_color};
+use um_render::panel::{self, CardLine, CardSection, ChartSeries, ChartSpec, HoverLine, Theme};
+
+use crate::state::AppState;
+
+/// 호버 패널 최대 폭(pt).
+const HOVER_MAX_W: f32 = 520.0;
+/// 패널을 커서·아이콘에서 띄우는 거리(Swift HoverInfoController.swift:137-159).
+const CURSOR_GAP: f64 = 14.0;
+const BAR_GAP: f64 = 6.0;
+
+/// 메뉴바 아이콘 영역(전역 AppKit 좌표: 왼쪽 아래 원점, pt).
+#[derive(Clone, Copy)]
+pub struct Rect {
+    pub x: f64,
+    pub y: f64,
+    pub w: f64,
+    pub h: f64,
+}
+
+impl Rect {
+    fn contains(&self, x: f64, y: f64) -> bool {
+        x >= self.x && x <= self.x + self.w && y >= self.y && y <= self.y + self.h
+    }
+}
+
+struct Panels {
+    hover: InfoPanel,
+    card: InfoPanel,
+    card_open: bool,
+    /// 메뉴바 아이콘 위에 커서가 있음(테두리 판정보다 우선).
+    over_tray: bool,
+    tray: Option<Rect>,
+    /// 마지막으로 그린 호버 글(같으면 위치만 옮긴다).
+    hover_key: String,
+    displays: Vec<DisplayInfo>,
+    _mouse: MouseMonitor,
+}
+
+thread_local! {
+    static PANELS: RefCell<Option<Panels>> = const { RefCell::new(None) };
+}
+
+/// 앱 시작 때 한 번(메인 스레드).
+pub fn init(app: &AppHandle) {
+    let (Ok(hover), Ok(card)) = (InfoPanel::new(7.0), InfoPanel::new(10.0)) else {
+        tracing::warn!("정보 패널을 만들지 못했습니다");
+        return;
+    };
+    let h = app.clone();
+    let mouse = MouseMonitor::start(move |x, y, kind| on_mouse(&h, x, y, kind));
+    PANELS.with(|p| {
+        *p.borrow_mut() = Some(Panels { hover, card, card_open: false, over_tray: false, tray: None, hover_key: String::new(), displays: display::displays(), _mouse: mouse })
+    });
+}
+
+/// 화면 구성이 바뀌면 다시 읽는다.
+pub fn refresh_displays() {
+    PANELS.with(|p| {
+        if let Some(p) = p.borrow_mut().as_mut() {
+            p.displays = display::displays();
+        }
+    });
+}
+
+fn theme(s: &Settings) -> Theme {
+    Theme {
+        dark: match s.appearance {
+            AppAppearance::Dark => true,
+            AppAppearance::Light => false,
+            AppAppearance::System => um_platform::system_dark(),
+        },
+    }
+}
+
+fn sections(st: &AppState) -> Vec<InfoSection> {
+    let names: Vec<(String, &'static str)> =
+        st.snapshots.keys().map(|id| (id.clone(), um_providers::spec::spec(id).map(|s| s.name).unwrap_or("AI"))).collect();
+    let active: Vec<ActiveAi> = names.iter().filter_map(|(id, name)| st.snapshots.get(id).map(|s| (id.as_str(), *name, s))).collect();
+    let now = Utc::now();
+    let ts = now.timestamp_millis() as f64 / 1000.0;
+    menu_text::info_sections(&st.main, &active, |id| st.history.as_ref().and_then(|db| db.pace(id, ts).ok().flatten()), now, &Local)
+}
+
+fn dot_color(st: &AppState, provider: &str, item: &Option<String>) -> Option<um_core::types::Rgba> {
+    let item = item.as_ref()?;
+    let items = st.snapshots.get(provider)?.sub_items();
+    Some(sub_item_color(&st.main, provider, item, &items))
+}
+
+/// 호버 글(Swift 호버 문자열과 같은 구성: AI 이름 줄, 정보 줄, AI 사이 빈 줄).
+fn hover_lines(st: &AppState) -> Vec<HoverLine> {
+    let secs = sections(st);
+    if secs.is_empty() {
+        return vec![HoverLine { text: menu_text::no_ai_text(st.main.language), dot: None }];
+    }
+    let mut out = vec![];
+    for (i, s) in secs.iter().enumerate() {
+        if i > 0 {
+            out.push(HoverLine { text: String::new(), dot: None });
+        }
+        out.push(HoverLine { text: s.name.clone(), dot: None });
+        for l in &s.lines {
+            let dot = dot_color(st, &s.id, &l.dot_item);
+            let text = if dot.is_some() { format!("● {}", l.text) } else { l.text.clone() };
+            out.push(HoverLine { text, dot });
+        }
+    }
+    out
+}
+
+/// 정보 카드 + (켜져 있으면) 미니 차트를 한 장으로.
+fn card_image(st: &AppState, scale: f32) -> panel::Rendered {
+    let th = theme(&st.main);
+    let secs = sections(st);
+    let cards: Vec<CardSection> = secs
+        .iter()
+        .map(|s| CardSection {
+            name: s.name.clone(),
+            color: provider_color(&st.main, &s.id),
+            plan: s.plan.clone().filter(|p| !p.is_empty()),
+            lines: s.lines.iter().map(|l| CardLine { text: l.text.clone(), dot: dot_color(st, &s.id, &l.dot_item) }).collect(),
+        })
+        .collect();
+    let empty = menu_text::no_ai_text(st.main.language);
+    let card = panel::render_card(&cards, Some(&empty), th, scale);
+    if !st.main.menu_show_chart {
+        return card;
+    }
+    let hours = st.main.chart_hours as f64;
+    let now = Utc::now().timestamp_millis() as f64 / 1000.0;
+    let series: Vec<ChartSeries> = st
+        .snapshots
+        .keys()
+        .filter_map(|id| {
+            let pts = st.history.as_ref()?.series(id, now - hours * 3600.0).ok()?;
+            (pts.len() >= 2).then(|| ChartSeries {
+                name: um_providers::spec::spec(id).map(|s| s.name).unwrap_or("AI").to_string(),
+                color: provider_color(&st.main, id),
+                points: pts.iter().map(|p| (p.t, p.r)).collect(),
+            })
+        })
+        .collect();
+    if series.is_empty() {
+        return card;
+    }
+    // x 눈금 3개: 기간을 4등분한 지점의 정시(로컬 "HH").
+    let labels: Vec<(f64, String)> = (1..=3)
+        .filter_map(|k| {
+            let t = now - hours * 3600.0 * (4 - k) as f64 / 4.0;
+            let lt = chrono::DateTime::from_timestamp(t as i64, 0)?.with_timezone(&Local);
+            Some((t, lt.format("%H").to_string()))
+        })
+        .collect();
+    let title = um_core::i18n::tn("chart.titleFmt", st.main.language, st.main.chart_hours as i64);
+    let chart = panel::render_chart(
+        &ChartSpec { title: &title, series: &series, width: card.width, now, hours, x_labels: &labels, hover_x: None },
+        th,
+        scale,
+    );
+    stack(card, chart, scale)
+}
+
+/// 두 그림을 위아래로 붙인다.
+fn stack(a: panel::Rendered, b: panel::Rendered, scale: f32) -> panel::Rendered {
+    let w = a.pixmap.width().max(b.pixmap.width());
+    let h = a.pixmap.height() + b.pixmap.height();
+    let mut pm = tiny_skia::Pixmap::new(w, h).expect("panel size");
+    let paint = tiny_skia::PixmapPaint::default();
+    pm.draw_pixmap(0, 0, a.pixmap.as_ref(), &paint, tiny_skia::Transform::identity(), None);
+    pm.draw_pixmap(0, a.pixmap.height() as i32, b.pixmap.as_ref(), &paint, tiny_skia::Transform::identity(), None);
+    panel::Rendered { pixmap: pm, width: w as f32 / scale, height: h as f32 / scale }
+}
+
+fn screen_of(ds: &[DisplayInfo], x: f64, y: f64) -> Option<(&DisplayInfo, f64, f64)> {
+    ds.iter().find_map(|d| d.to_local(x, y).map(|(lx, ly)| (d, lx, ly)))
+}
+
+/// 패널을 화면 안에 들어가게 놓을 위치(전역 좌표, 왼쪽 아래 기준).
+fn clamp_to_screen(d: &DisplayInfo, x: f64, y: f64, w: f64, h: f64) -> (f64, f64) {
+    let (left, top) = d.to_global(0.0, 0.0);
+    let (right, bottom) = (left + d.width_pt, top - d.height_pt);
+    (x.clamp(left + 4.0, (right - w - 4.0).max(left + 4.0)), y.clamp(bottom + 4.0, (top - h).max(bottom + 4.0)))
+}
+
+/// 커서 옆(+14, 위로). 화면을 넘으면 반대쪽으로. (Swift HoverInfoController.swift:148-159)
+fn near_cursor(d: &DisplayInfo, cx: f64, cy: f64, w: f64, h: f64) -> (f64, f64) {
+    let (left, top) = d.to_global(0.0, 0.0);
+    let right = left + d.width_pt;
+    let mut x = cx + CURSOR_GAP;
+    let mut y = cy + CURSOR_GAP;
+    if x + w > right {
+        x = cx - w - CURSOR_GAP;
+    }
+    if y + h > top {
+        y = cy - h - CURSOR_GAP;
+    }
+    (x, y)
+}
+
+fn show_hover_at(p: &mut Panels, st: &AppState, place: impl Fn(f64, f64) -> (f64, f64)) {
+    let lines = hover_lines(st);
+    let key: String = lines.iter().map(|l| l.text.as_str()).collect::<Vec<_>>().join("\n");
+    let scale = p.displays.first().map(|d| d.scale).unwrap_or(2.0) as f32;
+    if key != p.hover_key || !p.hover.is_visible() {
+        let r = panel::render_hover(&lines, HOVER_MAX_W, theme(&st.main), scale);
+        let (x, y) = place(r.width as f64, r.height as f64);
+        if p.hover.show(r.pixmap.data(), r.pixmap.width(), r.pixmap.height(), scale as f64, x, y).is_ok() {
+            p.hover_key = key;
+        }
+    } else {
+        let (w, h) = p.hover.size();
+        let (x, y) = place(w, h);
+        p.hover.move_to(x, y);
+    }
+}
+
+fn hide_hover(p: &mut Panels) {
+    if p.hover.is_visible() {
+        p.hover.hide();
+    }
+}
+
+fn with<R>(f: impl FnOnce(&mut Panels) -> R) -> Option<R> {
+    PANELS.with(|p| p.borrow_mut().as_mut().map(f))
+}
+
+fn on_mouse(app: &AppHandle, x: f64, y: f64, kind: MouseKind) {
+    let st = crate::shared(app);
+    let Ok(st) = st.try_lock() else { return };
+    with(|p| {
+        if kind == MouseKind::Down {
+            let (fx, fy, fw, fh) = p.card.frame();
+            let in_card = Rect { x: fx, y: fy, w: fw, h: fh }.contains(x, y);
+            let in_tray = p.tray.is_some_and(|r| r.contains(x, y));
+            if p.card_open && !in_card && !in_tray {
+                p.card.hide();
+                p.card_open = false;
+            }
+            return;
+        }
+        if p.card_open || p.over_tray {
+            if p.card_open {
+                hide_hover(p);
+            }
+            return;
+        }
+        let Some((d, lx, ly)) = screen_of(&p.displays, x, y) else { return hide_hover(p) };
+        let enabled = !st.disabled_displays.contains(&d.id);
+        let ds = st.settings_for_display(&d.id);
+        if enabled && um_core::hover::border_hover_hit(&ds, &st.main, d.width_pt, d.height_pt, lx, ly) {
+            let d = d.clone();
+            show_hover_at(p, &st, |w, h| near_cursor(&d, x, y, w, h));
+        } else {
+            hide_hover(p);
+        }
+    });
+}
+
+/// 메뉴바 아이콘에 커서가 들어오거나 나감. `rect` = 아이콘 영역(전역 AppKit 좌표).
+pub fn tray_hover(app: &AppHandle, rect: Rect, inside: bool) {
+    let st = crate::shared(app);
+    let Ok(st) = st.try_lock() else { return };
+    with(|p| {
+        p.tray = Some(rect);
+        p.over_tray = inside;
+        if !inside || p.card_open || !st.main.menu_bar_hover_info_enabled {
+            return hide_hover(p);
+        }
+        let ds = p.displays.clone();
+        let cx = rect.x + rect.w / 2.0;
+        show_hover_at(p, &st, |w, h| {
+            let y = rect.y - h - BAR_GAP;
+            match screen_of(&ds, cx, rect.y + rect.h / 2.0) {
+                Some((d, _, _)) => clamp_to_screen(d, cx - w / 2.0, y, w, h),
+                None => (cx - w / 2.0, y),
+            }
+        });
+    });
+}
+
+/// 메뉴바 아이콘 왼쪽 클릭: 정보 패널 열기/닫기.
+pub fn toggle_card(app: &AppHandle, rect: Rect) {
+    let st = crate::shared(app);
+    let Ok(st) = st.lock() else { return };
+    with(|p| {
+        p.tray = Some(rect);
+        if p.card_open {
+            p.card.hide();
+            p.card_open = false;
+            return;
+        }
+        hide_hover(p);
+        let scale = p.displays.first().map(|d| d.scale).unwrap_or(2.0) as f32;
+        let r = card_image(&st, scale);
+        let (w, h) = (r.width as f64, r.height as f64);
+        let cx = rect.x + rect.w / 2.0;
+        let (mut x, y) = (cx - w / 2.0, rect.y - h - BAR_GAP);
+        if let Some((d, _, _)) = screen_of(&p.displays, cx, rect.y + rect.h / 2.0) {
+            x = clamp_to_screen(d, x, y, w, h).0;
+        }
+        if p.card.show(r.pixmap.data(), r.pixmap.width(), r.pixmap.height(), scale as f64, x, y).is_ok() {
+            p.card_open = true;
+        }
+    });
+}

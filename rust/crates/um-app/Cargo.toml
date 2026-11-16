@@ -16,6 +16,7 @@ tauri-build.workspace = true
 um-core.workspace = true
 um-providers.workspace = true
 um-render.workspace = true
+tiny-skia.workspace = true
 um-platform.workspace = true
 tauri.workspace = true
 serde_json.workspace = true

@@ -202,7 +202,7 @@ pub fn codex_normalize_plan(pt: &str) -> String {
 }
 
 /// 2단계 응답 -> (계정 ID, 플랜). 실패해도 진행하므로 항상 값을 돌려준다.
-/// 기본 계정(`is_default`)을 우선하고 없으면 첫 항목. serde_json은 키 순서를 보존하지 않아 "첫 항목"은 키 사전순이다.
+/// 기본 계정(`is_default`)을 우선하고 없으면 첫 항목(serde_json `preserve_order`로 응답 순서 유지, JS `Object.values`와 같음).
 pub fn codex_account_from_check(status: u16, body: Option<&Value>) -> (Option<String>, Option<String>) {
     if status != 200 {
         return (None, None);

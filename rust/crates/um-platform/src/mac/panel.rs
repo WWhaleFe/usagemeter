@@ -85,6 +85,23 @@ impl InfoPanel {
         Ok(())
     }
 
+    /// 그림은 그대로 두고 위치만 옮긴다(전역 좌표, 왼쪽 아래 기준).
+    pub fn move_to(&self, x: f64, y: f64) {
+        self.panel.setFrameOrigin(NSPoint::new(x, y));
+    }
+
+    /// 현재 크기(pt).
+    pub fn size(&self) -> (f64, f64) {
+        let f = self.panel.frame();
+        (f.size.width, f.size.height)
+    }
+
+    /// 현재 위치·크기(전역 좌표, 왼쪽 아래 기준).
+    pub fn frame(&self) -> (f64, f64, f64, f64) {
+        let f = self.panel.frame();
+        (f.origin.x, f.origin.y, f.size.width, f.size.height)
+    }
+
     pub fn hide(&self) {
         self.panel.orderOut(None);
     }

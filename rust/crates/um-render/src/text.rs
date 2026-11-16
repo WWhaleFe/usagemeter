@@ -15,6 +15,8 @@ struct Fonts {
 }
 
 static FONTS: OnceLock<Mutex<Fonts>> = OnceLock::new();
+/// 앱이 정한 글자 로케일(예: "ja-JP"). 같은 한자라도 로케일에 맞는 글꼴 모양을 고른다.
+static LOCALE: Mutex<Option<String>> = Mutex::new(None);
 
 #[cfg(target_os = "macos")]
 const FONT_FILES: &[&str] = &[
@@ -36,7 +38,25 @@ const FONT_FILES: &[&str] = &[
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 const FONT_FILES: &[&str] = &[];
 
+/// 앱 언어에 맞춘 로케일을 정한다(앱 언어 = ko/en/ja). 이미 글꼴을 읽었으면 다시 만든다.
+/// macOS GUI 앱은 `LANG`이 비어 있는 경우가 많아 앱 설정 언어를 넘겨받는다.
+pub fn set_locale(code: &str) {
+    let changed = {
+        let mut l = LOCALE.lock().unwrap();
+        let new = Some(code.to_string());
+        let changed = *l != new;
+        *l = new;
+        changed
+    };
+    if changed && let Some(f) = FONTS.get() {
+        *f.lock().unwrap() = build();
+    }
+}
+
 fn locale() -> String {
+    if let Some(l) = LOCALE.lock().unwrap().clone() {
+        return l;
+    }
     // LANG 형식 "ko_KR.UTF-8" -> "ko-KR". 없으면 한국어(주 사용자층).
     std::env::var("LANG")
         .ok()

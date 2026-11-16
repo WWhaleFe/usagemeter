@@ -11,7 +11,7 @@ thiserror.workspace = true
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2.workspace = true
 objc2-foundation = { workspace = true, features = ["NSDictionary", "NSValue", "NSString", "NSArray", "NSGeometry"] }
-objc2-app-kit = { workspace = true, features = ["NSApplication", "NSWindow", "NSView", "NSScreen", "NSColor", "NSGraphics", "NSResponder", "NSPanel", "NSVisualEffectView", "NSEvent", "block2", "objc2-quartz-core"] }
+objc2-app-kit = { workspace = true, features = ["NSApplication", "NSWindow", "NSView", "NSScreen", "NSColor", "NSGraphics", "NSResponder", "NSPanel", "NSVisualEffectView", "NSEvent", "NSAppearance", "block2", "objc2-quartz-core"] }
 block2 = "0.6.2"
 objc2-quartz-core = { workspace = true, features = ["CALayer"] }
 objc2-core-graphics = { workspace = true, features = ["CGImage", "CGColorSpace", "CGDataProvider", "CGDirectDisplay", "CGDisplayConfiguration"] }
@@ -24,4 +24,5 @@ windows = { workspace = true, features = [
   "Win32_System_LibraryLoader",
   "Win32_UI_WindowsAndMessaging",
   "Win32_UI_HiDpi",
+  "Win32_System_Registry",
 ] }
