@@ -4,6 +4,7 @@
 //! 미리곱한(premultiplied) RGBA 픽셀을 받아 OS 창에 올리기만 한다.
 
 pub mod display;
+pub mod mouse;
 
 #[cfg(target_os = "macos")]
 mod mac;
@@ -12,6 +13,8 @@ mod win;
 
 #[cfg(target_os = "macos")]
 pub use mac::overlay::OverlayStrip;
+#[cfg(target_os = "macos")]
+pub use mac::panel::InfoPanel;
 #[cfg(windows)]
 pub use win::overlay::OverlayStrip;
 

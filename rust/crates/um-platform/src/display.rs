@@ -43,6 +43,21 @@ impl DisplayInfo {
         }
     }
 
+    /// OS 전역 좌표(마우스 위치)가 이 화면 안이면 화면 안 좌표(왼쪽 위 원점, pt)로 바꾼다.
+    pub fn to_local(&self, gx: f64, gy: f64) -> Option<(f64, f64)> {
+        #[cfg(target_os = "macos")]
+        let (x, y) = (gx - self.origin.0, self.origin.1 + self.height_pt - gy);
+        #[cfg(not(target_os = "macos"))]
+        let (x, y) = ((gx - self.origin.0) / self.scale, (gy - self.origin.1) / self.scale);
+        (x >= 0.0 && y >= 0.0 && x < self.width_pt && y < self.height_pt).then_some((x, y))
+    }
+
+    /// 화면 안 좌표(왼쪽 위 원점, pt)의 점을 OS 전역 좌표로.
+    pub fn to_global(&self, x: f64, y: f64) -> (f64, f64) {
+        let f = self.strip_frame(x, y, 0.0, 0.0);
+        (f.x, f.y)
+    }
+
     /// 띠의 픽셀 크기.
     pub fn pixel_size(&self, w: f64, h: f64) -> (u32, u32) {
         ((w * self.scale).round().max(1.0) as u32, (h * self.scale).round().max(1.0) as u32)

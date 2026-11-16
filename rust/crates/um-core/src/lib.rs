@@ -13,6 +13,7 @@
 
 pub mod analytics;
 pub mod history;
+pub mod hover;
 pub mod i18n;
 pub mod menu_text;
 pub mod model;

@@ -4546,6 +4546,7 @@ dependencies = [
 name = "um-platform"
 version = "2.0.0-alpha.0"
 dependencies = [
+ "block2",
  "objc2",
  "objc2-app-kit",
  "objc2-core-foundation",
