@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap desktop rescap">
+  <!-- Name과 Publisher는 제출 전에 Partner Center에서 받은 패키지 ID와 게시자 값으로 바꾼다. -->
+  <Identity Name="WWhaleFe.UsageMeter"
+            Publisher="CN=PLACEHOLDER-PARTNER-CENTER"
+            Version="__VERSION__"
+            ProcessorArchitecture="__ARCH__" />
+  <Properties>
+    <DisplayName>UsageMeter</DisplayName>
+    <PublisherDisplayName>WWhaleFe</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop"
+                        MinVersion="10.0.19045.0"
+                        MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+  <Resources>
+    <Resource Language="ko-KR" />
+    <Resource Language="en-US" />
+    <Resource Language="ja-JP" />
+  </Resources>
+  <Applications>
+    <Application Id="UsageMeter" Executable="usagemeter.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="UsageMeter"
+                          Description="AI 서비스 사용량과 로컬 기록을 확인하는 UsageMeter"
+                          BackgroundColor="transparent"
+                          Square44x44Logo="Assets\Square44x44Logo.png"
+                          Square150x150Logo="Assets\Square150x150Logo.png" />
+      <Extensions>
+        <!-- Store판 자동 실행은 레지스트리 대신 StartupTask를 사용한다. -->
+        <desktop:Extension Category="windows.startupTask"
+                           Executable="usagemeter.exe"
+                           EntryPoint="Windows.FullTrustApplication">
+          <desktop:StartupTask TaskId="UsageMeterStartup" Enabled="false" DisplayName="UsageMeter" />
+        </desktop:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

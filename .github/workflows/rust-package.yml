@@ -1,0 +1,218 @@
+# Windows 실기 점검과 Store 제출을 위한 패키지. 태그는 공개 전 초안으로만 등록한다.
+name: rust-package
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["rust-v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      msix-version: ${{ steps.version.outputs.msix-version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - id: version
+        name: Cargo 버전과 MSIX 네 자리 버전 읽기
+        shell: python
+        run: |
+          import os
+          import re
+          import tomllib
+          from pathlib import Path
+
+          version = tomllib.loads(Path("rust/Cargo.toml").read_text())["workspace"]["package"]["version"]
+          match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?", version)
+          if not match:
+              raise ValueError(f"지원하지 않는 버전: {version}")
+          parts = [int(part) for part in match.groups()]
+          if parts[0] == 0 or any(part > 65535 for part in parts):
+              raise ValueError(f"MSIX 버전 범위 초과: {version}")
+          # Store 제출용 마지막 자리는 0. 사전 릴리스 접미사는 파일명에만 유지한다.
+          msix_version = ".".join(map(str, [*parts, 0]))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"version={version}\nmsix-version={msix_version}\n")
+
+  windows:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, target: x86_64-pc-windows-msvc, arch: x64 }
+          - { os: windows-11-arm, target: aarch64-pc-windows-msvc, arch: arm64 }
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PACKAGE_VERSION: ${{ needs.version.outputs.version }}
+      MSIX_VERSION: ${{ needs.version.outputs.msix-version }}
+      PACKAGE_ARCH: ${{ matrix.arch }}
+      RUST_TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: rust/crates/um-app/ui-src/package-lock.json
+      - name: UI 빌드
+        working-directory: rust/crates/um-app/ui-src
+        run: |
+          npm ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Cargo 버전을 Tauri 정식판 설정에 반영
+        working-directory: rust/crates/um-app
+        run: |
+          $config = Get-Content tauri.release.conf.json -Raw | ConvertFrom-Json
+          $config | Add-Member -NotePropertyName version -NotePropertyValue $env:PACKAGE_VERSION -Force
+          $config | ConvertTo-Json -Depth 20 | Set-Content tauri.release.conf.json -Encoding utf8NoBOM
+          New-Item -ItemType Directory -Force "$env:GITHUB_WORKSPACE/rust/dist" | Out-Null
+      - name: NSIS 설치 파일 빌드
+        working-directory: rust/crates/um-app
+        run: |
+          npx -y @tauri-apps/cli@2.12.4 build --target $env:RUST_TARGET --bundles nsis --features production --config tauri.release.conf.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $installers = @(Get-ChildItem "../../target/$env:RUST_TARGET/release/bundle/nsis/*.exe")
+          if ($installers.Count -ne 1) { throw "NSIS 설치 파일이 정확히 하나여야 합니다." }
+          Copy-Item $installers[0].FullName "../../dist/UsageMeter-$env:PACKAGE_VERSION-windows-$env:PACKAGE_ARCH-setup.exe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ matrix.arch }}-nsis
+          path: rust/dist/*-setup.exe
+          if-no-files-found: error
+      - name: 직접 배포판 포터블 zip 생성
+        run: |
+          # Store 빌드가 실행 파일을 덮어쓰기 전에 직접 배포판을 보관한다.
+          Compress-Archive -Path "rust/target/$env:RUST_TARGET/release/usagemeter.exe" -DestinationPath "rust/dist/UsageMeter-$env:PACKAGE_VERSION-windows-$env:PACKAGE_ARCH-portable.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ matrix.arch }}-portable
+          path: rust/dist/*-portable.zip
+          if-no-files-found: error
+      - name: Store판 실행 파일 빌드
+        working-directory: rust
+        run: |
+          $env:TAURI_CONFIG = Get-Content crates/um-app/tauri.release.conf.json -Raw
+          # CLI 없이 빌드하므로 UI 포함에 필요한 custom-protocol도 명시한다.
+          cargo build --release --target $env:RUST_TARGET -p um-app --features production,store,tauri/custom-protocol
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: 서명 없는 MSIX 생성
+        run: |
+          $sdkBin = "${env:ProgramFiles(x86)}/Windows Kits/10/bin"
+          $makeappx = Get-ChildItem "$sdkBin/*/x64/makeappx.exe" |
+            Sort-Object { [version]$_.Directory.Parent.Name } -Descending |
+            Select-Object -First 1 -ExpandProperty FullName
+          if (-not $makeappx) { throw "Windows SDK의 makeappx.exe를 찾을 수 없습니다." }
+          $layout = "$env:RUNNER_TEMP/msix-$env:PACKAGE_ARCH"
+          New-Item -ItemType Directory -Force "$layout/Assets" | Out-Null
+          Copy-Item "rust/target/$env:RUST_TARGET/release/usagemeter.exe" "$layout/usagemeter.exe"
+          Copy-Item rust/crates/um-app/icons/*.png "$layout/Assets/"
+          $manifest = Get-Content rust/crates/um-app/packaging/msix/AppxManifest.xml -Raw
+          $manifest.Replace('__VERSION__', $env:MSIX_VERSION).Replace('__ARCH__', $env:PACKAGE_ARCH) |
+            Set-Content "$layout/AppxManifest.xml" -Encoding utf8NoBOM
+          & $makeappx pack /d $layout /p "rust/dist/UsageMeter-$env:PACKAGE_VERSION-$env:PACKAGE_ARCH.msix" /o
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ matrix.arch }}-msix
+          path: rust/dist/*.msix
+          if-no-files-found: error
+
+  msixbundle:
+    needs: [version, windows]
+    runs-on: windows-latest
+    env:
+      PACKAGE_VERSION: ${{ needs.version.outputs.version }}
+      MSIX_VERSION: ${{ needs.version.outputs.msix-version }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: windows-*-msix
+          merge-multiple: true
+          path: msix
+      - name: 두 아키텍처를 서명 없는 Store 번들로 묶기
+        shell: pwsh
+        run: |
+          $sdkBin = "${env:ProgramFiles(x86)}/Windows Kits/10/bin"
+          $makeappx = Get-ChildItem "$sdkBin/*/x64/makeappx.exe" |
+            Sort-Object { [version]$_.Directory.Parent.Name } -Descending |
+            Select-Object -First 1 -ExpandProperty FullName
+          if (-not $makeappx) { throw "Windows SDK의 makeappx.exe를 찾을 수 없습니다." }
+          foreach ($arch in @('x64', 'arm64')) {
+            if (-not (Test-Path "msix/UsageMeter-$env:PACKAGE_VERSION-$arch.msix")) {
+              throw "필수 MSIX 없음: $arch"
+            }
+          }
+          New-Item -ItemType Directory -Force dist | Out-Null
+          & $makeappx bundle /d msix /p "dist/UsageMeter-$env:PACKAGE_VERSION.msixbundle" /bv $env:MSIX_VERSION /o
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-msixbundle
+          path: dist/*.msixbundle
+          if-no-files-found: error
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: rust/crates/um-app/ui-src/package-lock.json
+      - name: macOS 유니버설 zip 생성
+        run: bash rust/tools/release-mac.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: rust/dist/*.zip
+          if-no-files-found: error
+
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/rust-v')
+    needs: [version, windows, msixbundle, macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist
+      - name: 공개 전 초안 릴리스에 모든 산출물 첨부
+        uses: softprops/action-gh-release@v2
+        with:
+          name: UsageMeter ${{ needs.version.outputs.version }}
+          draft: true
+          prerelease: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/*.exe
+            dist/*.zip
+            dist/*.msix
+            dist/*.msixbundle
