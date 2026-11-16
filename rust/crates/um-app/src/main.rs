@@ -2,6 +2,7 @@
 //! 지금 단계: 트레이 + 화면별 테두리 + 로그인·로그아웃 + 사용량 실시간 조회(Claude·Codex 웹뷰, Gemini agy 우선).
 
 mod data;
+mod direct;
 mod overlay;
 mod state;
 mod web;
@@ -28,6 +29,35 @@ type Shared = Arc<Mutex<AppState>>;
 struct AcctMenu(Mutex<BTreeMap<String, MenuItem<Wry>>>);
 /// agy 단조 규칙 상태(Swift AgyQuotaFetcher.monotonicBuckets).
 struct Agy(Mutex<AgyParser>);
+/// 직접 호출용 HTTP 클라이언트(AI별, 쿠키는 메모리에만). 실패하면 버리고 다시 만든다.
+struct DirectClients(Mutex<BTreeMap<String, reqwest::blocking::Client>>);
+
+/// 직접 호출 경로를 쓸지(기본 켬, 0단계 S3·S5 통과: rust/docs/adr/0004). `UM_DIRECT=0`이면 웹뷰만.
+fn direct_enabled() -> bool {
+    std::env::var("UM_DIRECT").map_or(true, |v| v != "0")
+}
+
+/// 직접 호출: 만들어 둔 클라이언트 → 실패하면 쿠키를 새로 읽어 한 번 더. 둘 다 실패하면 None(웹뷰로 넘어감).
+fn fetch_direct(app: &AppHandle, sp: &'static spec::ProviderSpec) -> Option<serde_json::Value> {
+    let cache = app.state::<DirectClients>();
+    for attempt in 0..2 {
+        let cached = cache.0.lock().unwrap().get(sp.id).cloned();
+        let c = match cached {
+            Some(c) if attempt == 0 => c,
+            _ => {
+                let c = direct::client(app, sp)?;
+                cache.0.lock().unwrap().insert(sp.id.to_string(), c.clone());
+                c
+            }
+        };
+        let raw = direct::probe_with(&c, sp);
+        if raw["ok"] == true {
+            return Some(raw);
+        }
+        cache.0.lock().unwrap().remove(sp.id);
+    }
+    None
+}
 
 thread_local! {
     /// 띠 창은 메인 스레드에서만 만지므로 여기 둔다.
@@ -97,9 +127,34 @@ fn fetch_one(app: &AppHandle, id: &str) -> Option<UsageSnapshot> {
     {
         return Some(s);
     }
+    if direct_enabled() && !sp.needs_rendered_dom && !std::env::var("UM_S3").is_ok_and(|v| v == "1") {
+        let t = std::time::Instant::now();
+        if let Some(raw) = fetch_direct(app, sp) {
+            tracing::info!("{id} 직접 조회 {:.1}초 ok=true", t.elapsed().as_secs_f64());
+            return Some(um_providers::parse::snapshot_from_probe(id, &raw, chrono::Utc::now()));
+        }
+        tracing::info!("{id} 직접 조회 실패 → 웹뷰로");
+    }
     let t0 = std::time::Instant::now();
     let raw = web::probe(app, sp, PROBE_TIMEOUT);
     tracing::info!("{id} 웹 조회 {:.1}초 ok={}", t0.elapsed().as_secs_f64(), raw["ok"]);
+    // 0단계 S3: UM_S3=1이면 직접 호출도 해서 결과를 비교한다(상태·잔여율만 기록, 쿠키·토큰은 기록 안 함).
+    if std::env::var("UM_S3").is_ok_and(|v| v == "1") && !sp.needs_rendered_dom {
+        let t1 = std::time::Instant::now();
+        let dr = direct::probe(app, sp);
+        let now = chrono::Utc::now();
+        let (a, b) = (um_providers::parse::snapshot_from_probe(id, &raw, now), um_providers::parse::snapshot_from_probe(id, &dr, now));
+        tracing::info!(
+            "S3 {id} 직접 {:.1}초 ok={} reason={} status={} | 웹 ok={} | 5h 같음={} 주간 같음={}",
+            t1.elapsed().as_secs_f64(),
+            dr["ok"],
+            dr["reason"],
+            dr["status"],
+            raw["ok"],
+            (a.remaining_ratio - b.remaining_ratio).abs() < 1e-9,
+            a.secondary_ratio == b.secondary_ratio
+        );
+    }
     if raw["ok"] != true {
         tracing::info!("{}", um_providers::parse::failure_log_line(id, &raw));
     }
@@ -208,6 +263,7 @@ fn main() {
     tauri::Builder::default()
         .manage(shared_state.clone())
         .manage(Agy(Mutex::new(AgyParser::new())))
+        .manage(DirectClients(Mutex::new(BTreeMap::new())))
         .setup(move |app| {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
@@ -268,7 +324,9 @@ fn main() {
                 refresh_with_retry(&h);
                 loop {
                     let mins = shared(&h).lock().unwrap().main.effective_refresh_minutes();
-                    std::thread::sleep(Duration::from_secs(mins as u64 * 60));
+                    // 개발용: UM_REFRESH_SECS로 주기를 짧게(메모리·누수 측정).
+                    let secs = std::env::var("UM_REFRESH_SECS").ok().and_then(|v| v.parse().ok()).unwrap_or(mins as u64 * 60);
+                    std::thread::sleep(Duration::from_secs(secs));
                     refresh_all(&h);
                 }
             });

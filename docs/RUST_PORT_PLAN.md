@@ -411,7 +411,7 @@ Rust 버전을 처음 실행할 때 한 번만 한다. 원본은 지우지 않�
 | S2 | 네이티브 띠 창 시제품(tiny-skia로 그린 선 1개): 클릭 통과, 최상위, 모든 Space·가상 데스크톱, 전체화면 앱 위, 다중 모니터·혼합 DPI | 두 OS에서 모두 표시·클릭 통과. 화면당 메모리 목표 충족 |
 | S3 | Claude·Codex 직접 호출(reqwest + 웹뷰에서 꺼낸 쿠키) 성공률, Cloudflare 차단 여부 | 24시간 동안 5분 간격 성공률 측정. 95% 이상이면 1순위 채택, 아니면 임시 웹뷰를 1순위로 |
 | S4 | 임시 웹뷰 + 빈 오리진 문서: macOS `loadSimulatedRequest`, Windows `WebResourceRequested`로 같은 결과 | 두 OS에서 Claude·Codex 조회 성공, 조회 후 웹뷰 파기 시 메모리 회수 |
-| S5 | 번들 id `com.usagemeter.app` 유지 시 Swift 버전 로그인 쿠키를 wry가 그대로 쓰는지 | 재로그인 없이 조회 성공(실패하면 재로그인 안내로 결정) |
+| S5 | 번들 id `com.usagemeter.app` 유지 시 Swift 버전 로그인 쿠키를 wry가 그대로 쓰는지 | 재로그인 없이 조회 성공(실패하면 재로그인 안내로 결정). **결과: 통과(ADR 0004)** |
 | S6 | Windows 저수준 마우스 훅의 CPU 사용과 안정성 | 평상시 CPU 0.1% 이하 |
 | S7 | Antigravity `conversations/*.db` 스키마에 토큰 수가 있는지, Windows용 `agy` 존재 여부 | 조사 결과 기록 |
 | S8 | `cosmic-text`로 한·영·일 글자 렌더 품질과 메모리 | 12pt 글자가 Swift 패널과 비교해 읽기에 문제없음, +8MB 이하 |

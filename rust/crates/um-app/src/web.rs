@@ -214,3 +214,23 @@ pub fn logout(app: &AppHandle, spec: &'static ProviderSpec) {
     }
     let _ = w.destroy();
 }
+
+/// 서비스 도메인의 쿠키를 (이름, 값, 도메인, 경로)로 읽는다. 직접 호출 경로(`direct.rs`)용.
+/// 값은 메모리에서만 쓰고 기록하지 않는다.
+pub fn read_cookies(app: &AppHandle, spec: &'static ProviderSpec) -> Vec<(String, String, String, String)> {
+    let label = format!("cookies-{}-{}", spec.id, next_token().replace('x', "-"));
+    let Ok(w) = WebviewWindowBuilder::new(app, &label, WebviewUrl::External("about:blank".parse().expect("blank"))).visible(false).skip_taskbar(true).build() else {
+        return vec![];
+    };
+    let out = w
+        .cookies()
+        .map(|cs| {
+            cs.into_iter()
+                .filter(|c| c.domain().is_some_and(|d| spec.cookie_domains.iter().any(|f| d.contains(f))))
+                .map(|c| (c.name().to_string(), c.value().to_string(), c.domain().unwrap_or("").to_string(), c.path().unwrap_or("/").to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+    let _ = w.destroy();
+    out
+}
