@@ -8,10 +8,7 @@ use um_platform::{OverlayStrip, StripFrame};
 fn 띠_창을_만들고_픽셀을_올린다() {
     let frame = StripFrame { x: 0.0, y: 0.0, w: 40.0, h: 300.0 };
     let strip = OverlayStrip::new(frame).expect("창 생성");
-    let mut px = vec![0u8; 40 * 300 * 4];
-    for p in px.chunks_exact_mut(4) {
-        p.copy_from_slice(&[200, 100, 80, 255]);
-    }
+    let px: Vec<u8> = [200u8, 100, 80, 255].repeat(40 * 300);
     strip.present(&px, 40, 300, 1.0).expect("UpdateLayeredWindow");
     strip.show();
     strip.hide();
