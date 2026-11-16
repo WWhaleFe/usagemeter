@@ -15,8 +15,16 @@
   import LineChart from './LineChart.svelte';
   import OverTime from './OverTime.svelte';
   import { RANGES, fmtYMD, type Data, type Range } from './util';
+  import Tokens from '../tokens/Tokens.svelte';
+  import Consent from '../tokens/Consent.svelte';
 
   let range = $state<Range>('day1');
+  // 보기: 한도(잔여율 이력) / 토큰(로컬 기록). 로컬 기록을 아직 묻지 않았으면 동의 안내를 띄운다.
+  let view = $state<'limits' | 'tokens'>('limits');
+  let asked = $state(true);
+  onMount(() => {
+    invoke('ui_locallogs').then((v) => (asked = (v as { asked: boolean }).asked));
+  });
   /** 자세히 볼 AI(null = 전체 AI 비교). */
   let scope = $state<string | null>(null);
   /** 고른 AI에서 보이게 할 세부 항목(비어 있으면 전체). */
@@ -108,7 +116,15 @@
       </div>
     </header>
 
-    {#if d}
+    <!-- 처음 열 때 로컬 사용 기록을 쓸지 묻는다(결정 D4) -->
+    {#if !asked}<Consent onanswer={() => (asked = true)} />{/if}
+    <div class="seg view" role="radiogroup" aria-label={t('view.limits') + ' / ' + t('view.tokens')}>
+      <button role="radio" aria-checked={view === 'limits'} class:on={view === 'limits'} onclick={() => (view = 'limits')}>{t('view.limits')}</button>
+      <button role="radio" aria-checked={view === 'tokens'} class:on={view === 'tokens'} onclick={() => (view = 'tokens')}>{t('view.tokens')}</button>
+    </div>
+    {#if view === 'tokens'}
+      <Tokens {range} />
+    {:else if d}
       <div class="chips">
         {@render chip(t('analytics.allAI'), 'var(--accent)', scope === null, true, () => pickScope(null))}
         {#each d.providers as p (p.id)}
@@ -238,4 +254,5 @@
   .about hr { border: none; border-top: 1px solid var(--grid); margin: 10px 0; }
   .about ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
   .about li { display: flex; gap: 6px; }
+  .view { margin: 0 0 10px; }
 </style>
