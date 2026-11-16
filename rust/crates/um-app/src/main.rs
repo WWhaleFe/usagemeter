@@ -1,6 +1,7 @@
 //! UsageMeter (Rust) 앱 진입점. 계획서 3장 `um-app`.
 //! 지금 단계: 트레이(전체 메뉴·정보 패널) + 화면별 테두리 + 호버 + 로그인·로그아웃 + 사용량 실시간 조회 + 업데이트 확인.
 
+mod analytics_ui;
 mod data;
 mod direct;
 mod ipc;
@@ -388,7 +389,7 @@ fn main() {
         .manage(DirectClients(Mutex::new(BTreeMap::new())))
         .manage(ipc::Editing::default())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
-        .invoke_handler(tauri::generate_handler![ipc::ui_state, ipc::ui_set, ipc::ui_action])
+        .invoke_handler(tauri::generate_handler![ipc::ui_state, ipc::ui_set, ipc::ui_action, analytics_ui::ui_analytics])
         .setup(move |app| {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
