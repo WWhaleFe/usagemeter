@@ -1,8 +1,8 @@
 {
   "acct.geminiExperimental": [
-    "· 실험적 — /usage 화면을 읽어오는 방식이라 구글 UI가 바뀌면 조회가 깨질 수 있어요",
-    "· Experimental — reads the /usage page, so it may break if Google changes its UI",
-    "· 実験的 — /usage画面を読み取る方式のため、GoogleのUI変更で取得が壊れる場合があります"
+    "· 실험적 - /usage 화면을 읽어오는 방식이라 구글 UI가 바뀌면 조회가 깨질 수 있어요",
+    "· Experimental - reads the /usage page, so it may break if Google changes its UI",
+    "· 実験的 - /usage画面を読み取る方式のため、GoogleのUI変更で取得が壊れる場合があります"
   ],
   "acct.loggedIn": [
     "로그인됨",
@@ -26,7 +26,7 @@
   ],
   "analytics.about": [
     "앱이 기록한 사용 이력을 바탕으로, AI별 소비량(잔여율이 줄어든 만큼)을 시간대·기간별로 보여줍니다. 하루 중 언제 많이 쓰는지, 기간 동안 얼마나 썼는지 한눈에 파악할 수 있어요.",
-    "Built from the usage history the app records, this shows each AI's consumption (how much the remaining ratio dropped) by hour and over time — so you can see when you use AI most and how much across a period.",
+    "Built from the usage history the app records, this shows each AI's consumption (how much the remaining ratio dropped) by hour and over time - so you can see when you use AI most and how much across a period.",
     "アプリが記録した使用履歴をもとに、AIごとの消費量（残量が減った分）を時間帯・期間別に表示します。1日のいつ多く使うか、期間中どれだけ使ったかが一目で分かります。"
   ],
   "analytics.aboutTitle": [
@@ -50,9 +50,9 @@
     "時間帯別の使用パターン"
   ],
   "analytics.byHourDesc": [
-    "하루 중 언제 AI를 주로 쓰는지 — 소비량을 시각별로 합산했습니다.",
-    "When during the day you use AI most — consumption summed by hour.",
-    "1日のいつAIをよく使うか — 消費量を時刻ごとに合計。"
+    "하루 중 언제 AI를 주로 쓰는지 - 소비량을 시각별로 합산했습니다.",
+    "When during the day you use AI most - consumption summed by hour.",
+    "1日のいつAIをよく使うか - 消費量を時刻ごとに合計。"
   ],
   "analytics.byHourItemDesc": [
     "항목별 소비(%p)를 시각별로 쌓았습니다.",
@@ -65,9 +65,9 @@
     "曜日別の使用パターン"
   ],
   "analytics.byWeekdayDesc": [
-    "어느 요일에 많이 쓰는지 — 소비량을 요일별로 합산했습니다.",
-    "Which days you use AI most — consumption summed by weekday.",
-    "どの曜日によく使うか — 消費量を曜日ごとに合計。"
+    "어느 요일에 많이 쓰는지 - 소비량을 요일별로 합산했습니다.",
+    "Which days you use AI most - consumption summed by weekday.",
+    "どの曜日によく使うか - 消費量を曜日ごとに合計。"
   ],
   "analytics.c1": [
     "로그인되어 사용량이 조회되는 AI만 집계됩니다.",
@@ -81,7 +81,7 @@
   ],
   "analytics.c3": [
     "과거는 소급되지 않고, 지금부터 최대 35일까지 누적됩니다.",
-    "History isn't backfilled — it accumulates from now, up to 35 days.",
+    "History isn't backfilled - it accumulates from now, up to 35 days.",
     "過去には遡らず、今から最大35日まで蓄積されます。"
   ],
   "analytics.c4": [
@@ -240,9 +240,9 @@
     "表示できるデータがまだありません。\nアプリが使用量を収集するにつれて増えていきます。"
   ],
   "analytics.noDataFlash": [
-    "%@: 아직 데이터 없음 — 아래 '주의' 내용을 참고하세요",
-    "%@: no data yet — see the “Notes” below",
-    "%@: データがまだありません — 下の「注意」をご覧ください"
+    "%@: 아직 데이터 없음 - 아래 '주의' 내용을 참고하세요",
+    "%@: no data yet - see the “Notes” below",
+    "%@: データがまだありません - 下の「注意」をご覧ください"
   ],
   "analytics.overTime": [
     "기간별 소비 추이",
@@ -565,9 +565,9 @@
     "画面端の色帯にカーソルを乗せると使用量情報を表示します。"
   ],
   "hover.noAI": [
-    "로그인된 AI 없음 — 메뉴에서 로그인하세요",
-    "No AI logged in — log in from the menu",
-    "ログイン済みAIなし — メニューからログイン"
+    "로그인된 AI 없음 - 메뉴에서 로그인하세요",
+    "No AI logged in - log in from the menu",
+    "ログイン済みAIなし - メニューからログイン"
   ],
   "hover.unavailable": [
     "사용량을 못 읽음 (%@)",
@@ -580,9 +580,9 @@
     "角の区間の長さ(pt)"
   ],
   "hoverArea.corners": [
-    "호버 영역 — 꼭짓점 부분만",
-    "Hover area — corners only",
-    "ホバー領域 — 角の部分のみ"
+    "호버 영역 - 꼭짓점 부분만",
+    "Hover area - corners only",
+    "ホバー領域 - 角の部分のみ"
   ],
   "hoverArea.desc": [
     "선이 그려진 곳 중 고른 영역에서만 정보를 띄웁니다. 변을 끄고 꼭짓점만 켜면 모서리 근처에서만 반응합니다.",
@@ -590,9 +590,9 @@
     "線が描かれている部分のうち、選んだ領域でのみ情報を表示します。辺をオフにして角だけオンにすると角付近でのみ反応します。"
   ],
   "hoverArea.edges": [
-    "호버 영역 — 변 전체",
-    "Hover area — whole edges",
-    "ホバー領域 — 辺全体"
+    "호버 영역 - 변 전체",
+    "Hover area - whole edges",
+    "ホバー領域 - 辺全体"
   ],
   "info.5h": [
     "5시간 잔여",
@@ -715,9 +715,9 @@
     "%減少開始側の角を含める"
   ],
   "lay.hCapsTitle": [
-    "가로선 끝 모서리 — 양 끝을 위/아래로 둥글게 꺾기",
-    "Horizontal line ends — curve each end up/down",
-    "横線の端の角 — 両端を上/下へ丸く曲げる"
+    "가로선 끝 모서리 - 양 끝을 위/아래로 둥글게 꺾기",
+    "Horizontal line ends - curve each end up/down",
+    "横線の端の角 - 両端を上/下へ丸く曲げる"
   ],
   "lay.noCurve": [
     "↳ 곡선을 이웃 변으로 안 뻗기",
@@ -905,9 +905,9 @@
     "  ログアウト"
   ],
   "menu.noAI": [
-    "로그인된 AI 없음 — 아래에서 로그인하세요",
-    "No AI logged in — log in below",
-    "ログイン済みAIなし — 下からログイン"
+    "로그인된 AI 없음 - 아래에서 로그인하세요",
+    "No AI logged in - log in below",
+    "ログイン済みAIなし - 下からログイン"
   ],
   "menu.noPreset": [
     "저장된 프리셋 없음",
@@ -1126,7 +1126,7 @@
   ],
   "part.desc": [
     "경계선을 켜면 아래 배치에서 각 AI가 감쌀 영역을 고를 수 있습니다. 붙은 영역을 함께 선택하면 합쳐진 둘레로 그려집니다. 모서리 곡률은 '모서리 곡률' 탭(전역) 또는 AI별 '곡률 개별 설정'에서 꼭짓점마다 조절하며, 경계선 끝에도 그대로 적용됩니다(위 영역=위로, 아래 영역=아래로 둥글게).",
-    "With a line enabled, pick which zones each AI wraps below. Selecting adjacent zones merges them into one outline. Corner radii are set per-vertex in the Corners tab (global) or per-AI via 'Custom corner radii' — they also apply to line ends (upper zone = curves up, lower = down).",
+    "With a line enabled, pick which zones each AI wraps below. Selecting adjacent zones merges them into one outline. Corner radii are set per-vertex in the Corners tab (global) or per-AI via 'Custom corner radii' - they also apply to line ends (upper zone = curves up, lower = down).",
     "境界線を有効にすると、下の配置で各AIが囲む領域を選べます。隣接する領域を同時に選ぶと結合した外周になります。角の丸みは「角の丸み」タブ（全体）またはAIごとの「丸み個別設定」で頂点ごとに調整でき、境界線の端にも適用されます（上の領域=上へ、下=下へ）。"
   ],
   "part.dockHeight": [
@@ -1215,9 +1215,9 @@
     "週間"
   ],
   "reason.parseFailed": [
-    "화면을 읽지 못함 — 서비스 UI 변경 가능성",
-    "couldn't read the page — service UI may have changed",
-    "画面を読み取れません — サービスUI変更の可能性"
+    "화면을 읽지 못함 - 서비스 UI 변경 가능성",
+    "couldn't read the page - service UI may have changed",
+    "画面を読み取れません - サービスUI変更の可能性"
   ],
   "reason.serverError": [
     "서버 응답 오류",
@@ -1225,9 +1225,9 @@
     "サーバー応答エラー"
   ],
   "reason.temporary": [
-    "일시 오류 — 잠시 후 자동 재시도",
-    "temporary error — will retry",
-    "一時的なエラー — 後で自動再試行"
+    "일시 오류 - 잠시 후 자동 재시도",
+    "temporary error - will retry",
+    "一時的なエラー - 後で自動再試行"
   ],
   "report.copied": [
     "복사됨",
@@ -1241,7 +1241,7 @@
   ],
   "report.desc": [
     "버그·오류·기능 제안 등 무엇이든 편하게 보내주세요. 아래 주소로 메일이 전송됩니다.",
-    "Bugs, errors, feature ideas — anything is welcome. Mail is sent to the address below.",
+    "Bugs, errors, feature ideas - anything is welcome. Mail is sent to the address below.",
     "バグ・不具合・機能のご提案など、お気軽にどうぞ。下記アドレスにメールが届きます。"
   ],
   "report.mailSubject": [
@@ -1610,14 +1610,14 @@
     "最新版をダウンロード"
   ],
   "update.downloadFail": [
-    "내려받기 실패 — 릴리스 페이지 열기",
-    "Download failed — Open Releases Page",
-    "ダウンロード失敗 — リリースページを開く"
+    "내려받기 실패 - 릴리스 페이지 열기",
+    "Download failed - Open Releases Page",
+    "ダウンロード失敗 - リリースページを開く"
   ],
   "update.downloaded": [
-    "내려받기 완료 — Finder에서 보기",
-    "Downloaded — Show in Finder",
-    "ダウンロード完了 — Finderで表示"
+    "내려받기 완료 - Finder에서 보기",
+    "Downloaded - Show in Finder",
+    "ダウンロード完了 - Finderで表示"
   ],
   "update.downloading": [
     "내려받는 중…",
@@ -1625,9 +1625,9 @@
     "ダウンロード中…"
   ],
   "update.failed": [
-    "확인 실패 — 다시 시도",
-    "Check failed — Try again",
-    "確認に失敗 — 再試行"
+    "확인 실패 - 다시 시도",
+    "Check failed - Try again",
+    "確認に失敗 - 再試行"
   ],
   "update.installHint": [
     "받은 zip을 풀어 응용 프로그램 폴더로 옮기면 설치됩니다. Homebrew로 설치했다면 터미널에서: brew update && brew upgrade --cask usagemeter",

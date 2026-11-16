@@ -2,6 +2,8 @@
 [workspace]
 resolver = "3"
 members = ["crates/*"]
+# 0단계 스파이크는 각자 독립 패키지(공유 target은 CARGO_TARGET_DIR로)
+exclude = ["spikes"]
 
 [workspace.package]
 version = "2.0.0-alpha.0"

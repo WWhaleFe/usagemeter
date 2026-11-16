@@ -137,7 +137,10 @@ def main():
     except ParseError as e:
         print(f"오류: {e}", file=sys.stderr)
         return 1
-    ordered = {k: table[k] for k in sorted(table)}
+    # Rust 버전 UI 글에는 줄표(U+2014)를 쓰지 않는다(사용자 규칙). 하이픈으로 바꾼다.
+    def no_em_dash(v):
+        return v.replace(" \u2014 ", " - ").replace("\u2014", "-")
+    ordered = {k: [no_em_dash(x) for x in table[k]] for k in sorted(table)}
     OUT.write_text(
         json.dumps(ordered, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )

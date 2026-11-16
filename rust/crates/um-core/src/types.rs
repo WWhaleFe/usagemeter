@@ -58,7 +58,7 @@ pub enum AnchorSide {
 }
 
 /// 노치 우회 부분의 네 모서리. 저장 순서 = [outerLeft, innerLeft, innerRight, outerRight]. (Swift `NotchCorner`)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum NotchCorner {
     OuterLeft,
