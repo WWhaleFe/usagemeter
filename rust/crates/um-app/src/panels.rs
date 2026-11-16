@@ -49,6 +49,9 @@ struct Panels {
     tray: Option<Rect>,
     /// 마지막으로 그린 호버 글(같으면 위치만 옮긴다).
     hover_key: String,
+    /// 열린 정보 패널의 차트 높이(pt, 차트 없으면 0)와 마지막 차트 호버 위치(같으면 다시 그리지 않음).
+    chart_h: f32,
+    chart_hover: Option<i32>,
     displays: Vec<DisplayInfo>,
     _mouse: MouseMonitor,
 }
@@ -66,7 +69,7 @@ pub fn init(app: &AppHandle) {
     let h = app.clone();
     let mouse = MouseMonitor::start(move |x, y, kind| on_mouse(&h, x, y, kind));
     PANELS.with(|p| {
-        *p.borrow_mut() = Some(Panels { hover, card, card_open: false, over_tray: false, tray: None, hover_key: String::new(), displays: display::displays(), _mouse: mouse })
+        *p.borrow_mut() = Some(Panels { hover, card, card_open: false, over_tray: false, tray: None, hover_key: String::new(), chart_h: 0.0, chart_hover: None, displays: display::displays(), _mouse: mouse })
     });
 }
 
@@ -125,8 +128,8 @@ fn hover_lines(st: &AppState) -> Vec<HoverLine> {
     out
 }
 
-/// 정보 카드 + (켜져 있으면) 미니 차트를 한 장으로.
-fn card_image(st: &AppState, scale: f32) -> panel::Rendered {
+/// 정보 카드 + (켜져 있으면) 미니 차트를 한 장으로. 반환 = (그림, 차트 높이 pt). `hover_x` = 차트 왼쪽 기준 커서 x.
+fn card_image(st: &AppState, scale: f32, hover_x: Option<f32>) -> (panel::Rendered, f32) {
     let th = theme(&st.main);
     let secs = sections(st);
     let cards: Vec<CardSection> = secs
@@ -141,7 +144,7 @@ fn card_image(st: &AppState, scale: f32) -> panel::Rendered {
     let empty = menu_text::no_ai_text(st.main.language);
     let card = panel::render_card(&cards, Some(&empty), th, scale);
     if !st.main.menu_show_chart {
-        return card;
+        return (card, 0.0);
     }
     let hours = st.main.chart_hours as f64;
     let now = Utc::now().timestamp_millis() as f64 / 1000.0;
@@ -158,7 +161,7 @@ fn card_image(st: &AppState, scale: f32) -> panel::Rendered {
         })
         .collect();
     if series.is_empty() {
-        return card;
+        return (card, 0.0);
     }
     // x 눈금 3개: 기간을 4등분한 지점의 정시(로컬 "HH").
     let labels: Vec<(f64, String)> = (1..=3)
@@ -170,11 +173,12 @@ fn card_image(st: &AppState, scale: f32) -> panel::Rendered {
         .collect();
     let title = um_core::i18n::tn("chart.titleFmt", st.main.language, st.main.chart_hours as i64);
     let chart = panel::render_chart(
-        &ChartSpec { title: &title, series: &series, width: card.width, now, hours, x_labels: &labels, hover_x: None },
+        &ChartSpec { title: &title, series: &series, width: card.width, now, hours, x_labels: &labels, hover_x },
         th,
         scale,
     );
-    stack(card, chart, scale)
+    let ch = chart.height;
+    (stack(card, chart, scale), ch)
 }
 
 /// 두 그림을 위아래로 붙인다.
@@ -255,10 +259,12 @@ fn on_mouse(app: &AppHandle, x: f64, y: f64, kind: MouseKind) {
             }
             return;
         }
-        if p.card_open || p.over_tray {
-            if p.card_open {
-                hide_hover(p);
-            }
+        if p.card_open {
+            hide_hover(p);
+            card_chart_hover(p, &st, x, y);
+            return;
+        }
+        if p.over_tray {
             return;
         }
         let Some((d, lx, ly)) = screen_of(&p.displays, x, y) else { return hide_hover(p) };
@@ -271,6 +277,24 @@ fn on_mouse(app: &AppHandle, x: f64, y: f64, kind: MouseKind) {
             hide_hover(p);
         }
     });
+}
+
+/// 열린 정보 패널의 차트 위에 커서가 있으면 그 위치의 값을 보여준다(Swift MiniChartView 호버, 설정으로 끔).
+fn card_chart_hover(p: &mut Panels, st: &AppState, x: f64, y: f64) {
+    if p.chart_h <= 0.0 || !st.main.chart_hover_enabled {
+        return;
+    }
+    let (fx, fy, fw, _) = p.card.frame();
+    // 차트는 패널 아래쪽(전역 좌표는 아래 원점이라 fy ~ fy + 차트 높이).
+    let inside = x >= fx && x <= fx + fw && y >= fy && y <= fy + p.chart_h as f64;
+    let hx = inside.then_some((x - fx) as i32);
+    if hx == p.chart_hover {
+        return;
+    }
+    p.chart_hover = hx;
+    let scale = p.displays.first().map(|d| d.scale).unwrap_or(2.0) as f32;
+    let (r, _) = card_image(st, scale, hx.map(|v| v as f32));
+    let _ = p.card.show(r.pixmap.data(), r.pixmap.width(), r.pixmap.height(), scale as f64, fx, fy);
 }
 
 /// 메뉴바 아이콘에 커서가 들어오거나 나감. `rect` = 아이콘 영역(전역 AppKit 좌표).
@@ -295,6 +319,17 @@ pub fn tray_hover(app: &AppHandle, rect: Rect, inside: bool) {
     });
 }
 
+/// 오른쪽 클릭으로 메뉴가 열릴 때: 호버·정보 패널을 숨긴다(Swift는 드롭다운이 열려 있는 동안 호버를 막음).
+pub fn menu_opening() {
+    with(|p| {
+        hide_hover(p);
+        if p.card_open {
+            p.card.hide();
+            p.card_open = false;
+        }
+    });
+}
+
 /// 메뉴바 아이콘 왼쪽 클릭: 정보 패널 열기/닫기.
 pub fn toggle_card(app: &AppHandle, rect: Rect) {
     let st = crate::shared(app);
@@ -308,7 +343,9 @@ pub fn toggle_card(app: &AppHandle, rect: Rect) {
         }
         hide_hover(p);
         let scale = p.displays.first().map(|d| d.scale).unwrap_or(2.0) as f32;
-        let r = card_image(&st, scale);
+        let (r, ch) = card_image(&st, scale, None);
+        p.chart_h = ch;
+        p.chart_hover = None;
         let (w, h) = (r.width as f64, r.height as f64);
         let cx = rect.x + rect.w / 2.0;
         let (mut x, y) = (cx - w / 2.0, rect.y - h - BAR_GAP);

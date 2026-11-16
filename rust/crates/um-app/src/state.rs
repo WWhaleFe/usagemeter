@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use um_core::history::HistoryDb;
 use um_core::model::UsageSnapshot;
-use um_core::settings::Settings;
+use um_core::settings::{SavedPreset, Settings};
 use um_providers::state::ProviderState;
 
 /// 개발 중에는 Swift 버전과 섞이지 않게 따로 저장한다(번들 id도 `com.usagemeter.app.rs-dev`).
@@ -26,6 +26,11 @@ pub struct AppState {
     pub seeds: BTreeMap<String, UsageSnapshot>,
     pub hide_overlay: bool,
     pub history: Option<HistoryDb>,
+    /// 저장 프리셋(최대 10개)과 "기본 상태"(설정 창에서 저장·되돌리기).
+    pub presets: Vec<SavedPreset>,
+    pub default_snapshot: Option<um_core::settings::SettingsSnapshot>,
+    pub update: crate::update::UpdateState,
+    pub download: crate::update::DownloadState,
 }
 
 impl AppState {
@@ -44,6 +49,10 @@ impl AppState {
             seeds: BTreeMap::new(),
             hide_overlay: false,
             history: None,
+            presets: vec![],
+            default_snapshot: None,
+            update: Default::default(),
+            download: Default::default(),
         };
         if first_run {
             st.import_swift();
@@ -82,6 +91,8 @@ impl AppState {
                 }
                 self.main_display_id = imp.main_display_uuid.clone();
                 self.disabled_displays = imp.disabled_displays.clone();
+                self.presets = imp.presets.clone();
+                self.default_snapshot = imp.default_settings.clone();
                 for w in &imp.warnings {
                     tracing::warn!("Swift 설정 가져오기: {w}");
                 }
@@ -118,6 +129,12 @@ impl AppState {
                     self.displays.insert(id.to_string(), s);
                 }
             }
+        }
+        if let Ok(t) = std::fs::read_to_string(self.dir.join("presets.json"))
+            && let Ok(v) = serde_json::from_str::<serde_json::Value>(&t)
+        {
+            self.presets = serde_json::from_value(v["presets"].clone()).unwrap_or_default();
+            self.default_snapshot = serde_json::from_value(v["default"].clone()).ok().flatten();
         }
         if let Ok(t) = std::fs::read_to_string(self.dir.join("displays.json"))
             && let Ok(v) = serde_json::from_str::<serde_json::Value>(&t)

@@ -1,13 +1,16 @@
 //! UsageMeter (Rust) 앱 진입점. 계획서 3장 `um-app`.
-//! 지금 단계: 트레이 + 화면별 테두리 + 로그인·로그아웃 + 사용량 실시간 조회(Claude·Codex 웹뷰, Gemini agy 우선).
+//! 지금 단계: 트레이(전체 메뉴·정보 패널) + 화면별 테두리 + 호버 + 로그인·로그아웃 + 사용량 실시간 조회 + 업데이트 확인.
 
 mod data;
 mod direct;
+mod menu;
 mod overlay;
 #[cfg(target_os = "macos")]
 mod panels;
 mod state;
+mod update;
 mod web;
+mod windows;
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -15,11 +18,10 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use tauri::image::Image;
-use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::tray::TrayIconBuilder;
 #[cfg(target_os = "macos")]
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconEvent};
-use tauri::{AppHandle, Manager, Wry};
+use tauri::{AppHandle, Manager};
 use um_core::i18n::tr;
 use um_core::model::{UsageSnapshot, UsageStatus};
 use um_providers::agy::AgyParser;
@@ -29,8 +31,6 @@ use overlay::Overlay;
 use state::AppState;
 
 type Shared = Arc<Mutex<AppState>>;
-/// AI별 "로그인…/로그아웃" 메뉴 항목(상태가 바뀌면 글자를 바꾼다).
-struct AcctMenu(Mutex<BTreeMap<String, MenuItem<Wry>>>);
 /// agy 단조 규칙 상태(Swift AgyQuotaFetcher.monotonicBuckets).
 struct Agy(Mutex<AgyParser>);
 /// 직접 호출용 HTTP 클라이언트(AI별, 쿠키는 메모리에만). 실패하면 버리고 다시 만든다.
@@ -94,20 +94,9 @@ fn redraw(app: &AppHandle) {
     });
 }
 
-/// 트레이 아이콘·툴팁·로그인 메뉴 글자. (Swift StatusBarController.swift:847-858, 813-842)
+/// 트레이 아이콘·툴팁. (Swift StatusBarController.swift:847-858, 813-842)
 fn update_tray(app: &AppHandle, st: &AppState) {
     let lang = st.main.language;
-    if let Some(menu) = app.try_state::<AcctMenu>() {
-        for (id, item) in menu.0.lock().unwrap().iter() {
-            let name = spec::spec(id).map(|s| s.name).unwrap_or(id);
-            let key = if st.is_logged_in(id) {
-                "acct.logout"
-            } else {
-                "acct.login"
-            };
-            let _ = item.set_text(format!("{name}  {}", tr(key, lang)));
-        }
-    }
     let Some(tray) = app.tray_by_id(TRAY_ID) else {
         return;
     };
@@ -227,6 +216,7 @@ fn refresh_ids(app: &AppHandle, ids: &[String]) {
     }
     record_history(&mut shared(app).lock().unwrap());
     redraw(app);
+    menu::rebuild(app); // 로그인 상태가 바뀌었을 수 있다
 }
 
 fn refresh_all(app: &AppHandle) {
@@ -316,6 +306,7 @@ fn toggle_account(app: &AppHandle, id: String) {
             st.rebuild_snapshots();
             drop(st);
             redraw(&app);
+            menu::rebuild(&app);
         } else {
             // 이미 로그인돼 있으면 창 없이 끝낸다(Swift LoginWindowController.show: 먼저 조회 확인).
             if let Some(s) = fetch_one(&app, &id)
@@ -397,53 +388,9 @@ fn main() {
         .setup(move |app| {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
-            let (lang, hidden, order) = {
-                let st = shared_state.lock().unwrap();
-                (
-                    st.main.language,
-                    st.hide_overlay,
-                    st.main.provider_order.clone(),
-                )
-            };
+            let lang = shared_state.lock().unwrap().main.language;
             apply_text_locale(lang);
-            let hide = CheckMenuItem::with_id(
-                app,
-                "hide",
-                tr("menu.hideBorder", lang),
-                true,
-                hidden,
-                None::<&str>,
-            )?;
-            let acct = Submenu::with_id(app, "acct", tr("menu.aiLoginout", lang), true)?;
-            let mut items = BTreeMap::new();
-            for id in &order {
-                let item = MenuItem::with_id(app, format!("acct:{id}"), id, true, None::<&str>)?;
-                acct.append(&item)?;
-                items.insert(id.clone(), item);
-            }
-            app.manage(AcctMenu(Mutex::new(items)));
-            let menu = Menu::with_items(
-                app,
-                &[
-                    &acct,
-                    &MenuItem::with_id(
-                        app,
-                        "refresh",
-                        tr("menu.refresh", lang),
-                        true,
-                        Some("CmdOrCtrl+R"),
-                    )?,
-                    &hide,
-                    &PredefinedMenuItem::separator(app)?,
-                    &MenuItem::with_id(
-                        app,
-                        "quit",
-                        tr("menu.quit", lang),
-                        true,
-                        Some("CmdOrCtrl+Q"),
-                    )?,
-                ],
-            )?;
+            let menu = menu::build(app.handle(), &shared_state.lock().unwrap())?;
             if !headless() {
                 TrayIconBuilder::with_id(TRAY_ID)
                     .menu(&menu)
@@ -459,34 +406,14 @@ fn main() {
                                 TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, rect, .. } => {
                                     panels::toggle_card(app, tray_rect(app, &rect))
                                 }
+                                TrayIconEvent::Click { button: MouseButton::Right, button_state: MouseButtonState::Down, .. } => panels::menu_opening(),
                                 _ => {}
                             }
                         }
                         #[cfg(not(target_os = "macos"))]
                         let _ = (tray, e);
                     })
-                    .on_menu_event(move |app, e| match e.id().as_ref() {
-                        "refresh" => {
-                            let app = app.clone();
-                            std::thread::spawn(move || refresh_all(&app));
-                        }
-                        "hide" => {
-                            let v = {
-                                let st = shared(app);
-                                let mut st = st.lock().unwrap();
-                                st.hide_overlay = !st.hide_overlay;
-                                st.hide_overlay
-                            };
-                            let _ = hide.set_checked(v);
-                            redraw(app);
-                        }
-                        "quit" => app.exit(0),
-                        other => {
-                            if let Some(id) = other.strip_prefix("acct:") {
-                                toggle_account(app, id.to_string());
-                            }
-                        }
-                    })
+                    .on_menu_event(|app, e| menu::on_event(app, e.id().as_ref()))
                     .build(app)?;
                 #[cfg(target_os = "macos")]
                 panels::init(app.handle());
@@ -512,10 +439,32 @@ fn main() {
                         .ok()
                         .and_then(|v| v.parse().ok())
                         .unwrap_or(mins as u64 * 60);
-                    std::thread::sleep(Duration::from_secs(secs));
-                    refresh_all(&h);
+                    // 1초씩 기다리며 주기 설정이 바뀌면 새 주기로 다시 시작(Swift는 주기 변경 시 타이머 재설정).
+                    let mut waited = 0;
+                    while waited < secs {
+                        std::thread::sleep(Duration::from_secs(1));
+                        waited += 1;
+                        if shared(&h).lock().unwrap().main.effective_refresh_minutes() != mins {
+                            break;
+                        }
+                    }
+                    if waited >= secs {
+                        refresh_all(&h);
+                    }
                 }
             });
+            // 업데이트 자동 확인: 시작 때 + 24시간마다(설정으로 끔, Store판 제외). (Swift UpdateChecker.swift:88-98)
+            if !cfg!(feature = "store") && !headless() {
+                let h = app.handle().clone();
+                std::thread::spawn(move || {
+                    loop {
+                        if shared(&h).lock().unwrap().main.auto_check_update {
+                            menu::check_update(&h);
+                        }
+                        std::thread::sleep(Duration::from_secs(24 * 3600));
+                    }
+                });
+            }
             // 화면 연결·해제·해상도 변경 감지(3초 간격 비교, 변화 없으면 아무것도 하지 않음).
             let h = app.handle().clone();
             std::thread::spawn(move || {

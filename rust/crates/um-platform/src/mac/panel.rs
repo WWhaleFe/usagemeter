@@ -102,8 +102,12 @@ impl InfoPanel {
         (f.origin.x, f.origin.y, f.size.width, f.size.height)
     }
 
+    /// 숨기고 그림을 놓는다(닫힌 패널이 그림 메모리를 붙잡지 않게).
     pub fn hide(&self) {
         self.panel.orderOut(None);
+        if let Some(l) = self.content.layer() {
+            unsafe { l.setContents(None) };
+        }
     }
 
     pub fn is_visible(&self) -> bool {

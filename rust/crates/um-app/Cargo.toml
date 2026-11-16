@@ -25,6 +25,8 @@ directories.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 reqwest.workspace = true
+arboard.workspace = true
+open.workspace = true
 
 [features]
 # Microsoft Store판: 앱 내 업데이트·레지스트리 자동 실행 제외(계획서 11-1). 아직 해당 기능 없음.
