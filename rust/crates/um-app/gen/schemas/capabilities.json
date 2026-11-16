@@ -1,1 +1,1 @@
-{"settings-and-analytics":{"identifier":"settings-and-analytics","description":"설정·분석 창(앱 내부 페이지)만 앱 명령·이벤트를 쓴다. 사용량 조회·로그인 웹뷰(외부 사이트)에는 권한을 주지 않는다.","local":true,"windows":["settings","analytics"],"permissions":["core:default","core:event:default"]}}
+{"settings-and-analytics":{"identifier":"settings-and-analytics","description":"설정·분석 창(앱 내부 페이지)만 앱 명령·이벤트를 쓴다. 사용량 조회·로그인 웹뷰(외부 사이트)에는 권한을 주지 않는다.","local":true,"windows":["settings","analytics","linedrag"],"permissions":["core:default","core:event:default"]}}
