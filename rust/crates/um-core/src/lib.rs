@@ -14,6 +14,7 @@
 pub mod analytics;
 pub mod history;
 pub mod i18n;
+pub mod menu_text;
 pub mod model;
 pub mod notify_rules;
 pub mod segments;
