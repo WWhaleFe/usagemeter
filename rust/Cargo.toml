@@ -60,3 +60,9 @@ lto = "thin"
 codegen-units = 1
 panic = "abort"
 strip = true
+
+# 테두리 기준 이미지 비교 테스트가 디버그에서 느리다(kurbo 호 길이 계산). 기하 크레이트만 최적화.
+[profile.dev.package.kurbo]
+opt-level = 3
+[profile.dev.package.tiny-skia]
+opt-level = 3
