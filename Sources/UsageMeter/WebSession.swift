@@ -28,6 +28,8 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
     private let hostWindow: NSWindow
 
     private var lastLoadedMatches = false
+    /// 응답 키 목록을 이미 로그로 남겼는지(세션당 한 번).
+    private var loggedKeys = false
     private var readyWaiters: [CheckedContinuation<Void, Never>] = []
     private var loadWaiters: [CheckedContinuation<Void, Never>] = []
     private var popups: [PopupWebView] = []
@@ -344,6 +346,11 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
             // '재로그인 필요'가 아니라 '못 읽음'으로 구분해 오안내를 막는다.
             return snapshot(.unavailable(reason), now)
         }
+        // 응답 최상위 키 목록(값 제외)은 세션당 한 번만 남긴다. 세부 한도 필드가 바뀌었을 때 원인 파악용.
+        if !loggedKeys, let keys = raw["keys"] as? [String] {
+            loggedKeys = true
+            NSLog("[UsageMeter] %@ usage keys=%@", spec.id, keys.joined(separator: ","))
+        }
         let five = raw["five_hour"] as? [String: Any]
         let week = raw["seven_day"] as? [String: Any]
         let opus = raw["seven_day_opus"] as? [String: Any]
@@ -351,7 +358,8 @@ final class WebSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         let plan = (raw["plan"] as? String).flatMap { $0.isEmpty ? nil : $0 }
         var buckets = (raw["model_buckets"] as? [[String: Any]])?.compactMap { b -> UsageModelBucket? in
             guard let label = b["label"] as? String, !label.isEmpty else { return nil }
-            return UsageModelBucket(label: label, remainingRatio: remaining(b), resetAt: resetDate(b))
+            return UsageModelBucket(label: label, remainingRatio: remaining(b), resetAt: resetDate(b),
+                                    isFiveHour: (b["five_hour"] as? Bool) ?? false)
         } ?? []
         // Opus·Sonnet 주간 필드는 limits(weekly_scoped)에 같은 모델이 없을 때만 세부 항목으로 보탠다.
         for (key, label) in [("seven_day_opus", "Opus"), ("seven_day_sonnet", "Sonnet")] {

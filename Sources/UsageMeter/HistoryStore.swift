@@ -8,6 +8,8 @@ struct UsageSample: Codable {
     /// AI별 세부 버킷 잔여 비율(예: Antigravity의 gemini-5h, gemini-argon-wtu-weekly 등).
     /// 구버전 history.json 호환을 위해 옵셔널.
     var buckets: [String: [String: Double]]? = nil
+    /// AI별 세부 항목(UsageSubItem.id) 잔여 비율. 분석 창의 항목별 통계 원천(1.5.0부터 기록).
+    var items: [String: [String: Double]]? = nil
 }
 
 /// 소진 예측 결과.
@@ -50,11 +52,14 @@ final class HistoryStore: ObservableObject {
 
         var ratios: [String: Double] = [:]
         var buckets: [String: [String: Double]] = [:]
+        var items: [String: [String: Double]] = [:]
         for a in active {
             ratios[a.spec.id] = a.snap.remainingRatio
             if let rb = a.snap.rawBuckets, !rb.isEmpty {
                 buckets[a.spec.id] = rb
             }
+            items[a.spec.id] = Dictionary(a.snap.subItems.map { ($0.id, $0.remainingRatio) },
+                                          uniquingKeysWith: { a, _ in a })
         }
 
         // 직전 표본 대비 실제 잔여율/버킷 변화가 있으면 minGap(45초)을 기다리지 않고 즉시 기록한다.
@@ -71,12 +76,20 @@ final class HistoryStore: ObservableObject {
                     if let pbv = pbmap[bk], abs(pbv - bv) > 0.0005 { return true }
                 }
             }
+            for (k, imap) in items {
+                guard let pimap = prev.items?[k] else { return true }
+                for (ik, iv) in imap {
+                    guard let piv = pimap[ik] else { return true }
+                    if abs(piv - iv) > 0.0005 { return true }
+                }
+            }
             return false
         }()
 
         guard changed || now.timeIntervalSince(lastRecord) >= minGap else { return }
         lastRecord = now
-        samples.append(UsageSample(t: now, ratios: ratios, buckets: buckets.isEmpty ? nil : buckets))
+        samples.append(UsageSample(t: now, ratios: ratios, buckets: buckets.isEmpty ? nil : buckets,
+                                   items: items.isEmpty ? nil : items))
         let cutoff = now.addingTimeInterval(-maxAge)
         samples.removeAll { $0.t < cutoff }
         save()
@@ -90,6 +103,38 @@ final class HistoryStore: ObservableObject {
             return (s.t, r)
         }
     }
+
+    /// 특정 AI 세부 항목의 (시각, 잔여율) 시계열(`since` 이후, 시간순).
+    func itemSeries(for id: String, item: String, since: Date) -> [(t: Date, r: Double)] {
+        samples.compactMap { s in
+            guard s.t >= since, let r = s.items?[id]?[item] ?? legacyItem(s, id, item) else { return nil }
+            return (s.t, r)
+        }
+    }
+
+    /// 세부 항목 기록(1.5.0) 이전 표본에서 되살릴 수 있는 값: 5시간 항목만.
+    /// Antigravity는 버킷의 gemini-5h, 그 외(Claude·Codex·웹 Gemini)는 대표 잔여율 = 5시간 잔여율.
+    private func legacyItem(_ s: UsageSample, _ id: String, _ item: String) -> Double? {
+        guard s.items?[id] == nil, item == "5h" else { return nil }
+        if let b = s.buckets?[id] { return b["gemini-5h"] }
+        return s.ratios[id]
+    }
+
+    /// `since` 이후 이력에 나타난 특정 AI의 세부 항목 id들(처음 나온 순서).
+    func itemIDs(for id: String, since: Date) -> [String] {
+        var seen = Set<String>(), out: [String] = []
+        for s in samples where s.t >= since {
+            guard let m = s.items?[id] else {
+                if !seen.contains("5h"), legacyItem(s, id, "5h") != nil { seen.insert("5h"); out.append("5h") }
+                continue
+            }
+            for k in m.keys.sorted() where !seen.contains(k) { seen.insert(k); out.append(k) }
+        }
+        return out
+    }
+
+    /// 세부 항목 기록이 시작된 첫 시각(1.5.0 이전 이력에는 없다).
+    var earliestItems: Date? { samples.first { $0.items != nil }?.t }
 
     /// 가장 오래된 표본 시각(데이터 수집 시작일 안내용).
     var earliest: Date? { samples.map(\.t).min() }

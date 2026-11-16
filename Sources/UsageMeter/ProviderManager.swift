@@ -18,6 +18,12 @@ final class ProviderManager: ObservableObject {
 
     private var loginControllers: [String: LoginWindowController] = [:]
 
+    /// 마지막으로 읽은 세부 항목(id·잔여율). 로그아웃·조회 실패 중에도 설정 탭에서
+    /// 항목별 색·표시를 고칠 수 있도록 기억해 둔다(재시작해도 유지).
+    struct KnownItem: Codable, Equatable { let id: String; let ratio: Double }
+    @Published private(set) var knownItems: [String: [KnownItem]] = ProviderManager.loadKnownItems()
+    private static let knownItemsKey = "knownSubItems"
+
     init() {
         var s: [String: ProviderState] = [:]
         var o: [String] = []
@@ -73,6 +79,7 @@ final class ProviderManager: ObservableObject {
         case .ok:
             st.snapshot = snap
             st.loggedIn = true
+            remember(snap.subItems, for: id)
         case .authExpired:
             st.snapshot = snap
             st.loggedIn = false
@@ -103,6 +110,28 @@ final class ProviderManager: ObservableObject {
     }
 
     func logoutAll() { for id in order { logout(id) } }
+
+    /// 설정 탭에 보일 세부 항목: 지금 읽은 값이 있으면 그것(live = true), 없으면 기억해 둔 마지막 값.
+    func subItems(for id: String) -> (items: [UsageSubItem], live: Bool) {
+        if let snap = states[id]?.snapshot, snap.status == .ok { return (snap.subItems, true) }
+        let items = (knownItems[id] ?? []).compactMap { UsageSubItem(id: $0.id, remainingRatio: $0.ratio) }
+        return (items, false)
+    }
+
+    private func remember(_ items: [UsageSubItem], for id: String) {
+        let known = items.map { KnownItem(id: $0.id, ratio: $0.remainingRatio) }
+        guard knownItems[id] != known else { return }
+        knownItems[id] = known
+        if let data = try? JSONEncoder().encode(knownItems) {
+            UserDefaults.standard.set(data, forKey: Self.knownItemsKey)
+        }
+    }
+
+    private static func loadKnownItems() -> [String: [KnownItem]] {
+        guard let data = UserDefaults.standard.data(forKey: knownItemsKey),
+              let v = try? JSONDecoder().decode([String: [KnownItem]].self, from: data) else { return [:] }
+        return v
+    }
 
     func isLoggedIn(_ id: String) -> Bool { states[id]?.loggedIn ?? false }
     var anyLoggedIn: Bool { states.values.contains { $0.loggedIn } }

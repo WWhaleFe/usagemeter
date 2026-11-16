@@ -84,6 +84,29 @@ struct UsageSubItem: Equatable, Identifiable {
     let isFiveHour: Bool
     let remainingRatio: Double
     let resetAt: Date?
+
+    /// 저장된 id만으로 항목을 되살린다(이력·기억해 둔 항목용). 잔여율·리셋 시각은 호출자가 준다.
+    /// id 형식: "5h" · "weekly" · "model:<이름>:5h" · "model:<이름>:weekly".
+    init?(id: String, remainingRatio: Double, resetAt: Date? = nil) {
+        if id == "5h" || id == "weekly" {
+            self.init(id: id, modelLabel: nil, isFiveHour: id == "5h", remainingRatio: remainingRatio, resetAt: resetAt)
+            return
+        }
+        guard id.hasPrefix("model:"), let colon = id.lastIndex(of: ":"),
+              colon > id.index(id.startIndex, offsetBy: 5) else { return nil }
+        let label = String(id[id.index(id.startIndex, offsetBy: 6)..<colon])
+        guard !label.isEmpty else { return nil }
+        self.init(id: id, modelLabel: label, isFiveHour: id[id.index(after: colon)...] == "5h",
+                  remainingRatio: remainingRatio, resetAt: resetAt)
+    }
+
+    init(id: String, modelLabel: String?, isFiveHour: Bool, remainingRatio: Double, resetAt: Date?) {
+        self.id = id
+        self.modelLabel = modelLabel
+        self.isFiveHour = isFiveHour
+        self.remainingRatio = remainingRatio
+        self.resetAt = resetAt
+    }
 }
 
 extension UsageSnapshot {

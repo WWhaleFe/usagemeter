@@ -6,6 +6,12 @@
 
 ## 🛠 유지보수 기록 (최신이 위)
 
+**v1.5.0 - 세부 항목 분석 + AI별 필터 + Codex 세부 한도 (2026-11-16):**
+- 이력(`HistoryStore`): 표본마다 AI별 세부 항목(`UsageSubItem.id`) 잔여율을 `items`에 기록. 1.5.0 이전 표본은 5시간 항목만 되살린다(Antigravity = 버킷 `gemini-5h`, 그 외 = 대표 잔여율).
+- 분석 창(`AnalyticsView` + 계산은 `AnalyticsModel`): AI 칩 단일 선택(전체 = AI 비교, AI 하나 = 세부 항목 기준) + 항목 칩. 잔여량 추이(최저·최고 다운샘플), 기간별 소비(1일 1시간/3일 3시간/주간·한달 하루), 요일 × 시간대 히트맵(제곱근 농도), 세부 항목 상세 표(리셋 = 잔여 +3%p 이상, 한도 도달 = 2% 이하 진입, 창 평균 사용률 = 끝난 창의 1-최저 잔여, 소진 속도 = 최근 3시간 중 마지막 리셋 이후 기울기).
+- Codex: `wham/usage`의 `code_review_rate_limit`·`additional_rate_limits`를 세부 항목으로 파싱(창 길이 6시간 이하 = 5시간). Plus 계정에서 확인한 응답 키: rate_limit, code_review_rate_limit(null), additional_rate_limits(null), model_usage(모델별 available만), credits, spend_control. 응답 키 목록은 세션당 한 번 로그.
+- 설정 세부 항목 탭: 로그아웃·조회 실패 중에도 마지막으로 읽은 항목(`ProviderManager.knownItems`, UserDefaults `knownSubItems`)으로 색·표시 설정 가능.
+
 **v1.4.2 — 세부 항목이 다른 AI 선을 가리던 문제 수정 (2026-11-09):**
 - 증상: Claude·Gemini가 같은 테두리를 공유할 때 Claude 선이 안 보임(수집은 정상). 대표값이 낮은 AI가 통째로 앞에 그려져, 그 AI의 긴 세부 항목(Gemini 5시간 99%)이 다른 AI를 덮었다.
 - 수정(`BorderView`): AI 단위가 아니라 세부 항목까지 펼친 띠 전체를 잔여율 높은 순으로 그린다. 트랙은 AI당 한 번, 모든 띠 아래.

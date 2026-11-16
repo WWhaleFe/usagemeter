@@ -267,7 +267,30 @@ struct ProviderSpec: Identifiable {
           const primary = win(rl.primary_window || rl.primary);
           const secondary = win(rl.secondary_window || rl.secondary);
           if (!primary && !secondary) return {ok:false, reason:'no_data'};
-          return {ok:true, plan: plan, five_hour: primary, seven_day: secondary};
+          // 세부 한도(코드 리뷰·모델별 추가 한도). 창 길이(limit_window_seconds/window_minutes)로
+          // 5시간/주간을 가른다. 없으면 primary=5시간, secondary=주간으로 본다.
+          const winSecs = (w) => num(w.limit_window_seconds) ?? (num(w.window_minutes) != null ? w.window_minutes * 60 : null);
+          const buckets = [];
+          const addLimit = (label, r) => {
+            if (!label || !r) return;
+            [[r.primary_window || r.primary, true], [r.secondary_window || r.secondary, false]].forEach(([w, dflt5h]) => {
+              const v = win(w);
+              if (!v) return;
+              const secs = winSecs(w);
+              buckets.push({label: label, utilization: v.utilization, resets_at: v.resets_at,
+                            five_hour: secs != null ? secs <= 6 * 3600 : dflt5h});
+            });
+          };
+          addLimit('Code Review', u.code_review_rate_limit || u.code_review_rate_limits);
+          const pretty = (x) => String(x).replace(/[_-]+/g, ' ').replace(/\\b\\w/g, c => c.toUpperCase());
+          const extra = u.additional_rate_limits || u.additional_rate_limit || [];
+          (Array.isArray(extra) ? extra : []).forEach(a => {
+            if (!a) return;
+            const name = a.limit_name || (a.metered_feature ? pretty(a.metered_feature) : null) || a.limit_id;
+            addLimit(name, a.rate_limit || a.rate_limits || a);
+          });
+          return {ok:true, plan: plan, five_hour: primary, seven_day: secondary, model_buckets: buckets,
+                  keys: Object.keys(u)};
         } catch (e) { return {ok:false, reason:'exception', message: String(e)}; }
         """,
         defaultColor: Color(red: 0.06, green: 0.64, blue: 0.50)   // OpenAI 틸

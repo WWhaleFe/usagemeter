@@ -517,11 +517,16 @@ struct SettingsView: View {
         ForEach(ProviderSpec.all) { spec in
             section(spec.name) {
                 Toggle(settings.t("subItems.split"), isOn: memberBinding(\.subItemSplitIDs, spec.id))
-                if let snap = manager.states[spec.id]?.snapshot, snap.status == .ok {
-                    let items = snap.subItems
-                    ForEach(items) { subItemRow(spec.id, $0, in: items) }
-                } else {
+                let known = manager.subItems(for: spec.id)
+                if known.items.isEmpty {
                     Text(settings.t("subItems.noData")).font(.caption).foregroundStyle(.secondary)
+                } else {
+                    if !known.live {
+                        // 로그아웃·조회 실패 중: 마지막으로 읽은 항목으로 설정은 계속 고칠 수 있다.
+                        Text(settings.t("subItems.lastKnown")).font(.caption).foregroundStyle(.orange)
+                    }
+                    ForEach(known.items) { subItemRow(spec.id, $0, in: known.items) }
+                        .opacity(known.live ? 1 : 0.6)
                 }
             }
         }
