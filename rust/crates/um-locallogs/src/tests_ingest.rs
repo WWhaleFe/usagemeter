@@ -52,7 +52,7 @@ const TS: &str = "2026-11-10T12:00:00.000Z";
 #[test]
 fn claude_dedupe_and_sidechain() {
     let (_t, roots, mut store) = setup();
-    let f = roots.claude_projects.join("p/a.jsonl");
+    let f = roots.claude_projects.join("p").join("a.jsonl");
     let mut text = cc_line("m1", "r1", TS, false, 20);
     text += &cc_line("m1", "r1", TS, false, 20); // 같은 응답이 반복된 줄
     text += &cc_line("m2", "r2", TS, true, 7);
@@ -104,7 +104,7 @@ fn codex_fixture() -> String {
 #[test]
 fn codex_record_preferred_and_limits_captured() {
     let (_t, roots, mut store) = setup();
-    write(&roots.codex_sessions.join("2026/11/10/rollout-a.jsonl"), &codex_fixture());
+    write(&roots.codex_sessions.join("2026").join("11").join("10").join("rollout-a.jsonl"), &codex_fixture());
     ingest_source(&mut store, &roots, Source::Codex, &IngestOptions::default()).unwrap();
     assert_eq!(count(&store), 2);
     let mut stmt = store
@@ -135,7 +135,7 @@ fn codex_record_preferred_and_limits_captured() {
 #[test]
 fn partial_last_line_waits_for_newline() {
     let (_t, roots, mut store) = setup();
-    let f = roots.claude_projects.join("p/a.jsonl");
+    let f = roots.claude_projects.join("p").join("a.jsonl");
     let l2 = cc_line("m2", "r2", TS, false, 1);
     let (head, tail) = l2.split_at(l2.len() / 2);
     write(&f, &(cc_line("m1", "r1", TS, false, 1) + head));
@@ -152,7 +152,7 @@ fn partial_last_line_waits_for_newline() {
 #[test]
 fn truncation_restarts_from_zero() {
     let (_t, roots, mut store) = setup();
-    let f = roots.claude_projects.join("p/a.jsonl");
+    let f = roots.claude_projects.join("p").join("a.jsonl");
     write(&f, &(cc_line("m1", "r1", TS, false, 1) + &cc_line("m2", "r2", TS, false, 1)));
     let o = IngestOptions::default();
     ingest_source(&mut store, &roots, Source::Claude, &o).unwrap();
@@ -169,7 +169,7 @@ fn truncation_restarts_from_zero() {
 #[test]
 fn retention_skips_old_files() {
     let (_t, roots, mut store) = setup();
-    let f = roots.claude_projects.join("p/old.jsonl");
+    let f = roots.claude_projects.join("p").join("old.jsonl");
     write(&f, &cc_line("m1", "r1", TS, false, 1));
     let old = SystemTime::now() - Duration::from_secs(100 * 86_400);
     File::options().write(true).open(&f).unwrap().set_modified(old).unwrap();
@@ -305,7 +305,7 @@ fn agy_copy_then_open_and_ingest() {
 fn large_file_streams_with_bounded_memory() {
     const N: usize = 50_000;
     let (_t, roots, mut store) = setup();
-    let f = roots.claude_projects.join("p/big.jsonl");
+    let f = roots.claude_projects.join("p").join("big.jsonl");
     fs::create_dir_all(f.parent().unwrap()).unwrap();
     {
         let mut w = BufWriter::new(File::create(&f).unwrap());
