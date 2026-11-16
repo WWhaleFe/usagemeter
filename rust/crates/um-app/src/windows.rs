@@ -22,7 +22,13 @@ pub fn open(app: &AppHandle, page: &str) {
     let lang = crate::shared(app).lock().map(|s| s.main.language).unwrap_or_default();
     let title = um_core::i18n::tr(if label == "analytics" { "analytics.title" } else { "menu.settings" }, lang);
     let url = WebviewUrl::App(format!("index.html#{hash}").into());
-    match WebviewWindowBuilder::new(app, label, url).title(title).inner_size(w, h).min_inner_size(640.0, 520.0).center().build() {
+    let builder = WebviewWindowBuilder::new(app, label, url).title(title).inner_size(w, h).min_inner_size(640.0, 520.0).center();
+    // Windows 11: Mica 배경이 비치도록 창을 투명하게(계획서 6-1). Windows 10은 Mica가 없어 단색으로 보인다.
+    #[cfg(windows)]
+    let builder = builder
+        .transparent(true)
+        .effects(tauri::window::EffectsBuilder::new().effect(tauri::window::Effect::Mica).build());
+    match builder.build() {
         Ok(win) => {
             dock_visible(app, true);
             let h = app.clone();

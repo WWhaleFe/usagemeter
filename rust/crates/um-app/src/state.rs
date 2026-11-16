@@ -92,6 +92,11 @@ impl AppState {
                 self.main_display_id = imp.main_display_uuid.clone();
                 self.disabled_displays = imp.disabled_displays.clone();
                 self.presets = imp.presets.clone();
+                // 세부 항목을 기억해 두면 로그아웃 중에도 설정 탭에서 항목을 고칠 수 있다(Swift knownSubItems).
+                for (id, items) in &imp.known_sub_items {
+                    self.providers.entry(id.clone()).or_default().known_items =
+                        items.iter().map(|k| um_providers::state::KnownItem { id: k.id.clone(), ratio: k.ratio }).collect();
+                }
                 self.default_snapshot = imp.default_settings.clone();
                 for w in &imp.warnings {
                     tracing::warn!("Swift 설정 가져오기: {w}");
@@ -128,6 +133,14 @@ impl AppState {
                 {
                     self.displays.insert(id.to_string(), s);
                 }
+            }
+        }
+        if let Ok(t) = std::fs::read_to_string(self.dir.join("known_items.json"))
+            && let Ok(v) = serde_json::from_str::<std::collections::BTreeMap<String, Vec<(String, f64)>>>(&t)
+        {
+            for (id, items) in v {
+                self.providers.entry(id).or_default().known_items =
+                    items.into_iter().map(|(id, ratio)| um_providers::state::KnownItem { id, ratio }).collect();
             }
         }
         if let Ok(t) = std::fs::read_to_string(self.dir.join("presets.json"))

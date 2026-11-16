@@ -278,7 +278,7 @@ pub fn on_event(app: &AppHandle, id: &str) {
 }
 
 /// 프리셋 id(UUID 형태 문자열, 의존성 없이 시각+난수로).
-fn new_id() -> String {
+pub fn new_id() -> String {
     let t = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
     let h = t ^ (std::process::id() as u128) << 64;
     format!("{:08X}-{:04X}-4{:03X}-8{:03X}-{:012X}", (h >> 96) as u32, (h >> 80) as u16, (h >> 68) as u16 & 0xFFF, (h >> 56) as u16 & 0xFFF, h as u64 & 0xFFFF_FFFF_FFFF)

@@ -3,6 +3,7 @@
 
 mod data;
 mod direct;
+mod ipc;
 mod menu;
 mod overlay;
 #[cfg(target_os = "macos")]
@@ -385,6 +386,9 @@ fn main() {
         .manage(shared_state.clone())
         .manage(Agy(Mutex::new(AgyParser::new())))
         .manage(DirectClients(Mutex::new(BTreeMap::new())))
+        .manage(ipc::Editing::default())
+        .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
+        .invoke_handler(tauri::generate_handler![ipc::ui_state, ipc::ui_set, ipc::ui_action])
         .setup(move |app| {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
@@ -419,6 +423,10 @@ fn main() {
                 panels::init(app.handle());
             }
             redraw(app.handle());
+            // 개발용: UM_OPEN_WINDOW=settings[#탭] 또는 analytics로 시작하면 그 창을 바로 연다.
+            if let Ok(page) = std::env::var("UM_OPEN_WINDOW") {
+                windows::open(app.handle(), &page);
+            }
 
             // 시작 조회(재시도 포함) 후 갱신 주기마다 전체 조회.
             let h = app.handle().clone();
