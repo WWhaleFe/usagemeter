@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use um_core::history::HistoryDb;
 use um_core::model::UsageSnapshot;
 use um_core::settings::Settings;
+use um_providers::state::ProviderState;
 
 /// 개발 중에는 Swift 버전과 섞이지 않게 따로 저장한다(번들 id도 `com.usagemeter.app.rs-dev`).
 const DATA_DIR_NAME: &str = "UsageMeter-rs";
@@ -17,9 +18,12 @@ pub struct AppState {
     pub displays: BTreeMap<String, Settings>,
     pub main_display_id: Option<String>,
     pub disabled_displays: Vec<String>,
+    /// 테두리·트레이에 그릴 스냅샷(`rebuild_snapshots`가 만든다).
     pub snapshots: BTreeMap<String, UsageSnapshot>,
-    /// 이력에서 되살린 값(아직 실시간 조회 전)인 AI.
-    pub from_history: Vec<String>,
+    /// AI별 로그인·조회 상태(Swift ProviderManager.states).
+    pub providers: BTreeMap<String, ProviderState>,
+    /// 이력에서 되살린 마지막 값. 그 AI의 첫 실시간 결과(성공 또는 로그아웃)가 오면 지운다.
+    pub seeds: BTreeMap<String, UsageSnapshot>,
     pub hide_overlay: bool,
     pub history: Option<HistoryDb>,
 }
@@ -36,7 +40,8 @@ impl AppState {
             main_display_id: None,
             disabled_displays: vec![],
             snapshots: BTreeMap::new(),
-            from_history: vec![],
+            providers: BTreeMap::new(),
+            seeds: BTreeMap::new(),
             hide_overlay: false,
             history: None,
         };
@@ -122,6 +127,23 @@ impl AppState {
         }
         let v = serde_json::json!({ "main": self.main_display_id, "disabled": self.disabled_displays });
         let _ = std::fs::write(self.dir.join("displays.json"), v.to_string());
+    }
+
+    /// 그릴 스냅샷 = 로그인돼 정상 조회된 AI + 아직 실시간 결과가 없는 AI의 이력 값.
+    pub fn rebuild_snapshots(&mut self) {
+        let mut out = BTreeMap::new();
+        for id in &self.main.provider_order {
+            if let Some(s) = self.providers.get(id).and_then(|p| p.active_snapshot()) {
+                out.insert(id.clone(), s.clone());
+            } else if let Some(s) = self.seeds.get(id) {
+                out.insert(id.clone(), s.clone());
+            }
+        }
+        self.snapshots = out;
+    }
+
+    pub fn is_logged_in(&self, id: &str) -> bool {
+        self.providers.get(id).is_some_and(|p| p.logged_in)
     }
 
     /// 이 화면에 쓸 설정: 주 설정(전역 값) + 그 화면의 테두리 값. 주 화면이면 주 설정 그대로.

@@ -22,7 +22,13 @@ serde_json.workspace = true
 chrono.workspace = true
 directories.workspace = true
 tracing.workspace = true
+tracing-subscriber.workspace = true
 
 [features]
 # Microsoft Store판: 앱 내 업데이트·레지스트리 자동 실행 제외(계획서 11-1). 아직 해당 기능 없음.
 store = []
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = { workspace = true }
+objc2-foundation = { workspace = true, features = ["NSURLRequest", "NSURL", "NSString"] }
+objc2-web-kit = { workspace = true, features = ["WKWebView", "WKNavigation"] }

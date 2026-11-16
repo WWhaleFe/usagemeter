@@ -9,7 +9,7 @@ CI: macOS, Windows x64, Windows ARM64에서 `cargo test --workspace` + `clippy -
 |---|---|---|
 | 0 사전 검증 | 진행 중 | S1(Tauri 메모리) 통과, S2 macOS 통과, S7 조사 완료, S8 통과. 남음: S2·S9·S10(실제 Windows 기기), S3·S5(로그인 세션을 쓰므로 앱 안에서 사용자 실행), S4, S6 |
 | 1 핵심 로직(`um-core`) | 완료 | 설정(Swift 가져오기 포함), 세그먼트 그래프(Swift 전수 비교 5,040건), 문자열 349개, 이력 SQLite·분석(Swift 기준값 비교), 알림 판정, 버전 비교 |
-| 2 수집(`um-providers`) | 순수 로직 완료 | 응답 해석(웹뷰 경로·직접 호출 경로 결과 일치), agy 해석·실행 파일 탐색, 상태 반영 규칙. 남음: 웹뷰·HTTP 전송 계층, 로그인 창, 스케줄러 |
+| 2 수집(`um-providers` + `um-app/web.rs`) | 앱에서 동작 | 응답 해석(웹뷰 경로·직접 호출 경로 결과 일치), agy 해석·실행 파일 탐색, 상태 반영 규칙. 남음: 웹뷰·HTTP 전송 계층, 로그인 창, 스케줄러 |
 | 3 테두리 | 앱에서 동작 | `um-render` 기하·그리기(Swift 기준 이미지 55장 비교 통과), `um-platform` 띠 창(macOS NSWindow+CALayer, Windows 레이어드 창, Windows CI에서 실제 창 생성). 남음: 디스플레이 관리·장치 맞춤 연결 |
 | 4 트레이·호버·패널 | 시작 전 | |
 | 5 설정 창 | 시작 전 | Svelte, macOS·Windows(Fluent) 스킨 |
@@ -31,7 +31,7 @@ CI: macOS, Windows x64, Windows ARM64에서 `cargo test --workspace` + `clippy -
 ## 다음 할 일
 
 1. ~~앱 뼈대~~ 완료: `um-app`(트레이 링 아이콘·메뉴, 화면별 테두리, Swift 설정·이력 첫 실행 가져오기, Gemini agy 실시간 조회, Claude·Codex는 이력의 마지막 값). 실행 시 프로세스 29 MB
-2. 수집 전송 계층: wry 임시 웹뷰(macOS `loadSimulatedRequest`, Windows `WebResourceRequested`), 직접 호출(reqwest), 로그인 창 → 이 안에서 S3·S5를 사용자 동의하에 측정
+2. ~~수집 전송 계층~~ 대부분 완료: 조회할 때만 만드는 숨은 웹뷰(macOS 빈 오리진 문서), 결과는 `document.title`로 받음(서비스 페이지에 앱 명령 권한 없음), 로그인 창(팝업 포함)·로그아웃, 시작 재시도. 남음: Windows `WebResourceRequested` 빈 문서(지금은 robots.txt), 직접 호출(reqwest) 경로와 S3·S5 측정
 3. 호버·플라이아웃(S9), 설정 창 스킨
 4. 실제 Windows 기기에서 S2·S9·S10·메모리 측정
 
