@@ -9,9 +9,12 @@ use serde_json::{Map, Value, json};
 use tauri::{AppHandle, Emitter, Manager};
 use um_core::hover::seg_ctx;
 use um_core::i18n::tr;
-use um_core::segments::{can_use_segments, is_valid_segments, seg_available, segs_for};
+use um_core::segments::{
+    SegContext, bend_radius_estimate, can_use_segments, chain_ends, corner_used, enforce_no_overlap, h_cap, is_valid_segments, layout_for, seg_adjacency,
+    seg_available, seg_ends, segs_for, zone_perimeter,
+};
 use um_core::settings::{BRAND_COLORS, MAX_PRESETS, REFRESH_PRESETS, ScreenInfo, Settings, SettingsSnapshot, add_preset, device_fit};
-use um_core::types::{SegPart, AppLanguage};
+use um_core::types::{AppLanguage, BorderCorner, ScreenZone, SegCap, SegNode, SegPart};
 use um_providers::spec;
 use um_render::border::sub_item_color;
 
@@ -88,6 +91,10 @@ pub fn ui_state(app: AppHandle) -> Value {
                 "color": rgba_hex(um_render::border::provider_color(&st.main, id)),
                 "items": items_v, "itemsLive": live,
                 "segOptions": seg_options(border, id),
+                "layout": layout_value(border, id),
+                "chain": chain_ends(&segs_for(&seg_ctx(border), id), border.menu_line_enabled, border.dock_line_enabled).is_some(),
+                "anchorSideKind": anchor_side_kind(&seg_ctx(border), id),
+                "shapePresets": shape_presets(border, id),
             }))
         })
         .collect();
@@ -100,6 +107,7 @@ pub fn ui_state(app: AppHandle) -> Value {
         "strings": strings,
         "main": snapshot_value(&st.main),
         "border": snapshot_value(border),
+        "cornerUsed": corner_used_value(border),
         "editing": edit,
         "displays": displays,
         "providers": providers,
@@ -153,7 +161,82 @@ fn seg_options(s: &Settings, id: &str) -> Value {
         let valid = available && is_valid_segments(&toggled, s.menu_line_enabled, s.dock_line_enabled);
         let allowed = valid && can_use_segments(&ctx, id, &toggled);
         let used_by_other = um_core::segments::PROVIDER_IDS.iter().any(|o| *o != id && segs_for(&ctx, o).contains(&seg));
-        out.insert(seg.raw().into(), json!({"on": cur.contains(&seg), "available": available, "toggleValid": valid, "toggleAllowed": allowed, "usedByOther": used_by_other}));
+        let (a, b) = seg_ends(seg, s.menu_line_enabled, s.dock_line_enabled);
+        let ends = json!([{"right": a.right, "level": a.level}, {"right": b.right, "level": b.level}]);
+        out.insert(seg.raw().into(), json!({"on": cur.contains(&seg), "available": available, "toggleValid": valid, "toggleAllowed": allowed, "usedByOther": used_by_other, "ends": ends}));
+    }
+    Value::Object(out)
+}
+
+/// 이 AI의 실제 배치(저장된 값이 없으면 기본값, segments는 구버전 변환 결과). 화면이 고쳐서 `providerLayouts`에 되돌려 쓴다.
+fn layout_value(s: &Settings, id: &str) -> Value {
+    let ctx = seg_ctx(s);
+    let mut l = layout_for(&ctx, id);
+    l.segments = Some(segs_for(&ctx, id));
+    serde_json::to_value(l).unwrap_or(Value::Null)
+}
+
+/// 곡선 모서리에서 차감이 시작될 지점의 종류: "hidden"(곡률 0·고리 아님) / "round"(2지점) / "scoop"(3지점). (Swift anchorSideKind, SettingsView.swift:~960)
+fn anchor_side_kind(ctx: &SegContext, id: &str) -> &'static str {
+    let (menu_on, dock_on) = (ctx.menu_on, ctx.dock_on);
+    let segs = segs_for(ctx, id);
+    if !is_valid_segments(&segs, menu_on, dock_on) || chain_ends(&segs, menu_on, dock_on).is_some() {
+        return "hidden";
+    }
+    let adj = seg_adjacency(&segs, menu_on, dock_on);
+    let (Some(tl), Some(bl)) = (adj.keys().map(|n| n.level).min(), adj.keys().map(|n| n.level).max()) else { return "hidden" };
+    let l = layout_for(ctx, id);
+    let node = match l.anchor_corner {
+        BorderCorner::TopLeft => SegNode { right: false, level: tl },
+        BorderCorner::TopRight => SegNode { right: true, level: tl },
+        BorderCorner::BottomRight => SegNode { right: true, level: bl },
+        BorderCorner::BottomLeft => SegNode { right: false, level: bl },
+    };
+    let Some(incident) = adj.get(&node) else { return "hidden" };
+    let (Some(&h), Some(&v)) = (incident.iter().find(|s| s.is_horizontal()), incident.iter().find(|s| !s.is_horizontal())) else { return "hidden" };
+    if bend_radius_estimate(ctx, id, h, v, node) <= 0.01 {
+        return "hidden";
+    }
+    // 스쿱 판정: 가로선 캡 방향이 세로선 진행 방향과 반대.
+    let cap = h_cap(ctx, id, h, node.right);
+    if cap == SegCap::Up || cap == SegCap::Down {
+        let (a, b) = seg_ends(v, menu_on, dock_on);
+        let v_down = (if a == node { b.level } else { a.level }) > node.level;
+        let matches = (cap == SegCap::Down && v_down) || (cap == SegCap::Up && !v_down);
+        if !matches {
+            return "scoop";
+        }
+    }
+    "round"
+}
+
+/// 모양 프리셋(전체·메뉴바·본문·Dock): 영역, 둘레 세그먼트, 지금 쓸 수 있는지. (Swift presetButton, SettingsView.swift:~770)
+fn shape_presets(s: &Settings, id: &str) -> Value {
+    let ctx = seg_ctx(s);
+    let mut out = Map::new();
+    for (key, zones) in [
+        ("all", vec![ScreenZone::MenuBar, ScreenZone::Main, ScreenZone::Dock]),
+        ("menuBar", vec![ScreenZone::MenuBar]),
+        ("main", vec![ScreenZone::Main]),
+        ("dock", vec![ScreenZone::Dock]),
+    ] {
+        let set = zone_perimeter(&zones.iter().copied().collect(), s.menu_line_enabled, s.dock_line_enabled);
+        let allowed = can_use_segments(&ctx, id, &set);
+        out.insert(key.into(), json!({"zones": zones, "segments": set, "allowed": allowed}));
+    }
+    Value::Object(out)
+}
+
+/// 영역 x 꼭짓점별 곡률 사용 여부(모서리 탭에서 안 쓰는 꼭짓점을 비활성화). (Swift cornerUsed)
+fn corner_used_value(s: &Settings) -> Value {
+    let ctx = seg_ctx(s);
+    let mut out = Map::new();
+    for (name, z) in [("menuBar", ScreenZone::MenuBar), ("main", ScreenZone::Main), ("dock", ScreenZone::Dock)] {
+        let mut m = Map::new();
+        for (cn, c) in [("topLeft", BorderCorner::TopLeft), ("topRight", BorderCorner::TopRight), ("bottomLeft", BorderCorner::BottomLeft), ("bottomRight", BorderCorner::BottomRight)] {
+            m.insert(cn.into(), Value::Bool(corner_used(&ctx, z, c)));
+        }
+        out.insert(name.into(), Value::Object(m));
     }
     Value::Object(out)
 }
@@ -292,6 +375,28 @@ pub fn ui_action(app: AppHandle, action: String, arg: Value) -> Result<Value, St
                 st.main.apply_platform_rules(cfg!(windows));
             }
         }),
+        // '겹치는 선 없음'을 켤 때 기존 겹침 정리(Swift :613-619). 편집 중인 화면의 테두리에 쓴다.
+        "enforceNoOverlap" => {
+            let edit = editing_id(&app, &crate::shared(&app).lock().unwrap());
+            with_state(&app, |st| {
+                let s = match &edit {
+                    Some(id) => {
+                        let base = st.main.clone();
+                        st.displays.entry(id.clone()).or_insert(base)
+                    }
+                    None => &mut st.main,
+                };
+                let fixed = enforce_no_overlap(&seg_ctx(s));
+                s.provider_layouts.extend(fixed);
+            });
+        }
+        // 화면 위에서 메뉴선·Dock선을 끌어 조정하는 전체 화면 창(macOS 전용, Swift LineDragOverlay).
+        "dragLines" => crate::windows::open_line_drag(&app),
+        "closeLineDrag" => {
+            if let Some(w) = app.get_webview_window("linedrag") {
+                let _ = w.close();
+            }
+        }
         "deviceFit" | "detectNotch" => {
             let edit = editing_id(&app, &crate::shared(&app).lock().unwrap());
             let ds = um_platform::display::displays();
@@ -309,10 +414,14 @@ pub fn ui_action(app: AppHandle, action: String, arg: Value) -> Result<Value, St
                         None => &mut st.main,
                     };
                     if notch_only {
-                        // Swift detectNotch(:1104-1114): 노치 크기만 다시 읽는다.
-                        if let Some(n) = info.notch {
-                            s.notch_width = n.width;
-                            s.notch_height = n.height;
+                        // Swift 노치 탭 감지 버튼(SettingsView.swift:696-704): 노치가 있으면 켜고 크기를 채우고, 없으면 끈다.
+                        match info.notch {
+                            Some(n) => {
+                                s.notch_enabled = true;
+                                s.notch_width = n.width;
+                                s.notch_height = n.height;
+                            }
+                            None => s.notch_enabled = false,
                         }
                     } else {
                         device_fit(s, &info);

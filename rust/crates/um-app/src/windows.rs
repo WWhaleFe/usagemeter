@@ -7,6 +7,10 @@ use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 /// `page` = "settings", "settings#interval", "analytics", "support" 등. 창은 종류마다 하나.
 pub fn open(app: &AppHandle, page: &str) {
     let (kind, tab) = page.split_once('#').unwrap_or((page, ""));
+    // 개발용: UM_OPEN_WINDOW=linedrag로 선 위치 끌기 화면을 바로 연다.
+    if kind == "linedrag" {
+        return open_line_drag(app);
+    }
     let (label, w, h) = match kind {
         "analytics" => ("analytics", 1000.0, 720.0),
         _ => ("settings", 760.0, 880.0), // 설정·후원은 같은 창(후원 탭)
@@ -53,3 +57,42 @@ fn dock_visible(app: &AppHandle, on: bool) {
     #[cfg(not(target_os = "macos"))]
     let _ = (app, on);
 }
+
+/// 선 위치 끌기 화면(Swift LineDragOverlay.swift): 편집 중인 화면 전체를 덮는 투명 창, 맨 위. macOS 전용.
+/// 창 좌표는 논리 pt, 왼쪽 위 원점(주 화면 왼쪽 위가 (0,0)).
+#[cfg(target_os = "macos")]
+pub fn open_line_drag(app: &AppHandle) {
+    // 이미 열려 있으면(다른 화면에서 열었을 수 있으니) 닫고 새로 연다(Swift show()의 hide()).
+    if let Some(w) = app.get_webview_window("linedrag") {
+        let _ = w.destroy();
+    }
+    let edit = crate::shared(app).lock().ok().and_then(|st| {
+        let e = app.state::<crate::ipc::Editing>().0.lock().unwrap().clone();
+        e.or_else(|| st.main_display_id.clone())
+    });
+    let ds = um_platform::display::displays();
+    let Some(d) = ds.iter().find(|d| Some(&d.id) == edit.as_ref()).or(ds.first()) else { return };
+    // 전역 AppKit 좌표(왼쪽 아래 원점)의 이 화면 위쪽 가장자리를 Tauri 좌표(왼쪽 위 원점)로 바꾼다.
+    let (gx, top) = d.to_global(0.0, 0.0);
+    let primary_h = ds.first().map_or(d.height_pt, |p| p.height_pt);
+    let builder = WebviewWindowBuilder::new(app, "linedrag", WebviewUrl::App("index.html#linedrag".into()))
+        .title("UsageMeter")
+        .decorations(false)
+        .transparent(true)
+        .shadow(false)
+        .always_on_top(true)
+        .resizable(false)
+        .skip_taskbar(true)
+        .visible_on_all_workspaces(true)
+        .position(gx, primary_h - top)
+        .inner_size(d.width_pt, d.height_pt);
+    match builder.build() {
+        Ok(win) => {
+            let _ = win.set_focus();
+        }
+        Err(e) => tracing::warn!("선 끌기 창 열기 실패: {e}"),
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn open_line_drag(_app: &AppHandle) {}
