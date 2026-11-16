@@ -1,0 +1,11 @@
+[package]
+name = "s8-text"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+cosmic-text = "0.19.0"
+tiny-skia = "0.12.0"
