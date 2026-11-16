@@ -9,5 +9,5 @@
     {"label": "Codex Fake Model", "utilization": 50, "resets_at": "2026-11-17T00:00:00Z", "five_hour": true},
     {"label": "Codex Fake Model", "utilization": 70, "resets_at": "2026-11-17T00:00:00Z", "five_hour": false}
   ],
-  "keys": ["additional_rate_limits", "code_review_rate_limit", "plan_type", "rate_limit"]
+  "keys": ["plan_type", "rate_limit", "code_review_rate_limit", "additional_rate_limits"]
 }
