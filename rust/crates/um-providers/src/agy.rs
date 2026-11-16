@@ -69,17 +69,14 @@ pub fn candidates(os: Os, home: &str, path_env: Option<&str>, pathext: Option<&s
 /// 실행 가능한 파일인가(Unix는 실행 비트, Windows는 일반 파일).
 pub fn is_executable(p: &Path) -> bool {
     let Ok(meta) = std::fs::metadata(p) else { return false };
-    if !meta.is_file() {
-        return false;
-    }
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        meta.permissions().mode() & 0o111 != 0
+        meta.is_file() && meta.permissions().mode() & 0o111 != 0
     }
     #[cfg(not(unix))]
     {
-        true
+        meta.is_file()
     }
 }
 
