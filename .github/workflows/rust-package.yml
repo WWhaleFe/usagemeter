@@ -4,6 +4,8 @@ name: rust-package
 on:
   workflow_dispatch:
   push:
+    # 시험용 빌드: rust-package 브랜치로 push하면 Actions 산출물만 만든다(릴리스 없음).
+    branches: ["rust-package"]
     tags: ["rust-v*"]
 
 permissions:
