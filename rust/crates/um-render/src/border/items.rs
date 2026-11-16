@@ -3,7 +3,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use um_core::model::UsageSnapshot;
+use um_core::model::{UsageSnapshot, UsageSubItem};
 use um_core::segments::{PROVIDER_IDS, SegContext, chain_ends, end_override, seg_ends};
 use um_core::settings::{Settings, default_provider_color};
 use um_core::types::{Rgba, SegNode, SegPart};
@@ -179,6 +179,15 @@ const SUB_ITEM_PALETTE: [Rgba; 5] = [
     [0.52, 0.80, 0.20, 1.0], // 연두
 ];
 
+/// 세부 항목 색: 사용자 지정이 있으면 그것, 없으면 목록 안의 위치로(첫 항목 = AI 색, 이후 팔레트 순환).
+pub fn sub_item_color(s: &Settings, provider_id: &str, item_id: &str, items: &[UsageSubItem]) -> Rgba {
+    let key = UsageSubItem::settings_key(provider_id, item_id);
+    s.sub_item_colors.get(&key).copied().unwrap_or_else(|| {
+        let i = items.iter().position(|it| it.id == item_id).unwrap_or(0);
+        if i == 0 { provider_color(s, provider_id) } else { SUB_ITEM_PALETTE[(i - 1) % SUB_ITEM_PALETTE.len()] }
+    })
+}
+
 /// 띠에 겹쳐 그릴 세부 항목들(잔여율 + 색). 겹침 모드가 아니거나 전부 뺐으면 빈 배열 = 대표 한 줄.
 /// (Swift `subItemBarParts`)
 pub fn sub_item_bar_parts(s: &Settings, provider_id: &str, snap: &UsageSnapshot) -> Vec<BandPart> {
@@ -192,13 +201,6 @@ pub fn sub_item_bar_parts(s: &Settings, provider_id: &str, snap: &UsageSnapshot)
         .filter(|(_, it)| {
             !s.sub_item_bar_hidden.contains(&um_core::model::UsageSubItem::settings_key(provider_id, &it.id))
         })
-        .map(|(i, it)| {
-            // 사용자 지정 -> 없으면 목록 안의 위치로 정한 기본 색.
-            let key = um_core::model::UsageSubItem::settings_key(provider_id, &it.id);
-            let color = s.sub_item_colors.get(&key).copied().unwrap_or_else(|| {
-                if i == 0 { provider_color(s, provider_id) } else { SUB_ITEM_PALETTE[(i - 1) % SUB_ITEM_PALETTE.len()] }
-            });
-            BandPart { ratio: it.remaining_ratio, color }
-        })
+        .map(|(_, it)| BandPart { ratio: it.remaining_ratio, color: sub_item_color(s, provider_id, &it.id, &items) })
         .collect()
 }

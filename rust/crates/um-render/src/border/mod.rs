@@ -14,7 +14,7 @@ use um_core::settings::Settings;
 use um_core::types::{BorderCorner, Rgba, ScreenZone, SegPart};
 
 pub use draw::render;
-pub use items::{provider_color, sub_item_bar_parts};
+pub use items::{provider_color, sub_item_bar_parts, sub_item_color};
 pub use shape::{Built, ChainShape, Rec};
 pub use spans::{Span, merge_spans, tapered};
 
