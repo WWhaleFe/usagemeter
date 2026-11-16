@@ -20,10 +20,20 @@ pub fn client(app: &AppHandle, spec: &'static ProviderSpec) -> Option<Client> {
     let home: Url = spec.home_url.parse().ok()?;
     for (name, value, domain, path) in web::read_cookies(app, spec) {
         let dom = domain.trim_start_matches('.');
-        let base: Url = format!("https://{dom}/").parse().unwrap_or_else(|_| home.clone());
-        jar.add_cookie_str(&format!("{name}={value}; Domain={domain}; Path={path}"), &base);
+        let base: Url = format!("https://{dom}/")
+            .parse()
+            .unwrap_or_else(|_| home.clone());
+        jar.add_cookie_str(
+            &format!("{name}={value}; Domain={domain}; Path={path}"),
+            &base,
+        );
     }
-    Client::builder().cookie_provider(jar).user_agent(web::USER_AGENT).timeout(Duration::from_secs(15)).build().ok()
+    Client::builder()
+        .cookie_provider(jar)
+        .user_agent(web::USER_AGENT)
+        .timeout(Duration::from_secs(15))
+        .build()
+        .ok()
 }
 
 /// (HTTP 상태, JSON 본문). 네트워크 오류면 상태 0.
@@ -74,7 +84,10 @@ pub fn probe_with(c: &Client, spec: &ProviderSpec) -> Value {
                 }
                 None => (None, None),
             };
-            let (st, body) = send(c, &d::codex_usage_request(token.as_deref(), account.as_deref()));
+            let (st, body) = send(
+                c,
+                &d::codex_usage_request(token.as_deref(), account.as_deref()),
+            );
             d::codex_probe_from_usage(plan.as_deref(), st, body.as_ref(), chrono::Utc::now())
         }
         _ => json!({"ok": false, "reason": "unsupported"}),

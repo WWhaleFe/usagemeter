@@ -3,8 +3,8 @@
 
 use std::collections::BTreeMap;
 
-use um_platform::display::{self, DisplayInfo};
 use um_platform::OverlayStrip;
+use um_platform::display::{self, DisplayInfo};
 use um_render::border::{self, BorderInput, ProviderBand, StripSide};
 
 use crate::state::AppState;
@@ -18,7 +18,10 @@ pub struct Overlay {
 }
 
 fn signature(ds: &[DisplayInfo]) -> String {
-    ds.iter().map(|d| format!("{}:{}x{}@{}", d.id, d.width_pt, d.height_pt, d.scale)).collect::<Vec<_>>().join("|")
+    ds.iter()
+        .map(|d| format!("{}:{}x{}@{}", d.id, d.width_pt, d.height_pt, d.scale))
+        .collect::<Vec<_>>()
+        .join("|")
 }
 
 /// 화면 안 띠 4개(왼쪽 위 원점, pt). 메뉴선·Dock선(macOS)이 켜져 있으면 위·아래 띠를 그 높이까지 넓힌다.
@@ -83,7 +86,12 @@ impl Overlay {
                     parts: border::sub_item_bar_parts(&st.main, id, snap),
                 })
                 .collect();
-            let scene = border::build_paths(&BorderInput { settings: &s, screen_w: d.width_pt, screen_h: d.height_pt, bands });
+            let scene = border::build_paths(&BorderInput {
+                settings: &s,
+                screen_w: d.width_pt,
+                screen_h: d.height_pt,
+                bands,
+            });
             // 띠 개수·위치가 바뀌었으면 새로 만든다.
             if entry.len() != rects.len() || entry.iter().zip(&rects).any(|((_, a), b)| a != b) {
                 entry.clear();

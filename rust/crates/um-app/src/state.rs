@@ -55,7 +55,9 @@ impl AppState {
             s.apply_platform_rules(cfg!(windows));
         }
         st.hide_overlay = st.main.hide_overlay_on_launch;
-        st.history = HistoryDb::open(dir.join("history.db")).map_err(|e| tracing::warn!("이력 DB 열기 실패: {e}")).ok();
+        st.history = HistoryDb::open(dir.join("history.db"))
+            .map_err(|e| tracing::warn!("이력 DB 열기 실패: {e}"))
+            .ok();
         if first_run {
             st.import_swift_history();
         }
@@ -65,14 +67,18 @@ impl AppState {
 
     /// 첫 실행: Swift 버전 설정을 가져온다(계획서 7장). 원본은 건드리지 않는다.
     fn import_swift(&mut self) {
-        let Some(path) = um_core::settings::default_swift_plist_path().filter(|p| p.exists()) else { return };
+        let Some(path) = um_core::settings::default_swift_plist_path().filter(|p| p.exists())
+        else {
+            return;
+        };
         match um_core::settings::import_from_plist(&path) {
             Ok(imp) => {
                 if let Some(cur) = imp.usable_current() {
                     self.main = Settings::from_snapshot(cur);
                 }
                 for (id, snap) in &imp.displays {
-                    self.displays.insert(id.clone(), Settings::from_snapshot(snap));
+                    self.displays
+                        .insert(id.clone(), Settings::from_snapshot(snap));
                 }
                 self.main_display_id = imp.main_display_uuid.clone();
                 self.disabled_displays = imp.disabled_displays.clone();
@@ -85,8 +91,12 @@ impl AppState {
     }
 
     fn import_swift_history(&mut self) {
-        let Some(db) = self.history.as_mut() else { return };
-        let Some(home) = directories::BaseDirs::new() else { return };
+        let Some(db) = self.history.as_mut() else {
+            return;
+        };
+        let Some(home) = directories::BaseDirs::new() else {
+            return;
+        };
         let p = home.data_dir().join("UsageMeter").join("history.json");
         if p.exists() {
             match db.import_swift_history_json(&p) {
@@ -103,7 +113,8 @@ impl AppState {
         if let Ok(rd) = std::fs::read_dir(self.dir.join("displays")) {
             for e in rd.flatten() {
                 let p = e.path();
-                if let (Some(id), Some(s)) = (p.file_stem().and_then(|x| x.to_str()), read_json(&p)) {
+                if let (Some(id), Some(s)) = (p.file_stem().and_then(|x| x.to_str()), read_json(&p))
+                {
                     self.displays.insert(id.to_string(), s);
                 }
             }
@@ -112,7 +123,14 @@ impl AppState {
             && let Ok(v) = serde_json::from_str::<serde_json::Value>(&t)
         {
             self.main_display_id = v["main"].as_str().map(String::from);
-            self.disabled_displays = v["disabled"].as_array().map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect()).unwrap_or_default();
+            self.disabled_displays = v["disabled"]
+                .as_array()
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|x| x.as_str().map(String::from))
+                        .collect()
+                })
+                .unwrap_or_default();
         }
     }
 
@@ -125,7 +143,8 @@ impl AppState {
                 let _ = std::fs::write(self.dir.join("displays").join(format!("{id}.json")), t);
             }
         }
-        let v = serde_json::json!({ "main": self.main_display_id, "disabled": self.disabled_displays });
+        let v =
+            serde_json::json!({ "main": self.main_display_id, "disabled": self.disabled_displays });
         let _ = std::fs::write(self.dir.join("displays.json"), v.to_string());
     }
 
@@ -163,5 +182,7 @@ fn read_json(p: &Path) -> Option<Settings> {
 }
 
 fn data_dir() -> PathBuf {
-    directories::BaseDirs::new().map(|b| b.data_dir().join(DATA_DIR_NAME)).unwrap_or_else(|| PathBuf::from(DATA_DIR_NAME))
+    directories::BaseDirs::new()
+        .map(|b| b.data_dir().join(DATA_DIR_NAME))
+        .unwrap_or_else(|| PathBuf::from(DATA_DIR_NAME))
 }

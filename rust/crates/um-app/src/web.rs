@@ -18,8 +18,7 @@ use tauri::{AppHandle, Manager, Url, WebviewUrl, WebviewWindow, WebviewWindowBui
 use um_providers::spec::ProviderSpec;
 
 /// Swift WebSession.swift:37-38과 같은 데스크톱 Safari UA.
-pub const USER_AGENT: &str =
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15";
+pub const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15";
 
 /// 패스키(WebAuthn) 끄기: 내장 웹뷰는 패스키를 못 써서 비밀번호 등으로 넘어가게 한다. (WebSession.swift:42-55)
 pub const PASSKEY_OFF: &str = r#"(function () {
@@ -36,7 +35,10 @@ static SEQ: AtomicU64 = AtomicU64::new(1);
 
 fn next_token() -> String {
     let n = SEQ.fetch_add(1, Ordering::Relaxed);
-    let t = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.subsec_nanos()).unwrap_or(0);
+    let t = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.subsec_nanos())
+        .unwrap_or(0);
     format!("{n}x{t:x}")
 }
 
@@ -58,7 +60,11 @@ fn probe_start_url(spec: &ProviderSpec) -> Url {
     let home: Url = spec.home_url.parse().expect("home url");
     if spec.needs_rendered_dom || cfg!(target_os = "macos") {
         // macOS 빈 문서는 about:blank로 만든 뒤 `load_stub`이 오리진 문서로 바꾼다.
-        if spec.needs_rendered_dom { home } else { "about:blank".parse().expect("blank") }
+        if spec.needs_rendered_dom {
+            home
+        } else {
+            "about:blank".parse().expect("blank")
+        }
     } else {
         let mut u = home;
         u.set_path("/robots.txt");
@@ -74,9 +80,12 @@ fn load_stub(win: &WebviewWindow, spec: &'static ProviderSpec) {
         use objc2_foundation::{NSString, NSURL, NSURLRequest};
         use objc2_web_kit::WKWebView;
         let wk = &*(pw.inner() as *const WKWebView);
-        let Some(url) = NSURL::URLWithString(&NSString::from_str(&home)) else { return };
+        let Some(url) = NSURL::URLWithString(&NSString::from_str(&home)) else {
+            return;
+        };
         let req = NSURLRequest::requestWithURL(&url);
-        let html = NSString::from_str("<!doctype html><meta charset=\"utf-8\"><title>UsageMeter</title>");
+        let html =
+            NSString::from_str("<!doctype html><meta charset=\"utf-8\"><title>UsageMeter</title>");
         let _ = wk.loadSimulatedRequest_responseHTMLString(&req, &html);
     });
 }
@@ -92,7 +101,11 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
     let js = wrap(spec.usage_js, &token);
     let prefix = format!("UMRESULT:{token}:");
     let fired = Arc::new(AtomicBool::new(false));
-    let delay = if spec.needs_rendered_dom { Duration::from_millis(1500) } else { Duration::ZERO };
+    let delay = if spec.needs_rendered_dom {
+        Duration::from_millis(1500)
+    } else {
+        Duration::ZERO
+    };
     let built = WebviewWindowBuilder::new(app, &label, WebviewUrl::External(probe_start_url(spec)))
         .visible(false)
         .skip_taskbar(true)
@@ -101,7 +114,10 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
         .user_agent(USER_AGENT)
         .initialization_script_for_all_frames(PASSKEY_OFF)
         .on_page_load(move |w, p| {
-            if p.event() == PageLoadEvent::Finished && host_matches(p.url(), spec) && !fired.swap(true, Ordering::SeqCst) {
+            if p.event() == PageLoadEvent::Finished
+                && host_matches(p.url(), spec)
+                && !fired.swap(true, Ordering::SeqCst)
+            {
                 let js = js.clone();
                 std::thread::spawn(move || {
                     std::thread::sleep(delay);
@@ -123,7 +139,8 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
         load_stub(&win, spec);
     }
     let out = match rx.recv_timeout(timeout) {
-        Ok(s) => serde_json::from_str(&s).unwrap_or_else(|_| json!({"ok": false, "reason": "bad_result"})),
+        Ok(s) => serde_json::from_str(&s)
+            .unwrap_or_else(|_| json!({"ok": false, "reason": "bad_result"})),
         Err(_) => json!({"ok": false, "reason": "timeout"}),
     };
     let _ = win.destroy();
@@ -143,46 +160,59 @@ pub fn login(app: &AppHandle, spec: &'static ProviderSpec, title: &str) -> bool 
     let (tx, rx) = mpsc::channel::<String>();
     let app2 = app.clone();
     let popup_seq = Arc::new(AtomicU64::new(0));
-    let built = WebviewWindowBuilder::new(app, &label, WebviewUrl::External(spec.effective_login_url().parse().expect("login url")))
-        .title(title)
-        .inner_size(460.0, 720.0)
-        .center()
+    let built = WebviewWindowBuilder::new(
+        app,
+        &label,
+        WebviewUrl::External(spec.effective_login_url().parse().expect("login url")),
+    )
+    .title(title)
+    .inner_size(460.0, 720.0)
+    .center()
+    .user_agent(USER_AGENT)
+    .initialization_script_for_all_frames(PASSKEY_OFF)
+    .on_document_title_changed(move |_, t| {
+        if let Some(rest) = t.strip_prefix(&prefix) {
+            let _ = tx.send(rest.to_string());
+        }
+    })
+    // 구글 로그인 등의 팝업: 같은 쿠키·window.opener를 유지한 실제 창으로 연다(PopupWebView.swift).
+    .on_new_window(move |url, features| {
+        let n = popup_seq.fetch_add(1, Ordering::Relaxed);
+        match WebviewWindowBuilder::new(
+            &app2,
+            format!("popup-{n}"),
+            WebviewUrl::External("about:blank".parse().expect("blank")),
+        )
+        .window_features(features)
         .user_agent(USER_AGENT)
         .initialization_script_for_all_frames(PASSKEY_OFF)
-        .on_document_title_changed(move |_, t| {
-            if let Some(rest) = t.strip_prefix(&prefix) {
-                let _ = tx.send(rest.to_string());
-            }
-        })
-        // 구글 로그인 등의 팝업: 같은 쿠키·window.opener를 유지한 실제 창으로 연다(PopupWebView.swift).
-        .on_new_window(move |url, features| {
-            let n = popup_seq.fetch_add(1, Ordering::Relaxed);
-            match WebviewWindowBuilder::new(&app2, format!("popup-{n}"), WebviewUrl::External("about:blank".parse().expect("blank")))
-                .window_features(features)
-                .user_agent(USER_AGENT)
-                .initialization_script_for_all_frames(PASSKEY_OFF)
-                .inner_size(480.0, 680.0)
-                .title(url.as_str())
-                .build()
-            {
-                Ok(window) => tauri::webview::NewWindowResponse::Create { window },
-                Err(_) => tauri::webview::NewWindowResponse::Deny,
-            }
-        })
-        .build();
+        .inner_size(480.0, 680.0)
+        .title(url.as_str())
+        .build()
+        {
+            Ok(window) => tauri::webview::NewWindowResponse::Create { window },
+            Err(_) => tauri::webview::NewWindowResponse::Deny,
+        }
+    })
+    .build();
     let Ok(win) = built else { return false };
     let _ = win.set_focus();
     let js = wrap(spec.usage_js, &token);
     loop {
         std::thread::sleep(Duration::from_millis(1200));
-        let Some(w) = app.get_webview_window(&label) else { return false };
+        let Some(w) = app.get_webview_window(&label) else {
+            return false;
+        };
         let Ok(url) = w.url() else { continue };
         if !host_matches(&url, spec) {
             continue;
         }
         let done = if spec.auth_cookie_names.is_empty() {
             let _ = w.eval(js.clone());
-            rx.recv_timeout(Duration::from_secs(8)).ok().and_then(|s| serde_json::from_str::<Value>(&s).ok()).is_some_and(|v| v["ok"] == true)
+            rx.recv_timeout(Duration::from_secs(8))
+                .ok()
+                .and_then(|s| serde_json::from_str::<Value>(&s).ok())
+                .is_some_and(|v| v["ok"] == true)
         } else {
             has_auth_cookie(&w, spec)
         };
@@ -195,19 +225,34 @@ pub fn login(app: &AppHandle, spec: &'static ProviderSpec, title: &str) -> bool 
 
 fn has_auth_cookie(w: &WebviewWindow, spec: &ProviderSpec) -> bool {
     w.cookies()
-        .map(|cs| cs.iter().any(|c| spec.auth_cookie_names.contains(&c.name()) && c.domain().is_some_and(|d| spec.cookie_domains.iter().any(|f| d.contains(f)))))
+        .map(|cs| {
+            cs.iter().any(|c| {
+                spec.auth_cookie_names.contains(&c.name())
+                    && c.domain()
+                        .is_some_and(|d| spec.cookie_domains.iter().any(|f| d.contains(f)))
+            })
+        })
         .unwrap_or(false)
 }
 
 /// 로그아웃: 도메인 조각에 해당하는 쿠키를 지운다(Swift WebSession.swift:380). 쿠키 저장소에 닿으려고 임시 웹뷰를 만든다.
 pub fn logout(app: &AppHandle, spec: &'static ProviderSpec) {
     let label = format!("logout-{}-{}", spec.id, next_token().replace('x', "-"));
-    let Ok(w) = WebviewWindowBuilder::new(app, &label, WebviewUrl::External("about:blank".parse().expect("blank"))).visible(false).skip_taskbar(true).build() else {
+    let Ok(w) = WebviewWindowBuilder::new(
+        app,
+        &label,
+        WebviewUrl::External("about:blank".parse().expect("blank")),
+    )
+    .visible(false)
+    .skip_taskbar(true)
+    .build() else {
         return;
     };
     if let Ok(cs) = w.cookies() {
         for c in cs {
-            if c.domain().is_some_and(|d| spec.cookie_domains.iter().any(|f| d.contains(f))) {
+            if c.domain()
+                .is_some_and(|d| spec.cookie_domains.iter().any(|f| d.contains(f)))
+            {
                 let _ = w.delete_cookie(c);
             }
         }
@@ -217,17 +262,37 @@ pub fn logout(app: &AppHandle, spec: &'static ProviderSpec) {
 
 /// 서비스 도메인의 쿠키를 (이름, 값, 도메인, 경로)로 읽는다. 직접 호출 경로(`direct.rs`)용.
 /// 값은 메모리에서만 쓰고 기록하지 않는다.
-pub fn read_cookies(app: &AppHandle, spec: &'static ProviderSpec) -> Vec<(String, String, String, String)> {
+pub fn read_cookies(
+    app: &AppHandle,
+    spec: &'static ProviderSpec,
+) -> Vec<(String, String, String, String)> {
     let label = format!("cookies-{}-{}", spec.id, next_token().replace('x', "-"));
-    let Ok(w) = WebviewWindowBuilder::new(app, &label, WebviewUrl::External("about:blank".parse().expect("blank"))).visible(false).skip_taskbar(true).build() else {
+    let Ok(w) = WebviewWindowBuilder::new(
+        app,
+        &label,
+        WebviewUrl::External("about:blank".parse().expect("blank")),
+    )
+    .visible(false)
+    .skip_taskbar(true)
+    .build() else {
         return vec![];
     };
     let out = w
         .cookies()
         .map(|cs| {
             cs.into_iter()
-                .filter(|c| c.domain().is_some_and(|d| spec.cookie_domains.iter().any(|f| d.contains(f))))
-                .map(|c| (c.name().to_string(), c.value().to_string(), c.domain().unwrap_or("").to_string(), c.path().unwrap_or("/").to_string()))
+                .filter(|c| {
+                    c.domain()
+                        .is_some_and(|d| spec.cookie_domains.iter().any(|f| d.contains(f)))
+                })
+                .map(|c| {
+                    (
+                        c.name().to_string(),
+                        c.value().to_string(),
+                        c.domain().unwrap_or("").to_string(),
+                        c.path().unwrap_or("/").to_string(),
+                    )
+                })
                 .collect()
         })
         .unwrap_or_default();

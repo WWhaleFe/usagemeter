@@ -68,11 +68,19 @@ const TRAY_ID: &str = "main";
 /// 조회 하나의 최대 대기(Gemini DOM 대기 최대 6초 + 로드 여유).
 const PROBE_TIMEOUT: Duration = Duration::from_secs(25);
 
+/// 개발·측정용: 테두리·트레이 없이 조회와 기록만(24시간 측정 등). `UM_HEADLESS=1`.
+fn headless() -> bool {
+    std::env::var("UM_HEADLESS").is_ok_and(|v| v == "1")
+}
+
 fn shared(app: &AppHandle) -> Shared {
     app.state::<Shared>().inner().clone()
 }
 
 fn redraw(app: &AppHandle) {
+    if headless() {
+        return;
+    }
     let st = shared(app);
     let h = app.clone();
     let _ = app.run_on_main_thread(move || {
@@ -88,22 +96,40 @@ fn update_tray(app: &AppHandle, st: &AppState) {
     if let Some(menu) = app.try_state::<AcctMenu>() {
         for (id, item) in menu.0.lock().unwrap().iter() {
             let name = spec::spec(id).map(|s| s.name).unwrap_or(id);
-            let key = if st.is_logged_in(id) { "acct.logout" } else { "acct.login" };
+            let key = if st.is_logged_in(id) {
+                "acct.logout"
+            } else {
+                "acct.login"
+            };
             let _ = item.set_text(format!("{name}  {}", tr(key, lang)));
         }
     }
-    let Some(tray) = app.tray_by_id(TRAY_ID) else { return };
+    let Some(tray) = app.tray_by_id(TRAY_ID) else {
+        return;
+    };
     let pick = st
         .snapshots
         .get(&st.main.menu_bar_icon_id)
         .map(|s| (st.main.menu_bar_icon_id.clone(), s))
-        .or_else(|| st.snapshots.iter().min_by(|a, b| a.1.remaining_ratio.total_cmp(&b.1.remaining_ratio)).map(|(k, v)| (k.clone(), v)));
+        .or_else(|| {
+            st.snapshots
+                .iter()
+                .min_by(|a, b| a.1.remaining_ratio.total_cmp(&b.1.remaining_ratio))
+                .map(|(k, v)| (k.clone(), v))
+        });
     let (ratio, color) = match &pick {
-        Some((id, s)) => (Some(s.remaining_ratio), um_render::border::provider_color(&st.main, id)),
+        Some((id, s)) => (
+            Some(s.remaining_ratio),
+            um_render::border::provider_color(&st.main, id),
+        ),
         None => (None, [0.55, 0.55, 0.58, 1.0]),
     };
     let pm = um_render::icon::ring(ratio, color, 2.0);
-    let _ = tray.set_icon(Some(Image::new_owned(um_render::icon::to_straight_rgba(&pm), pm.width(), pm.height())));
+    let _ = tray.set_icon(Some(Image::new_owned(
+        um_render::icon::to_straight_rgba(&pm),
+        pm.width(),
+        pm.height(),
+    )));
     let mut tip: Vec<String> = st
         .snapshots
         .iter()
@@ -127,23 +153,35 @@ fn fetch_one(app: &AppHandle, id: &str) -> Option<UsageSnapshot> {
     {
         return Some(s);
     }
-    if direct_enabled() && !sp.needs_rendered_dom && !std::env::var("UM_S3").is_ok_and(|v| v == "1") {
+    if direct_enabled() && !sp.needs_rendered_dom && !std::env::var("UM_S3").is_ok_and(|v| v == "1")
+    {
         let t = std::time::Instant::now();
         if let Some(raw) = fetch_direct(app, sp) {
             tracing::info!("{id} 직접 조회 {:.1}초 ok=true", t.elapsed().as_secs_f64());
-            return Some(um_providers::parse::snapshot_from_probe(id, &raw, chrono::Utc::now()));
+            return Some(um_providers::parse::snapshot_from_probe(
+                id,
+                &raw,
+                chrono::Utc::now(),
+            ));
         }
         tracing::info!("{id} 직접 조회 실패 → 웹뷰로");
     }
     let t0 = std::time::Instant::now();
     let raw = web::probe(app, sp, PROBE_TIMEOUT);
-    tracing::info!("{id} 웹 조회 {:.1}초 ok={}", t0.elapsed().as_secs_f64(), raw["ok"]);
+    tracing::info!(
+        "{id} 웹 조회 {:.1}초 ok={}",
+        t0.elapsed().as_secs_f64(),
+        raw["ok"]
+    );
     // 0단계 S3: UM_S3=1이면 직접 호출도 해서 결과를 비교한다(상태·잔여율만 기록, 쿠키·토큰은 기록 안 함).
     if std::env::var("UM_S3").is_ok_and(|v| v == "1") && !sp.needs_rendered_dom {
         let t1 = std::time::Instant::now();
         let dr = direct::probe(app, sp);
         let now = chrono::Utc::now();
-        let (a, b) = (um_providers::parse::snapshot_from_probe(id, &raw, now), um_providers::parse::snapshot_from_probe(id, &dr, now));
+        let (a, b) = (
+            um_providers::parse::snapshot_from_probe(id, &raw, now),
+            um_providers::parse::snapshot_from_probe(id, &dr, now),
+        );
         tracing::info!(
             "S3 {id} 직접 {:.1}초 ok={} reason={} status={} | 웹 ok={} | 5h 같음={} 주간 같음={}",
             t1.elapsed().as_secs_f64(),
@@ -158,7 +196,11 @@ fn fetch_one(app: &AppHandle, id: &str) -> Option<UsageSnapshot> {
     if raw["ok"] != true {
         tracing::info!("{}", um_providers::parse::failure_log_line(id, &raw));
     }
-    Some(um_providers::parse::snapshot_from_probe(id, &raw, chrono::Utc::now()))
+    Some(um_providers::parse::snapshot_from_probe(
+        id,
+        &raw,
+        chrono::Utc::now(),
+    ))
 }
 
 /// 결과 반영(Swift ProviderManager.apply). 성공·로그아웃 판정이 나면 그 AI의 이력 값은 버린다.
@@ -197,25 +239,52 @@ fn refresh_with_retry(app: &AppHandle) {
             st.main
                 .provider_order
                 .iter()
-                .filter(|id| st.providers.get(*id).and_then(|p| p.snapshot.as_ref()).is_some_and(um_providers::state::should_retry))
+                .filter(|id| {
+                    st.providers
+                        .get(*id)
+                        .and_then(|p| p.snapshot.as_ref())
+                        .is_some_and(um_providers::state::should_retry)
+                })
                 .cloned()
                 .collect()
         };
         if retry.is_empty() {
             break;
         }
-        std::thread::sleep(Duration::from_secs(um_providers::state::START_RETRY_INTERVAL_SECS));
+        std::thread::sleep(Duration::from_secs(
+            um_providers::state::START_RETRY_INTERVAL_SECS,
+        ));
         refresh_ids(app, &retry);
     }
 }
 
 fn record_history(st: &mut AppState) {
     let now = chrono::Utc::now().timestamp_millis() as f64 / 1000.0;
-    let live: Vec<(String, UsageSnapshot)> =
-        st.providers.iter().filter_map(|(k, p)| p.active_snapshot().map(|s| (k.clone(), s.clone()))).collect();
-    let ratios = live.iter().map(|(k, v)| (k.clone(), v.remaining_ratio)).collect();
-    let buckets = live.iter().filter_map(|(k, v)| v.raw_buckets.clone().map(|b| (k.clone(), b))).collect();
-    let items = live.iter().map(|(k, v)| (k.clone(), v.sub_items().into_iter().map(|i| (i.id, i.remaining_ratio)).collect())).collect();
+    let live: Vec<(String, UsageSnapshot)> = st
+        .providers
+        .iter()
+        .filter_map(|(k, p)| p.active_snapshot().map(|s| (k.clone(), s.clone())))
+        .collect();
+    let ratios = live
+        .iter()
+        .map(|(k, v)| (k.clone(), v.remaining_ratio))
+        .collect();
+    let buckets = live
+        .iter()
+        .filter_map(|(k, v)| v.raw_buckets.clone().map(|b| (k.clone(), b)))
+        .collect();
+    let items = live
+        .iter()
+        .map(|(k, v)| {
+            (
+                k.clone(),
+                v.sub_items()
+                    .into_iter()
+                    .map(|i| (i.id, i.remaining_ratio))
+                    .collect(),
+            )
+        })
+        .collect();
     if let Some(db) = st.history.as_mut() {
         let _ = db.record(now, &ratios, &buckets, &items);
     }
@@ -242,20 +311,57 @@ fn toggle_account(app: &AppHandle, id: String) {
             st.rebuild_snapshots();
             drop(st);
             redraw(&app);
-        } else if web::login(&app, sp, &format!("{}  {}", sp.name, tr("acct.login", lang))) {
-            refresh_ids(&app, std::slice::from_ref(&id));
+        } else {
+            // 이미 로그인돼 있으면 창 없이 끝낸다(Swift LoginWindowController.show: 먼저 조회 확인).
+            if let Some(s) = fetch_one(&app, &id)
+                && s.status == UsageStatus::Ok
+            {
+                apply(&app, &id, s);
+                redraw(&app);
+                return;
+            }
+            login_and_refresh(&app, sp, lang);
         }
     });
 }
 
+/// 로그인 창을 띄우고, 로그인이 확인되면(창은 자동으로 닫힘) 그 AI를 바로 조회한다.
+fn login_and_refresh(
+    app: &AppHandle,
+    sp: &'static spec::ProviderSpec,
+    lang: um_core::types::AppLanguage,
+) -> bool {
+    let t = std::time::Instant::now();
+    let ok = web::login(app, sp, &format!("{}  {}", sp.name, tr("acct.login", lang)));
+    tracing::info!(
+        "{} 로그인 창 결과 ok={ok} {:.1}초",
+        sp.id,
+        t.elapsed().as_secs_f64()
+    );
+    if ok {
+        // 쿠키가 바뀌었으니 직접 호출 클라이언트를 버린다.
+        app.state::<DirectClients>().0.lock().unwrap().remove(sp.id);
+        refresh_ids(app, &[sp.id.to_string()]);
+    }
+    ok
+}
+
 fn main() {
-    tracing_subscriber::fmt().with_max_level(tracing::Level::INFO).with_target(false).with_writer(std::io::stderr).init();
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .with_target(false)
+        .with_writer(std::io::stderr)
+        .init();
     tracing::info!("UsageMeter (Rust) 시작");
     let shared_state: Shared = Arc::new(Mutex::new(AppState::load()));
     {
         let mut st = shared_state.lock().unwrap();
         let ids = st.main.provider_order.clone();
-        let seeds = st.history.as_ref().map(|db| data::seed_from_history(db, &ids, chrono::Utc::now())).unwrap_or_default();
+        let seeds = st
+            .history
+            .as_ref()
+            .map(|db| data::seed_from_history(db, &ids, chrono::Utc::now()))
+            .unwrap_or_default();
         st.seeds = seeds;
         st.rebuild_snapshots();
     }
@@ -269,9 +375,20 @@ fn main() {
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
             let (lang, hidden, order) = {
                 let st = shared_state.lock().unwrap();
-                (st.main.language, st.hide_overlay, st.main.provider_order.clone())
+                (
+                    st.main.language,
+                    st.hide_overlay,
+                    st.main.provider_order.clone(),
+                )
             };
-            let hide = CheckMenuItem::with_id(app, "hide", tr("menu.hideBorder", lang), true, hidden, None::<&str>)?;
+            let hide = CheckMenuItem::with_id(
+                app,
+                "hide",
+                tr("menu.hideBorder", lang),
+                true,
+                hidden,
+                None::<&str>,
+            )?;
             let acct = Submenu::with_id(app, "acct", tr("menu.aiLoginout", lang), true)?;
             let mut items = BTreeMap::new();
             for id in &order {
@@ -284,62 +401,89 @@ fn main() {
                 app,
                 &[
                     &acct,
-                    &MenuItem::with_id(app, "refresh", tr("menu.refresh", lang), true, Some("CmdOrCtrl+R"))?,
+                    &MenuItem::with_id(
+                        app,
+                        "refresh",
+                        tr("menu.refresh", lang),
+                        true,
+                        Some("CmdOrCtrl+R"),
+                    )?,
                     &hide,
                     &PredefinedMenuItem::separator(app)?,
-                    &MenuItem::with_id(app, "quit", tr("menu.quit", lang), true, Some("CmdOrCtrl+Q"))?,
+                    &MenuItem::with_id(
+                        app,
+                        "quit",
+                        tr("menu.quit", lang),
+                        true,
+                        Some("CmdOrCtrl+Q"),
+                    )?,
                 ],
             )?;
-            TrayIconBuilder::with_id(TRAY_ID)
-                .menu(&menu)
-                .show_menu_on_left_click(true)
-                .on_menu_event(move |app, e| match e.id().as_ref() {
-                    "refresh" => {
-                        let app = app.clone();
-                        std::thread::spawn(move || refresh_all(&app));
-                    }
-                    "hide" => {
-                        let v = {
-                            let st = shared(app);
-                            let mut st = st.lock().unwrap();
-                            st.hide_overlay = !st.hide_overlay;
-                            st.hide_overlay
-                        };
-                        let _ = hide.set_checked(v);
-                        redraw(app);
-                    }
-                    "quit" => app.exit(0),
-                    other => {
-                        if let Some(id) = other.strip_prefix("acct:") {
-                            toggle_account(app, id.to_string());
+            if !headless() {
+                TrayIconBuilder::with_id(TRAY_ID)
+                    .menu(&menu)
+                    .show_menu_on_left_click(true)
+                    .on_menu_event(move |app, e| match e.id().as_ref() {
+                        "refresh" => {
+                            let app = app.clone();
+                            std::thread::spawn(move || refresh_all(&app));
                         }
-                    }
-                })
-                .build(app)?;
+                        "hide" => {
+                            let v = {
+                                let st = shared(app);
+                                let mut st = st.lock().unwrap();
+                                st.hide_overlay = !st.hide_overlay;
+                                st.hide_overlay
+                            };
+                            let _ = hide.set_checked(v);
+                            redraw(app);
+                        }
+                        "quit" => app.exit(0),
+                        other => {
+                            if let Some(id) = other.strip_prefix("acct:") {
+                                toggle_account(app, id.to_string());
+                            }
+                        }
+                    })
+                    .build(app)?;
+            }
             redraw(app.handle());
 
             // 시작 조회(재시도 포함) 후 갱신 주기마다 전체 조회.
             let h = app.handle().clone();
             std::thread::spawn(move || {
                 refresh_with_retry(&h);
+                // 개발용: UM_TEST_LOGIN=<id>면 로그인 창을 강제로 띄워 자동 판정·닫힘을 확인한다.
+                if let Some(sp) = std::env::var("UM_TEST_LOGIN")
+                    .ok()
+                    .and_then(|id| spec::spec(&id))
+                {
+                    let lang = shared(&h).lock().unwrap().main.language;
+                    login_and_refresh(&h, sp, lang);
+                }
                 loop {
                     let mins = shared(&h).lock().unwrap().main.effective_refresh_minutes();
                     // 개발용: UM_REFRESH_SECS로 주기를 짧게(메모리·누수 측정).
-                    let secs = std::env::var("UM_REFRESH_SECS").ok().and_then(|v| v.parse().ok()).unwrap_or(mins as u64 * 60);
+                    let secs = std::env::var("UM_REFRESH_SECS")
+                        .ok()
+                        .and_then(|v| v.parse().ok())
+                        .unwrap_or(mins as u64 * 60);
                     std::thread::sleep(Duration::from_secs(secs));
                     refresh_all(&h);
                 }
             });
             // 화면 연결·해제·해상도 변경 감지(3초 간격 비교, 변화 없으면 아무것도 하지 않음).
             let h = app.handle().clone();
-            std::thread::spawn(move || loop {
-                std::thread::sleep(Duration::from_secs(3));
-                let h2 = h.clone();
-                let _ = h.run_on_main_thread(move || {
-                    if OVERLAY.with(|o| o.borrow_mut().check_displays()) {
-                        redraw(&h2);
-                    }
-                });
+            std::thread::spawn(move || {
+                loop {
+                    std::thread::sleep(Duration::from_secs(3));
+                    let h2 = h.clone();
+                    let _ = h.run_on_main_thread(move || {
+                        if OVERLAY.with(|o| o.borrow_mut().check_displays()) {
+                            redraw(&h2);
+                        }
+                    });
+                }
             });
             Ok(())
         })
