@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "plan": "Max (5x)",
+  "five_hour": {"utilization": 25.5, "resets_at": "2026-11-16T15:00:00.123456+00:00"},
+  "seven_day": {"utilization": 60, "resets_at": "2026-11-20T00:00:00Z"},
+  "seven_day_opus": {"utilization": 10, "resets_at": "2026-11-20T00:00:00Z"},
+  "seven_day_sonnet": null,
+  "model_buckets": [{"label": "Fable", "utilization": 40, "resets_at": "2026-11-21T00:00:00Z"}]
+}

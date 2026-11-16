@@ -6,3 +6,6 @@ license.workspace = true
 
 [dependencies]
 um-core.workspace = true
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true
