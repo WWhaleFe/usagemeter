@@ -5038,6 +5038,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "um-core",
+ "um-locallogs",
  "um-platform",
  "um-providers",
  "um-render",
