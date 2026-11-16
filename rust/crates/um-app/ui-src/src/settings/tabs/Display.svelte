@@ -37,6 +37,7 @@
   ];
   // 기본값(Swift :471-482): 5h·주간·Opus·리셋·카운트다운은 켜짐, 나머지는 꺼짐.
   const infoDefault: Record<string, boolean> = { menuShow5h: true, menuShowWeekly: true, menuShowOpus: true, menuShowReset: true, menuShowCountdown: true };
+  import LocalLogsSection from '../LocalLogsSection.svelte';
 </script>
 
 <Section title={t('lang.title')}>
@@ -122,6 +123,8 @@
   </div>
   <span class="caption">{t('notify.desc')}</span>
 </Section>
+
+<LocalLogsSection />
 
 <style>
   .icon { min-width: 28px; padding: 2px 8px; font-size: 10px; }
