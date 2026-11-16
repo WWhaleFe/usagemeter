@@ -60,7 +60,9 @@ fn probe_start_url(spec: &ProviderSpec) -> Url {
         // macOS 빈 문서는 about:blank로 만든 뒤 `load_stub`이 오리진 문서로 바꾼다.
         if spec.needs_rendered_dom { home } else { "about:blank".parse().expect("blank") }
     } else {
-        home.join("/robots.txt").unwrap_or(home)
+        let mut u = home;
+        u.set_path("/robots.txt");
+        u
     }
 }
 
