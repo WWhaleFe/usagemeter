@@ -5,6 +5,7 @@ mod analytics_ui;
 mod data;
 mod direct;
 mod ipc;
+mod locallogs;
 mod menu;
 mod overlay;
 #[cfg(target_os = "macos")]
@@ -389,8 +390,11 @@ fn main() {
         .manage(DirectClients(Mutex::new(BTreeMap::new())))
         .manage(ipc::Editing::default())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
-        .invoke_handler(tauri::generate_handler![ipc::ui_state, ipc::ui_set, ipc::ui_action, analytics_ui::ui_analytics])
+        .invoke_handler(tauri::generate_handler![ipc::ui_state, ipc::ui_set, ipc::ui_action, analytics_ui::ui_analytics, locallogs::ui_locallogs, locallogs::ui_locallogs_set, locallogs::ui_tokens])
         .setup(move |app| {
+            let dir = shared_state.lock().unwrap().dir.clone();
+            app.manage(locallogs::LocalLogs::new(&dir));
+            locallogs::start(app.handle());
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
             let lang = shared_state.lock().unwrap().main.language;
