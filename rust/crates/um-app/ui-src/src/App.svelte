@@ -2,6 +2,7 @@
   // 해시로 화면을 고른다: "settings", "settings/<탭>", "analytics", "linedrag"(선 위치 끌기).
   import { ui } from './lib/api.svelte';
   import Settings from './settings/Settings.svelte';
+  import Analytics from './analytics/Analytics.svelte';
   import LineDrag from './settings/LineDrag.svelte';
 
   let hash = $state(location.hash.slice(1));
@@ -22,7 +23,7 @@
 
 {#if ui.s}
   {#if page === 'analytics'}
-    <main class="placeholder"><h1>{ui.s.strings['analytics.title']}</h1></main>
+    <Analytics />
   {:else if page === 'linedrag'}
     <LineDrag />
   {:else}
