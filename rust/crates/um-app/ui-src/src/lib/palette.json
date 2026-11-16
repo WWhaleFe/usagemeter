@@ -1,0 +1,120 @@
+{
+  "series": {
+    "coral": "#ee6c75",
+    "amber": "#f4b854",
+    "green": "#409332",
+    "teal": "#4ab4b7",
+    "blue": "#4a82e8",
+    "lilac": "#dab2f4"
+  },
+  "order": [
+    "#ee6c75",
+    "#f4b854",
+    "#409332",
+    "#4ab4b7",
+    "#4a82e8",
+    "#dab2f4"
+  ],
+  "ink": "#101418",
+  "seam": "#ffffff",
+  "neutral": {
+    "surface": "#ffffff",
+    "panel": "#eef1f6",
+    "border": "#94a3b8",
+    "text": "#1e293b",
+    "muted": "#64748b",
+    "grid": "#dfe3ea"
+  },
+  "status": {
+    "alert": {
+      "fill": "#ffebe9",
+      "stroke": "#bd413f",
+      "ink": "#782a28"
+    },
+    "ok": {
+      "fill": "#e3f6e5",
+      "stroke": "#008935",
+      "ink": "#0a5722"
+    },
+    "info": {
+      "fill": "#e7f1ff",
+      "stroke": "#2171cc",
+      "ink": "#164781"
+    },
+    "warn": {
+      "fill": "#feeddb",
+      "stroke": "#9d6300",
+      "ink": "#653e00"
+    }
+  },
+  "sequential": [
+    "#dce8fc",
+    "#b6d0f8",
+    "#8db4f2",
+    "#6398ec",
+    "#4a82e8",
+    "#3462bb",
+    "#22458a"
+  ],
+  "diverging": [
+    "#22458a",
+    "#4a82e8",
+    "#a8c4f4",
+    "#e5e7eb",
+    "#f6c9a6",
+    "#e58a4e",
+    "#b45309"
+  ],
+  "venn": {
+    "sets": [
+      "blue",
+      "amber",
+      "teal"
+    ],
+    "mix": 0.78,
+    "regions2": {
+      "0": {
+        "fill": "#4a82e8",
+        "ink": "#101418"
+      },
+      "1": {
+        "fill": "#f4b854",
+        "ink": "#101418"
+      },
+      "01": {
+        "fill": "#94808e",
+        "ink": "#101418"
+      }
+    },
+    "regions3": {
+      "0": {
+        "fill": "#4a82e8",
+        "ink": "#101418"
+      },
+      "1": {
+        "fill": "#f4b854",
+        "ink": "#101418"
+      },
+      "01": {
+        "fill": "#a28b9b",
+        "ink": "#101418"
+      },
+      "2": {
+        "fill": "#4ab4b7",
+        "ink": "#101418"
+      },
+      "02": {
+        "fill": "#408ab7",
+        "ink": "#101418"
+      },
+      "12": {
+        "fill": "#a29f7e",
+        "ink": "#101418"
+      },
+      "012": {
+        "fill": "#717781",
+        "ink": "#ffffff"
+      }
+    }
+  }
+}

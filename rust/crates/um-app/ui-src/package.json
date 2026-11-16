@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "check": "svelte-check --tsconfig ./tsconfig.json"
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "palette": "python3 ../../../../../../LLM/tools/palette.py --json > src/lib/palette.json"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "7.3.1",

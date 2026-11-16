@@ -1,6 +1,14 @@
 {
-  "preset.defaultName": ["프리셋 %d", "Preset %d", "プリセット %d"],
-  "locallogs.title": ["로컬 사용 기록", "Local usage logs", "ローカル使用記録"],
+  "preset.defaultName": [
+    "프리셋 %d",
+    "Preset %d",
+    "プリセット %d"
+  ],
+  "locallogs.title": [
+    "로컬 사용 기록",
+    "Local usage logs",
+    "ローカル使用記録"
+  ],
   "locallogs.desc": [
     "이 컴퓨터에 있는 Claude Code, Codex CLI, Antigravity의 로그 파일에서 토큰 수를 읽어 옵니다. 숫자, 모델 이름, 프로젝트 폴더 이름만 저장하며 대화 내용은 저장하거나 전송하지 않습니다.",
     "Reads token counts from the Claude Code, Codex CLI and Antigravity log files on this computer. Only numbers, model names and project folder names are stored. Conversation content is never stored or sent.",
@@ -16,12 +24,154 @@
     "UsageMeter can read token counts from the Claude Code, Codex CLI and Antigravity log files on this computer to show usage stats. Only numbers, model names and project folder names are stored. Conversation content is never stored or sent. You can change this any time later in Settings.",
     "このコンピュータ上の Claude Code、Codex CLI、Antigravity のログファイルからトークン数を読み取り、使用統計を表示します。保存するのは数値、モデル名、プロジェクトフォルダ名のみで、会話の内容は保存も送信もされません。あとから設定でいつでも変更できます。"
   ],
-  "locallogs.enable": ["사용하기", "Enable", "有効にする"],
-  "locallogs.notNow": ["나중에", "Not now", "今はしない"],
-  "locallogs.source.claude": ["Claude Code", "Claude Code", "Claude Code"],
-  "locallogs.source.codex": ["Codex CLI", "Codex CLI", "Codex CLI"],
-  "locallogs.source.agy": ["Antigravity CLI", "Antigravity CLI", "Antigravity CLI"],
-  "locallogs.hideProjects": ["프로젝트 이름 숨기기", "Hide project names", "プロジェクト名を隠す"],
-  "locallogs.clear": ["수집한 기록 지우기", "Clear collected records", "収集した記録を消去"],
-  "locallogs.lastScan": ["마지막 수집: %@", "Last scan: %@", "最終収集: %@"]
+  "locallogs.enable": [
+    "사용하기",
+    "Enable",
+    "有効にする"
+  ],
+  "locallogs.notNow": [
+    "나중에",
+    "Not now",
+    "今はしない"
+  ],
+  "locallogs.source.claude": [
+    "Claude Code",
+    "Claude Code",
+    "Claude Code"
+  ],
+  "locallogs.source.codex": [
+    "Codex CLI",
+    "Codex CLI",
+    "Codex CLI"
+  ],
+  "locallogs.source.agy": [
+    "Antigravity CLI",
+    "Antigravity CLI",
+    "Antigravity CLI"
+  ],
+  "locallogs.hideProjects": [
+    "프로젝트 이름 숨기기",
+    "Hide project names",
+    "プロジェクト名を隠す"
+  ],
+  "locallogs.clear": [
+    "수집한 기록 지우기",
+    "Clear collected records",
+    "収集した記録を消去"
+  ],
+  "locallogs.lastScan": [
+    "마지막 수집: %@",
+    "Last scan: %@",
+    "最終収集: %@"
+  ],
+  "view.limits": [
+    "한도",
+    "Limits",
+    "上限"
+  ],
+  "view.tokens": [
+    "토큰",
+    "Tokens",
+    "トークン"
+  ],
+  "tokens.all": [
+    "전체",
+    "All",
+    "すべて"
+  ],
+  "tokens.total": [
+    "총 토큰",
+    "Total tokens",
+    "総トークン"
+  ],
+  "tokens.dailyAvg": [
+    "일 평균",
+    "Daily average",
+    "1日平均"
+  ],
+  "tokens.cacheHit": [
+    "캐시 적중률",
+    "Cache hit rate",
+    "キャッシュヒット率"
+  ],
+  "tokens.sessions": [
+    "세션",
+    "Sessions",
+    "セッション"
+  ],
+  "tokens.perTurn": [
+    "응답당 평균",
+    "Avg. per response",
+    "応答あたり平均"
+  ],
+  "tokens.byModel": [
+    "모델별 토큰 추이",
+    "Tokens by model",
+    "モデル別トークン推移"
+  ],
+  "tokens.composition": [
+    "토큰 구성",
+    "Token mix",
+    "トークン構成"
+  ],
+  "tokens.input": [
+    "입력",
+    "Input",
+    "入力"
+  ],
+  "tokens.output": [
+    "출력",
+    "Output",
+    "出力"
+  ],
+  "tokens.cacheRead": [
+    "캐시 읽기",
+    "Cache read",
+    "キャッシュ読み取り"
+  ],
+  "tokens.cacheWrite": [
+    "캐시 쓰기",
+    "Cache write",
+    "キャッシュ書き込み"
+  ],
+  "tokens.reasoning": [
+    "추론(출력에 포함)",
+    "Reasoning (in output)",
+    "推論(出力に含む)"
+  ],
+  "tokens.projects": [
+    "프로젝트별 상위 10개",
+    "Top 10 projects",
+    "プロジェクト別上位10"
+  ],
+  "tokens.heatmap": [
+    "요일 × 시간대(토큰)",
+    "Weekday × hour (tokens)",
+    "曜日 × 時間帯(トークン)"
+  ],
+  "tokens.codexLimits": [
+    "Codex 사용률(로컬 기록)",
+    "Codex usage (local logs)",
+    "Codex使用率(ローカル記録)"
+  ],
+  "tokens.empty": [
+    "아직 수집된 기록이 없어요. 소스를 켜면 이 컴퓨터의 기록을 읽어 채웁니다.",
+    "Nothing collected yet. Turn on a source to read this computer's logs.",
+    "まだ記録がありません。ソースをオンにするとこのコンピューターの記録を読み込みます。"
+  ],
+  "tokens.off": [
+    "로컬 사용 기록이 꺼져 있어요.",
+    "Local usage logs are off.",
+    "ローカル使用記録はオフです。"
+  ],
+  "tokens.scanning": [
+    "기록을 읽는 중…",
+    "Reading logs…",
+    "記録を読み込み中…"
+  ],
+  "tokens.note": [
+    "숫자는 각 도구가 이 컴퓨터에 남긴 기록으로 계산합니다. 다른 기기에서 쓴 양은 포함되지 않습니다.",
+    "Counts come from logs these tools leave on this computer; usage on other devices isn't included.",
+    "数値は各ツールがこのコンピューターに残した記録から計算します。他のデバイスでの使用は含まれません。"
+  ]
 }
