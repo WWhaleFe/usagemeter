@@ -3,6 +3,23 @@ name = "um-platform"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+description = "UsageMeter OS별 코드: 테두리 띠 창, 디스플레이, 마우스, 자동 실행"
 
 [dependencies]
-um-core.workspace = true
+thiserror.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2.workspace = true
+objc2-foundation.workspace = true
+objc2-app-kit = { workspace = true, features = ["NSApplication", "NSWindow", "NSView", "NSScreen", "NSColor", "NSGraphics", "NSResponder", "objc2-quartz-core"] }
+objc2-quartz-core = { workspace = true, features = ["CALayer"] }
+objc2-core-graphics = { workspace = true, features = ["CGImage", "CGColorSpace", "CGDataProvider"] }
+objc2-core-foundation = { version = "0.3.2", features = ["CFData"] }
+
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true, features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Gdi",
+  "Win32_System_LibraryLoader",
+  "Win32_UI_WindowsAndMessaging",
+] }
