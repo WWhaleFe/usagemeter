@@ -1,0 +1,21 @@
+{
+  "plan_type": "plus",
+  "rate_limit": {
+    "primary_window": {"used_percent": 30, "limit_window_seconds": 18000, "reset_after_seconds": 3600},
+    "secondary_window": {"used_percent": 10.5, "limit_window_seconds": 604800, "reset_at": 1795000000}
+  },
+  "code_review_rate_limit": {
+    "primary_window": {"usage_percent": 5, "window_minutes": 300, "resets_in_seconds": 60},
+    "secondary_window": {"utilization": 20, "window_minutes": 10080, "resets_at": 1795500000000}
+  },
+  "additional_rate_limits": [
+    {
+      "metered_feature": "codex_fake_model",
+      "rate_limit": {
+        "primary_window": {"used_percent": 50, "limit_window_seconds": 21600, "reset_at": "2026-11-17T00:00:00Z"},
+        "secondary_window": {"used_percent": 70, "limit_window_seconds": 21601, "reset_at": "2026-11-17T00:00:00Z"}
+      }
+    },
+    {"limit_name": "No Windows", "rate_limit": {}}
+  ]
+}

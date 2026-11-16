@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "plan": "Plus",
+  "five_hour": {"utilization": 30, "resets_at": "2026-11-16T13:00:00.000Z"},
+  "seven_day": {"utilization": 10.5, "resets_at": "2026-11-18T11:06:40.000Z"},
+  "model_buckets": [
+    {"label": "Code Review", "utilization": 5, "resets_at": "2026-11-16T12:01:00.000Z", "five_hour": true},
+    {"label": "Code Review", "utilization": 20, "resets_at": "2026-11-24T06:00:00.000Z", "five_hour": false},
+    {"label": "Codex Fake Model", "utilization": 50, "resets_at": "2026-11-17T00:00:00Z", "five_hour": true},
+    {"label": "Codex Fake Model", "utilization": 70, "resets_at": "2026-11-17T00:00:00Z", "five_hour": false}
+  ],
+  "keys": ["additional_rate_limits", "code_review_rate_limit", "plan_type", "rate_limit"]
+}

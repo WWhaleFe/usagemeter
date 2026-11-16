@@ -1,0 +1,13 @@
+{
+  "status": "SUCCESS",
+  "command": {
+    "data": {
+      "groups": [
+        {"name": "Gemini models", "buckets": [
+          {"id": "gemini-5h", "window": "5h", "reset_time": "2026-11-16T15:00:00Z", "remaining_fraction": 0.65, "name": "Gemini 5h"},
+          {"id": "gemini-weekly", "window": "weekly", "reset_time": "2026-11-20T00:00:00.500Z", "remaining_fraction": 0.95, "name": "Gemini weekly"}
+        ]}
+      ]
+    }
+  }
+}

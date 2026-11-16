@@ -1,0 +1,6 @@
+{
+  "accounts": {
+    "a-first": {"account": {"account_id": "acct-fake-0001", "is_default": false, "plan_type": "chatgpt_free"}},
+    "default": {"account": {"account_id": "acct-fake-0002", "is_default": true, "plan_type": "chatgpt_plus"}}
+  }
+}
