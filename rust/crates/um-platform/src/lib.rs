@@ -1,7 +1,9 @@
 //! UsageMeter OS별 코드(계획서 3장 `um-platform`).
 //!
-//! 지금 있는 것: 테두리 띠 창(`OverlayStrip`). 그림은 `um-render`가 만든
+//! 지금 있는 것: 테두리 띠 창(`OverlayStrip`), 디스플레이 목록(`display`). 그림은 `um-render`가 만든
 //! 미리곱한(premultiplied) RGBA 픽셀을 받아 OS 창에 올리기만 한다.
+
+pub mod display;
 
 #[cfg(target_os = "macos")]
 mod mac;

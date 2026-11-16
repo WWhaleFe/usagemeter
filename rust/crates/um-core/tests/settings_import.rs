@@ -10,7 +10,7 @@ use um_core::settings::{
 use um_core::types::{BorderCorner, BorderEdge, NotchCorner, SegCap, SegPart};
 
 fn fixture() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/swift_defaults.plist")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures").join("swift_defaults.plist")
 }
 
 fn load() -> um_core::settings::SwiftImport {

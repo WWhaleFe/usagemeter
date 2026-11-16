@@ -72,7 +72,7 @@ pub enum ImportError {
 pub fn default_swift_plist_path() -> Option<PathBuf> {
     if cfg!(target_os = "macos") {
         let home = std::env::var_os("HOME")?;
-        Some(PathBuf::from(home).join("Library/Preferences/com.usagemeter.app.plist"))
+        Some(PathBuf::from(home).join("Library").join("Preferences").join("com.usagemeter.app.plist"))
     } else {
         None
     }

@@ -29,7 +29,7 @@ fn manifest() -> PathBuf {
 }
 
 fn cases() -> Vec<Value> {
-    let p = manifest().join("../../tools/border-fixtures/cases.json");
+    let p = manifest().join("..").join("..").join("tools").join("border-fixtures").join("cases.json");
     serde_json::from_str(&std::fs::read_to_string(p).expect("cases.json")).expect("cases.json 파싱")
 }
 
@@ -113,7 +113,7 @@ fn compare(rust: &Pixmap, reference: &Pixmap) -> (Stats, Vec<u8>) {
 }
 
 fn diff_dir() -> PathBuf {
-    let base = std::env::var_os("CARGO_TARGET_DIR").map(PathBuf::from).unwrap_or_else(|| manifest().join("../../target"));
+    let base = std::env::var_os("CARGO_TARGET_DIR").map(PathBuf::from).unwrap_or_else(|| manifest().join("..").join("..").join("target"));
     base.join("border-diff")
 }
 
@@ -152,7 +152,7 @@ fn render_case(case: &Value) -> Pixmap {
 
 #[test]
 fn border_matches_swift_reference() {
-    let dir = manifest().join("tests/fixtures/ref");
+    let dir = manifest().join("tests").join("fixtures").join("ref");
     let always = std::env::var_os("BORDER_DUMP").is_some();
     let mut failures = vec![];
     println!("{:<34} {:>4} {:>8} {:>8} {:>7} {:>7}", "case", "max", "mean_all", "mean_ink", ">32", "ink");

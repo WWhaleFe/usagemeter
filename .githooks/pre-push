@@ -1,0 +1,15 @@
+#!/bin/bash
+# rust/ 변경이 있는 푸시는 검사를 통과해야 한다(CI 실패 메일 방지). 급할 때만 git push --no-verify.
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$local_sha" = "0000000000000000000000000000000000000000" ] && continue
+  if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+    range="$(git merge-base origin/main "$local_sha" 2>/dev/null || echo "$local_sha~1")..$local_sha"
+  else
+    range="$remote_sha..$local_sha"
+  fi
+  if git diff --name-only "$range" | grep -qE '^(rust/|\.github/workflows/rust\.yml)'; then
+    echo "pre-push: rust/ 변경 감지 → rust/tools/check.sh 실행"
+    "$(git rev-parse --show-toplevel)/rust/tools/check.sh" || { echo "pre-push: 검사 실패로 푸시를 멈췄습니다"; exit 1; }
+  fi
+done
+exit 0
