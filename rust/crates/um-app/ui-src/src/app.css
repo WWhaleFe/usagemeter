@@ -85,6 +85,7 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px s
   --segment-bg: #e5e5e5; --segment-selected: #fff;
   --control: #fff; --control-hover: #f5f5f5; --control-stroke: rgba(0,0,0,.2);
   --r-control: 5px; --fs-title: 13px; --ok: #28cd41;
+  --checkbox-bg: linear-gradient(#fff, #ededed); --checkbox-stroke: #0003; --field-bg: #fff;
 }
 @media (prefers-color-scheme: dark) {
   :root[data-skin="macos"]:not([data-theme="light"]) {
@@ -92,6 +93,7 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px s
     --panel-bg: #2c2b35; --panel-stroke: #484750;
     --slider-tick: #505050; --slider-line: #414141; --slider-thumb: #929292;
     --segment-bg: #303039; --segment-selected: #626268;
+    --checkbox-bg: linear-gradient(#606060, #505050); --checkbox-stroke: #ffffff0d; --field-bg: #262626;
     --control: #555; --control-hover: #666; --control-stroke: rgba(255,255,255,.06);
   }
 }
@@ -100,9 +102,10 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px s
   --panel-bg: #2c2b35; --panel-stroke: #484750;
   --slider-tick: #505050; --slider-line: #414141; --slider-thumb: #929292;
   --segment-bg: #303039; --segment-selected: #626268;
+    --checkbox-bg: linear-gradient(#606060, #505050); --checkbox-stroke: #ffffff0d; --field-bg: #262626;
   --control: #555; --control-hover: #666; --control-stroke: rgba(255,255,255,.06);
 }
-:root[data-skin="macos"] body { line-height: 16px; }
+:root[data-skin="macos"] body { line-height: 16px; -webkit-font-smoothing: auto; }
 :root[data-skin="macos"] button { min-height: 20px; padding: 1px 8px; line-height: 16px; font-size: 12px; box-shadow: 0 1px 1px #0002; }
 :root[data-skin="macos"] button.primary { background: linear-gradient(#2583ff, #0063e1); }
 :root[data-skin="macos"] input[type="number"], :root[data-skin="macos"] input[type="text"] { min-height: 20px; height: 20px; padding: 1px 6px; background: var(--segment-bg); }
@@ -110,7 +113,15 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px s
 :root[data-skin="macos"] .row { min-height: 20px; }
 :root[data-skin="macos"] .row:has(>select) > .grow { flex: none; }
 :root[data-skin="macos"] hr { border: 0; border-top: 1px solid var(--surface-stroke); margin: 2px 0; width: 100%; }
-:root[data-skin="macos"] input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--accent); }
+/* 체크 모양은 두 스킨의 공통 스위치 가상 요소에 의존하지 않는다. */
+:root[data-skin="macos"] input[type="checkbox"] {
+  appearance: none; position: relative; flex: none; width: 14px; height: 14px; margin: 0;
+  border: 1px solid var(--checkbox-stroke); border-radius: 3.5px; background: var(--checkbox-bg);
+}
+:root[data-skin="macos"] input[type="checkbox"]:checked {
+  border-color: transparent; background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='m3 7 2.5 3L11 3.5' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
+}
+:root[data-skin="macos"] input[type="checkbox"]:disabled { opacity: .45; }
 :root[data-skin="macos"] input[type="color"] { border-radius: 5px; }
 
 :root[data-skin="macos"] .caption { line-height: 13px; }

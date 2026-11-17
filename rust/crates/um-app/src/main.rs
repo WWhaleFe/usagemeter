@@ -13,6 +13,7 @@ mod overlay;
 #[cfg(target_os = "macos")]
 mod panels;
 mod state;
+mod symbols;
 mod update;
 mod web;
 mod windows;
@@ -392,7 +393,7 @@ fn main() {
         .manage(DirectClients(Mutex::new(BTreeMap::new())))
         .manage(ipc::Editing::default())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
-        .invoke_handler(tauri::generate_handler![ipc::ui_state, ipc::ui_set, ipc::ui_action, analytics_ui::ui_analytics, locallogs::ui_locallogs, locallogs::ui_locallogs_set, locallogs::ui_tokens])
+        .invoke_handler(tauri::generate_handler![ipc::ui_state, ipc::ui_set, ipc::ui_action, analytics_ui::ui_analytics, locallogs::ui_locallogs, locallogs::ui_locallogs_set, locallogs::ui_tokens, symbols::ui_symbol])
         .setup(move |app| {
             let dir = shared_state.lock().unwrap().dir.clone();
             app.manage(locallogs::LocalLogs::new(&dir));

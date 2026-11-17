@@ -39,6 +39,7 @@
   // 기본값(Swift :471-482): 5h·주간·Opus·리셋·카운트다운은 켜짐, 나머지는 꺼짐.
   const infoDefault: Record<string, boolean> = { menuShow5h: true, menuShowWeekly: true, menuShowOpus: true, menuShowReset: true, menuShowCountdown: true };
   import LocalLogsSection from '../LocalLogsSection.svelte';
+  import Icon from '../../analytics/Icon.svelte';
 </script>
 
 <Section title={t('lang.title')}>
@@ -51,10 +52,10 @@
 
 <Section title={t('sec.providerOrder')}>
   {#each order as id, i (id)}
-    <div class="row">
+    <div class="row order-row">
       <span class="grow">{i + 1}. {s.providers.find((p) => p.id === id)?.name}</span>
-      <button class="icon" aria-label={t('order.up')} title={t('order.up')} disabled={i === 0} onclick={() => move(i, -1)}>{s.platform === 'mac' ? '⌃' : '▲'}</button>
-      <button class="icon" aria-label={t('order.down')} title={t('order.down')} disabled={i === order.length - 1} onclick={() => move(i, 1)}>{s.platform === 'mac' ? '⌄' : '▼'}</button>
+      <button class="icon" aria-label={t('order.up')} title={t('order.up')} disabled={i === 0} onclick={() => move(i, -1)}>{#if s.platform === 'mac'}<Icon name="chevron.up" size={10} />{:else}▲{/if}</button>
+      <button class="icon" aria-label={t('order.down')} title={t('order.down')} disabled={i === order.length - 1} onclick={() => move(i, 1)}>{#if s.platform === 'mac'}<Icon name="chevron.down" size={10} />{:else}▼{/if}</button>
     </div>
   {/each}
   <span class="caption">{t('order.desc')}</span>
@@ -125,7 +126,7 @@
   <span class="caption">{t('notify.desc')}</span>
 </Section>
 
-{#if s.platform === 'win'}<LocalLogsSection />{/if}
+<LocalLogsSection />
 
 <style>
   .icon { min-width: 28px; padding: 2px 8px; font-size: 10px; }
@@ -137,7 +138,9 @@
   .chk { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; }
   .chk input { accent-color: var(--accent); margin: 0; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; }
-  :global(:root[data-skin="macos"]) .icon { background: transparent; border: 0; min-width: 16px; padding: 0 4px; box-shadow: none; color: var(--fg2); }
+  :global(:root[data-skin="macos"]) .order-row { margin-block: -2px; }
+  :global(:root[data-skin="macos"]) legend { font-size: 12px; font-weight: 500; }
+  :global(:root[data-skin="macos"]) .icon { display: flex; align-items: center; justify-content: center; width: 18px; height: 16px; min-height: 16px; background: transparent; border: 0; min-width: 16px; padding: 0 4px; box-shadow: none; color: var(--fg2); }
   :global(:root[data-skin="macos"]) .checks { gap: 6px 14px; }
   :global(:root[data-skin="macos"]) .chk { min-height: 16px; gap: 5px; }
   :global(:root[data-skin="macos"]) .grid { gap: 6px 10px; }

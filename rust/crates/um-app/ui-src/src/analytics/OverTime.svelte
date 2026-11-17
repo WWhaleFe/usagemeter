@@ -1,7 +1,7 @@
 <script lang="ts">
   // 기간별 소비 추이: 버킷마다 쌓인 막대(Swift overTimeChart, AnalyticsView.swift:423-440).
   // 버킷 폭 = bucketSeconds(1일 1시간, 3일 3시간, 주간·한달 하루). 하루 버킷은 날짜 라벨.
-  import { tn, tf } from '../lib/api.svelte';
+  import { ui, tn, tf } from '../lib/api.svelte';
   import ChartBox from './ChartBox.svelte';
   import { bucketStart, fmtMD, fmtTick, niceTicks, num, type Series } from './util';
 
@@ -41,7 +41,9 @@
     if (d.getHours() === 0) return fmtMD(d);
     return d.getHours() % labelH === 0 ? tn('analytics.hourFmt', d.getHours()) : '';
   }
-  const ML = 30, MB = 18, MT = 6, MR = 6;
+  const mac = $derived(ui.s?.platform === 'mac');
+  const ML = $derived(mac ? 6 : 30), MR = $derived(mac ? 30 : 6);
+  const MB = 18, MT = 6;
 </script>
 
 <ChartBox>
@@ -54,7 +56,7 @@
       {#each scale.ticks as v (v)}
         {@const y = MT + ph * (1 - v / scale.top)}
         <line x1={ML} x2={w - MR} y1={y} y2={y} class="grid" />
-        <text x={ML - 5} {y} text-anchor="end" dominant-baseline="middle">{fmtTick(v)}</text>
+        <text x={mac ? w - MR + 5 : ML - 5} {y} text-anchor={mac ? 'start' : 'end'} dominant-baseline="middle">{fmtTick(v)}</text>
       {/each}
       {#each slots as _, i (i)}
         {@const lb = label(i)}

@@ -18,5 +18,6 @@
   button.on { background: var(--accent); color: var(--accent-fg); }
   :global(:root[data-skin="macos"]) .seg { display: flex; width: 100%; border-radius: 5px; background: var(--segment-bg); }
   :global(:root[data-skin="macos"]) button { flex: 1; min-height: 20px; padding: 1px 10px; background: transparent; line-height: 16px; }
+  :global(:root[data-skin="macos"]) button + button { border-left-color: color-mix(in srgb, var(--fg) 4%, transparent); }
   :global(:root[data-skin="macos"]) button.on { background: var(--segment-selected); color: var(--fg); border-radius: 4px; }
 </style>

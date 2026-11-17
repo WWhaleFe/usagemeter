@@ -23,6 +23,7 @@
   :global(:root[data-skin="win"]) input:checked::after { transform: translateX(20px); background: var(--accent-fg); }
   .mac { flex-direction: row-reverse; justify-content: flex-end; gap: 5px; min-height: 16px; line-height: 16px; }
   .mac .text { flex: none; }
-  .mac input { appearance: auto; width: 14px; height: 14px; border-radius: 3px; accent-color: var(--accent); transition: none; }
+  .mac input { transition: none; }
+  .mac.disabled input { opacity: 1; }
   .mac input::after { content: none; }
 </style>

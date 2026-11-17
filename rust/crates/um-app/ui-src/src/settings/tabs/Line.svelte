@@ -60,8 +60,9 @@
   .sw { width: 18px; height: 18px; min-height: 0; padding: 0; border-radius: 50%; border: 1px solid var(--control-stroke); }
   .sw.on { outline: 2px solid var(--accent); outline-offset: 1px; }
   :global(:root[data-skin="macos"]) .name { width: 120px; font-size: 12px; font-weight: 400; }
-  :global(:root[data-skin="macos"]) .color-well { width: 44px; height: 24px; flex: none; border: 3px solid #777; padding: 0; background: repeating-conic-gradient(#aaa 0 25%, #fff 0 50%) 0 / 8px 8px; }
+  :global(:root[data-skin="macos"]) .color-well { width: 44px; height: 24px; flex: none; border: 3px solid #777; padding: 1px; box-shadow: inset 0 0 0 1px #252525; background: repeating-conic-gradient(#aaa 0 25%, #fff 0 50%) 0 / 8px 8px; }
   .color-well span { display: block; width: 100%; height: 100%; border-radius: 1px; }
   :global(:root[data-skin="macos"]) .swatches { margin-left: 0; gap: 8px; }
-  :global(:root[data-skin="macos"]) .sw { width: 22px; height: 22px; }
+  :global(:root[data-skin="macos"]) .sw { width: 22px; height: 22px; border-color: color-mix(in srgb, var(--fg2) 40%, transparent); }
+  :global(:root[data-skin="macos"]) .sw.on { outline: none; border: 2.5px solid var(--accent); }
 </style>

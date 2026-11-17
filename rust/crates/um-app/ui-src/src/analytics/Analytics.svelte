@@ -17,6 +17,8 @@
   import { RANGES, fmtYMD, type Data, type Range } from './util';
   import Tokens from '../tokens/Tokens.svelte';
   import Consent from '../tokens/Consent.svelte';
+  import Segmented from '../components/Segmented.svelte';
+  import LocalLogsSection from '../settings/LocalLogsSection.svelte';
 
   let range = $state<Range>('day1');
   // 보기: 한도(잔여율 이력) / 토큰(로컬 기록). 로컬 기록을 아직 묻지 않았으면 동의 안내를 띄운다.
@@ -24,7 +26,7 @@
   const mac = $derived(ui.s?.platform === 'mac');
   let asked = $state(true);
   onMount(() => {
-    if (ui.s?.platform === 'win') invoke('ui_locallogs').then((v) => (asked = (v as { asked: boolean }).asked));
+    invoke<{ asked: boolean }>('ui_locallogs').then((v) => (asked = v.asked)).catch((e) => console.error('ui_locallogs', e));
   });
   /** 자세히 볼 AI(null = 전체 AI 비교). */
   let scope = $state<string | null>(null);
@@ -115,18 +117,24 @@
           <button role="radio" aria-checked={range === r.id} class:on={range === r.id} onclick={() => (range = r.id)}>{t(r.key)}</button>
         {/each}
       </div>
+      {#if mac}
+        <div class="mac-view">
+          <Segmented options={[{ value: 'limits', label: t('view.limits') }, { value: 'tokens', label: t('view.tokens') }]} value={view} onchange={(v) => (view = v)} />
+        </div>
+      {/if}
     </header>
 
     <!-- 처음 열 때 로컬 사용 기록을 쓸지 묻는다(결정 D4) -->
-    {#if !mac}
     {#if !asked}<Consent onanswer={() => (asked = true)} />{/if}
+    {#if !mac}
     <div class="seg view" role="radiogroup" aria-label={t('view.limits') + ' / ' + t('view.tokens')}>
       <button role="radio" aria-checked={view === 'limits'} class:on={view === 'limits'} onclick={() => (view = 'limits')}>{t('view.limits')}</button>
       <button role="radio" aria-checked={view === 'tokens'} class:on={view === 'tokens'} onclick={() => (view = 'tokens')}>{t('view.tokens')}</button>
     </div>
     {/if}
-    {#if !mac && view === 'tokens'}
+    {#if view === 'tokens'}
       <Tokens {range} />
+      {#if mac}<LocalLogsSection />{/if}
     {:else if d}
       <div class="chips">
         {@render chip(t('analytics.allAI'), 'var(--accent)', scope === null, true, () => pickScope(null))}
@@ -154,13 +162,13 @@
         <div class="kpis">
           {@render kpi('bars', t('analytics.total'), tf('analytics.timesFmt', d.kpi.total), t('analytics.unitDesc'))}
           {@render kpi('cal', t('analytics.dailyAvg'), tf('analytics.timesFmt', d.kpi.dailyAvg), t('analytics.unitDesc'))}
-          {@render kpi('clock', t('analytics.busiest'), d.kpi.busiest == null ? '-' : tn('analytics.hourFmt', d.kpi.busiest), ' ')}
+          {@render kpi(mac ? 'clock.fill' : 'clock', t('analytics.busiest'), d.kpi.busiest == null ? '-' : tn('analytics.hourFmt', d.kpi.busiest), ' ')}
           {@render kpi('octagon', t('analytics.hits'), tn('analytics.countFmt', d.kpi.hits), t('analytics.hitsDesc'))}
         </div>
 
         <div class="cols a">
           {#if d.itemMode}
-            <Card title={t('analytics.itemUse')} desc={t('analytics.itemUseDesc')} icon="bars">
+            <Card title={t('analytics.itemUse')} desc={t('analytics.itemUseDesc')} icon={mac ? 'chart.bar.xaxis' : 'bars'}>
               <ItemBars series={d.series} />
             </Card>
           {:else}
@@ -258,10 +266,12 @@
   .about ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
   .about li { display: flex; gap: 6px; }
   .view { margin: 0 0 10px; }
+  .mac-view { width: 180px; align-self: center; }
   :global(:root[data-skin="macos"]) .page { --card-bg: var(--surface); }
   :global(:root[data-skin="macos"]) h1 { font-size: 17px; line-height: 20px; }
   :global(:root[data-skin="macos"]) .seg { background: var(--segment-bg); }
   :global(:root[data-skin="macos"]) .seg button { background: transparent; min-height: 20px; line-height: 16px; }
+  :global(:root[data-skin="macos"]) .seg button + button { border-left-color: color-mix(in srgb, var(--fg) 4%, transparent); }
   :global(:root[data-skin="macos"]) .seg button.on { background: var(--segment-selected); color: var(--fg); border-radius: 4px; }
   :global(:root[data-skin="macos"]) .val { font-size: 22px; line-height: 26px; }
 </style>

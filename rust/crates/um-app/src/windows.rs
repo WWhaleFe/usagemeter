@@ -28,7 +28,14 @@ pub fn open(app: &AppHandle, page: &str) {
     let url = WebviewUrl::App(format!("index.html#{hash}").into());
     let builder = WebviewWindowBuilder::new(app, label, url).title(title).inner_size(w, h).min_inner_size(640.0, 520.0).center();
     #[cfg(target_os = "macos")]
-    let builder = builder.theme(mac_theme(app)).resizable(false).maximizable(false);
+    let builder = builder
+        .theme(mac_theme(app))
+        // Visible은 Tauri 내부에서 FullSizeContentView를 켠다. 생성 시부터 끈 뒤 불투명 제목줄을 복원한다.
+        .title_bar_style(tauri::TitleBarStyle::Transparent)
+        .hidden_title(false)
+        .visible(false)
+        .resizable(false)
+        .maximizable(false);
     // Windows 11: Mica 배경이 비치도록 창을 투명하게(계획서 6-1). Windows 10은 Mica가 없어 단색으로 보인다.
     #[cfg(windows)]
     let builder = builder
@@ -36,6 +43,8 @@ pub fn open(app: &AppHandle, page: &str) {
         .effects(tauri::window::EffectsBuilder::new().effect(tauri::window::Effect::Mica).build());
     match builder.build() {
         Ok(win) => {
+            #[cfg(target_os = "macos")]
+            center_native_title(&win, w, h);
             dock_visible(app, true);
             let h = app.clone();
             win.on_window_event(move |e| {
@@ -55,6 +64,29 @@ pub fn open(app: &AppHandle, page: &str) {
         }
         Err(e) => tracing::warn!("창 열기 실패({label}): {e}"),
     }
+}
+
+/// AppKit의 독립된 제목 줄을 사용해 창 제목을 가운데 둔다.
+#[cfg(target_os = "macos")]
+fn center_native_title(win: &tauri::WebviewWindow, width: f64, height: f64) {
+    let handle = win.clone();
+    let _ = win.run_on_main_thread(move || {
+        if let Ok(ptr) = handle.ns_window() {
+            // Tauri가 소유한 유효한 NSWindow 포인터를 메인 스레드에서만 빌려 쓴다.
+            let native = unsafe { &*ptr.cast::<objc2_app_kit::NSWindow>() };
+            // Swift의 일반 titled 창과 같은 마스크와 독립된 제목줄을 창을 보이기 전에 적용한다.
+            use objc2_app_kit::{NSWindowStyleMask as Mask, NSWindowTitleVisibility};
+            native.setToolbar(None);
+            native.setStyleMask(Mask::Titled | Mask::Closable | Mask::Miniaturizable);
+            native.setTitleVisibility(NSWindowTitleVisibility::Visible);
+            native.setTitlebarAppearsTransparent(false);
+            native.setToolbarStyle(objc2_app_kit::NSWindowToolbarStyle::Expanded);
+            native.setContentSize(objc2_foundation::NSSize::new(width, height));
+            native.center();
+        }
+        let _ = handle.show();
+        let _ = handle.set_focus();
+    });
 }
 
 /// 언어 변경 시 이미 열린 창 제목도 Swift 분석 창처럼 다시 반영한다.

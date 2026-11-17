@@ -1,11 +1,14 @@
 <script lang="ts">
   // 잔여량 추이 선 차트(Swift remainingChart, AnalyticsView.swift:372-396): y 0~100%, x = 기간 시작~지금. 아래에 범례 한 줄.
+  import { ui } from '../lib/api.svelte';
   import ChartBox from './ChartBox.svelte';
   import { timeTicks, type Series } from './util';
 
   let { series, since, now }: { series: Series[]; since: number; now: number } = $props();
   const ticks = $derived(timeTicks(since, now));
-  const ML = 36, MB = 18, MT = 6, MR = 10;
+  const mac = $derived(ui.s?.platform === 'mac');
+  const ML = $derived(mac ? 10 : 36), MR = $derived(mac ? 36 : 10);
+  const MB = 18, MT = 6;
 </script>
 
 <div class="wrap">
@@ -18,7 +21,7 @@
       <svg width={w} height={h}>
         {#each [0, 25, 50, 75, 100] as v (v)}
           <line x1={ML} x2={w - MR} y1={Y(v / 100)} y2={Y(v / 100)} class="grid" />
-          <text x={ML - 5} y={Y(v / 100)} text-anchor="end" dominant-baseline="middle">{v}%</text>
+          <text x={mac ? w - MR + 5 : ML - 5} y={Y(v / 100)} text-anchor={mac ? 'start' : 'end'} dominant-baseline="middle">{v}%</text>
         {/each}
         {#each ticks as tk (tk.t)}
           <line x1={X(tk.t)} x2={X(tk.t)} y1={MT} y2={MT + ph} class="grid v" />

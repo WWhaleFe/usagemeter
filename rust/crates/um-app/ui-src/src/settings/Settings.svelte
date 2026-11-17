@@ -47,10 +47,10 @@
 <style>
   .mac { display: flex; flex-direction: column; height: 100vh; padding: 14px 10px 10px; gap: 20px; }
   .tab-panel { flex: 1; min-height: 0; position: relative; border: 1px solid var(--panel-stroke); border-radius: 5px; background: var(--panel-bg); display: flex; flex-direction: column; }
-  .mac .tabs { display: flex; justify-content: center; align-self: center; border: 1px solid var(--panel-stroke); border-radius: 5px; background: var(--segment-bg); position: relative; margin-top: -11px; z-index: 1; flex: none; }
-  .mac .tabs button { border: none; border-radius: 0; background: transparent; padding: 1px 12px; min-height: 20px; line-height: 16px; font-size: 12px; white-space: nowrap; position: relative; }
+  .mac .tabs { display: flex; justify-content: center; align-self: center; border: 1px solid var(--panel-stroke); border-radius: 7px; padding: 2px; background: var(--segment-bg); position: relative; margin-top: -13px; z-index: 1; flex: none; }
+  .mac .tabs button { border: none; border-radius: 0; background: transparent; padding: 1px 12px; min-height: 20px; line-height: 16px; font-size: 12px; font-weight: 500; white-space: nowrap; position: relative; }
   .mac .tabs button + button::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 1px; background: var(--surface-stroke); }
-  .mac .tabs button.on { background: var(--segment-selected); color: var(--fg); border-radius: 4px; }
+  .mac .tabs button.on { background: var(--segment-selected); color: var(--fg); border-radius: 5px; }
   :global(html[lang="en"]) .mac .tabs button { padding-inline: 8px; }
   .mac main { flex: 1; overflow: auto; padding: 20px 16px 14px; min-height: 0; }
 

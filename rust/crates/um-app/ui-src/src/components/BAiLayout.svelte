@@ -65,7 +65,7 @@
   ]);
   function applyPreset(key: 'all' | 'menuBar' | 'main' | 'dock', hCaps: Record<string, SegCap>) {
     const sp = p.shapePresets[key];
-    if (!sp?.allowed) return;
+    if (!sp?.allowed || (!win && ((key === 'menuBar' && !menuOn) || (key === 'dock' && !dockOn)))) return;
     mutate({ zones: sp.zones, segments: sp.segments, hCaps });
   }
 

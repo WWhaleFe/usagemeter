@@ -1,6 +1,6 @@
 <script lang="ts">
   // 시간대별 사용 패턴: 0~23시 쌓인 막대(Swift hourChart, AnalyticsView.swift:346-366). x 눈금 0·3·...·21시.
-  import { tn, tf } from '../lib/api.svelte';
+  import { ui, tn, tf } from '../lib/api.svelte';
   import ChartBox from './ChartBox.svelte';
   import { fmtTick, niceTicks, num, type Series } from './util';
 
@@ -8,7 +8,9 @@
   // 시각별 쌓기 합(%p).
   const tot = $derived(Array.from({ length: 24 }, (_, h) => series.reduce((a, s) => a + (s.hours[h] ?? 0) * 100, 0)));
   const scale = $derived(niceTicks(Math.max(...tot)));
-  const ML = 30, MB = 18, MT = 6, MR = 6;
+  const mac = $derived(ui.s?.platform === 'mac');
+  const ML = $derived(mac ? 6 : 30), MR = $derived(mac ? 30 : 6);
+  const MB = 18, MT = 6;
 </script>
 
 <ChartBox>
@@ -21,7 +23,7 @@
       {#each scale.ticks as v (v)}
         {@const y = MT + ph * (1 - v / scale.top)}
         <line x1={ML} x2={w - MR} y1={y} y2={y} class="grid" />
-        <text x={ML - 5} {y} text-anchor="end" dominant-baseline="middle">{fmtTick(v)}</text>
+        <text x={mac ? w - MR + 5 : ML - 5} {y} text-anchor={mac ? 'start' : 'end'} dominant-baseline="middle">{fmtTick(v)}</text>
       {/each}
       {#each [0, 3, 6, 9, 12, 15, 18, 21] as hr (hr)}
         <line x1={ML + slot * (hr + 0.5)} x2={ML + slot * (hr + 0.5)} y1={MT} y2={MT + ph} class="grid v" />

@@ -30,7 +30,7 @@
         <button onclick={() => act('defaultSave')}>{t('base.save')}</button>
         <button disabled={!s.hasDefault} onclick={() => act('defaultReset')}>{t('base.reset')}</button>
         <span class="grow"></span>
-        <button class="analytics" onclick={() => act('openAnalytics')}><Icon name="bars" size={14} />{t('menu.analytics')}</button>
+        <button class="analytics" onclick={() => act('openAnalytics')}><Icon name="chart.bar.xaxis" size={14} />{t('menu.analytics')}</button>
       </div>
       <hr />
       {#if !s.store}

@@ -176,4 +176,18 @@
   .pbar span { display: block; height: 100%; background: var(--accent); }
   .heat { display: grid; grid-template-columns: 28px repeat(24, 1fr); gap: 2px; }
   .cell { height: 16px; border-radius: 2px; }
+  :global(:root[data-skin="macos"]) .chips { gap: 8px; margin: 0; }
+  :global(:root[data-skin="macos"]) .chips button { display: inline-flex; align-items: center; gap: 5px; min-height: 0; padding: 3px 10px; font-size: var(--fs-small); background: color-mix(in srgb, var(--fg2) 10%, transparent); border: 1px solid transparent; color: var(--fg2); box-shadow: none; }
+  :global(:root[data-skin="macos"]) .chips button::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: color-mix(in srgb, var(--fg2) 40%, transparent); }
+  :global(:root[data-skin="macos"]) .chips button.on { color: var(--fg); background: color-mix(in srgb, var(--accent) 16%, transparent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+  :global(:root[data-skin="macos"]) .chips button.on::before { background: var(--accent); }
+  :global(:root[data-skin="macos"]) .chips button:hover { background: color-mix(in srgb, var(--fg2) 16%, transparent); }
+  :global(:root[data-skin="macos"]) .chips button.on:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+  :global(:root[data-skin="macos"]) .kpis { gap: 12px; margin: 0; }
+  :global(:root[data-skin="macos"]) .kpi { background: var(--card-bg); border: var(--card-border); border-radius: var(--card-r); padding: 14px; gap: 6px; min-width: 0; }
+  :global(:root[data-skin="macos"]) .kpi b { font-size: 22px; line-height: 26px; }
+  :global(:root[data-skin="macos"]) .cards { gap: 14px; }
+  :global(:root[data-skin="macos"]) .card { background: var(--card-bg); border: var(--card-border); border-radius: var(--card-r); padding: 16px; }
+  :global(:root[data-skin="macos"]) h3 { font-size: 13px; font-weight: 600; }
+  :global(:root[data-skin="macos"]) .empty { min-height: 220px; display: grid; place-items: center; text-align: center; white-space: pre-line; margin: 0; padding: 24px; background: var(--card-bg); border: var(--card-border); border-radius: var(--card-r); }
 </style>

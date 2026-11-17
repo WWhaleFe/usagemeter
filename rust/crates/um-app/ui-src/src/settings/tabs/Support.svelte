@@ -35,12 +35,14 @@
     <div class="col">
       <p class="caption desc">{t('support.desc')}</p>
       <button class="heart" onclick={() => act('openUrl', { url: 'https://github.com/sponsors/WWhaleFe' })}>&#9829; {t('support.sponsors')}</button>
+      <div class="kakao">
       <strong>{t('support.kakaoTitle')}</strong>
       <p class="caption desc">{t('support.kakaoScan')}</p>
       {#if qr}
         <div class="qr" role="img" aria-label={t('support.kakaoTitle')}>{@html qr.svg}</div>
         <button onclick={() => act('openUrl', { url: qr!.url })}>{#if ui.s?.platform === 'mac'}<Icon name="link" />{/if}{t('support.kakaoOpen')}</button>
       {/if}
+      </div>
       <p class="caption desc">{t('support.thanks')}</p>
     </div>
   </Section>
@@ -56,7 +58,10 @@
   .qr { background: #fff; padding: 8px; border-radius: 8px; border: 1px solid var(--surface-stroke); line-height: 0; }
   .qr :global(svg) { width: 130px; height: 130px; display: block; }
   :global(:root[data-skin="macos"]) .col > .desc { font-size: 12px; }
-  :global(:root[data-skin="macos"]) .col > .desc:nth-last-child(2) { font-size: 11px; }
+  .kakao { display: contents; }
+  :global(:root[data-skin="macos"]) .kakao { display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 4px; }
+  :global(:root[data-skin="macos"]) .kakao strong { font-size: 12px; font-weight: 600; }
+  :global(:root[data-skin="macos"]) .kakao .desc { font-size: 11px; }
   :global(:root[data-skin="macos"]) .mail { padding: 8px 12px; font-weight: 600; }
   :global(:root[data-skin="macos"]) .heart { color: var(--fg); }
   :global(:root[data-skin="macos"]) button { display: inline-flex; gap: 8px; align-items: center; }
