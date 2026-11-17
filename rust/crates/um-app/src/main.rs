@@ -14,6 +14,8 @@ mod overlay;
 mod panels;
 mod state;
 mod symbols;
+#[cfg(target_os = "macos")]
+mod tray_title;
 mod update;
 mod web;
 mod windows;
@@ -123,6 +125,27 @@ fn update_tray(app: &AppHandle, st: &AppState) {
         ),
         None => (None, [0.55, 0.55, 0.58, 1.0]),
     };
+    // 메뉴바 % 표시: 선택 AI들의 잔여 %를 'AI 표시 순서'대로. 아이콘을 다시 걸 때 클릭 영역이 제목 폭까지 늘어나므로 먼저 건다.
+    #[cfg(target_os = "macos")]
+    {
+        let mut shown: Vec<(&String, &UsageSnapshot)> = st
+            .snapshots
+            .iter()
+            .filter(|(id, _)| st.main.menu_bar_percent_ids.contains(*id))
+            .collect();
+        shown.sort_by_key(|(id, _)| st.main.order_index(id));
+        let shown: Vec<(i64, [f64; 4])> = shown
+            .into_iter()
+            .map(|(id, s)| {
+                ((s.remaining_ratio * 100.0).round() as i64, um_render::border::provider_color(&st.main, id))
+            })
+            .collect();
+        let _ = tray.with_inner_tray_icon(move |t| {
+            if let Some(item) = t.ns_status_item() {
+                tray_title::apply(&item, &shown);
+            }
+        });
+    }
     let pm = um_render::icon::ring(ratio, color, 2.0);
     let _ = tray.set_icon(Some(Image::new_owned(
         um_render::icon::to_straight_rgba(&pm),
