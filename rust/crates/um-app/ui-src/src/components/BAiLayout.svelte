@@ -154,7 +154,9 @@
   .small { min-height: 22px; padding: 1px 6px; font-size: var(--fs-small); }
   :global(:root[data-skin="win"]) .small { min-height: 28px; }
   :global(:root[data-skin="macos"]) .box { flex-wrap: nowrap; gap: 10px; padding: 12px; border: 0; margin-bottom: 12px; }
-  :global(:root[data-skin="macos"]) .left { flex: none; width: 370px; gap: 8px; }
+  /* 왼쪽 열은 남는 폭을 다 쓰고 미리보기는 오른쪽 끝에 붙인다(오른쪽 빈 공간 없앰). */
+  :global(:root[data-skin="macos"]) .left { flex: 1 1 auto; width: auto; min-width: 0; gap: 8px; }
+  :global(:root[data-skin="macos"]) .right { margin-left: auto; }
   :global(:root[data-skin="macos"]) h3 { font-size: 13px; font-weight: 700; line-height: 16px; }
   :global(:root[data-skin="macos"]) .caps { gap: 4px; }
   :global(:root[data-skin="macos"]) .caprow { gap: 5px; flex-wrap: nowrap; min-height: 16px; }

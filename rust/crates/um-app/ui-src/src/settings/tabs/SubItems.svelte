@@ -72,7 +72,9 @@
   :global(:root[data-skin="macos"]) .item { flex-direction: row; gap: 8px; padding: 0; align-items: center; }
   :global(:root[data-skin="macos"]) .item + .item { border: 0; }
   :global(:root[data-skin="macos"]) .item > .row { display: contents; }
-  :global(:root[data-skin="macos"]) .name { width: 230px; flex: none; font-size: 12px; font-weight: 400; }
+  /* 항목 이름과 막대가 남는 폭을 나눠 쓴다(오른쪽 빈 공간 없앰). */
+  :global(:root[data-skin="macos"]) .name { width: auto; flex: 1 1 200px; min-width: 0; font-size: 12px; font-weight: 400; }
+  :global(:root[data-skin="macos"]) .bar { width: auto; flex: 1 1 120px; max-width: 260px; }
   :global(:root[data-skin="macos"]) .pct { width: 92px; }
   :global(:root[data-skin="macos"]) .color-well { width: 44px; height: 24px; flex: none; border: 3px solid #777; padding: 0; }
   .color-well span { display: block; width: 100%; height: 100%; border-radius: 1px; }
