@@ -2811,7 +2811,10 @@ version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9df9128cbbfef73cda168416ccf7f837b62737d748333bfe9ab71c245d76613e"
 dependencies = [
+ "bitflags 2.13.2",
+ "block2",
  "objc2",
+ "objc2-core-location",
  "objc2-foundation",
 ]
 
@@ -5022,11 +5025,14 @@ name = "um-app"
 version = "2.0.0-beta.1"
 dependencies = [
  "arboard",
+ "block2",
  "chrono",
  "directories",
+ "notify",
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",
+ "objc2-user-notifications",
  "objc2-web-kit",
  "open",
  "plist",

@@ -155,7 +155,7 @@ pub fn strip_extent(s: &Settings, side: StripSide) -> f64 {
     if s.dock_line_enabled {
         zones.push(ScreenZone::Dock);
     }
-    let radius = zones
+    let mut radius = zones
         .iter()
         .flat_map(|z| {
             let m = match z {
@@ -166,6 +166,15 @@ pub fn strip_extent(s: &Settings, side: StripSide) -> f64 {
             [a, b].map(|c| m.get(&c).copied().unwrap_or(0.0).max(0.0))
         })
         .fold(0.0, f64::max);
+    // 내부 가로선의 반대쪽 곡률도 띠 안에 포함한다(Swift OverlayFrameController.swift:95-110).
+    let extra = match side {
+        StripSide::Top if s.menu_line_enabled => Some((&s.menu_zone_radii, [BorderCorner::BottomLeft, BorderCorner::BottomRight])),
+        StripSide::Bottom if s.dock_line_enabled => Some((&s.dock_zone_radii, [BorderCorner::TopLeft, BorderCorner::TopRight])),
+        _ => None,
+    };
+    if let Some((radii, corners)) = extra {
+        for c in corners { radius = radius.max(radii.get(&c).copied().unwrap_or(0.0)); }
+    }
     let notch = if side == StripSide::Top && s.notch_enabled { s.notch_height.max(0.0) } else { 0.0 };
     s.thickness / 2.0 + s.thickness + radius + notch + 4.0
 }
@@ -190,6 +199,15 @@ mod tests {
         assert_eq!(strip_extent(&s, StripSide::Bottom), 7.0); // Dock선이 꺼져 있으면 무시
         s.dock_line_enabled = true;
         assert_eq!(strip_extent(&s, StripSide::Bottom), 67.0);
+    }
+
+    #[test]
+    fn 내부_가로선_반대쪽_곡률도_포함() {
+        let mut s = Settings { notch_enabled: false, menu_line_enabled: true, dock_line_enabled: true, ..Settings::default() };
+        s.menu_zone_radii.insert(BorderCorner::BottomLeft, 80.0);
+        s.dock_zone_radii.insert(BorderCorner::TopRight, 70.0);
+        assert_eq!(strip_extent(&s, StripSide::Top), 87.0);
+        assert_eq!(strip_extent(&s, StripSide::Bottom), 87.0);
     }
 
     #[test]

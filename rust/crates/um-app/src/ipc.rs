@@ -269,11 +269,13 @@ fn patch(s: &mut Settings, patch: &Value) -> Result<(), String> {
 pub fn ui_set(app: AppHandle, scope: String, patch_v: Value) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     let appearance_changed;
+    let auto_update_enabled;
     {
         let st = crate::shared(&app);
         let mut st = st.lock().unwrap();
         let edit = editing_id(&app, &st);
         let prev_lang = st.main.language;
+        let prev_auto = st.main.auto_check_update;
         #[cfg(target_os = "macos")]
         let prev_appearance = st.main.appearance;
         match (scope.as_str(), edit) {
@@ -284,6 +286,7 @@ pub fn ui_set(app: AppHandle, scope: String, patch_v: Value) -> Result<(), Strin
             }
             _ => patch(&mut st.main, &patch_v)?,
         }
+        auto_update_enabled = !prev_auto && st.main.auto_check_update;
         if st.main.language != prev_lang {
             crate::apply_text_locale(st.main.language);
         }
@@ -299,6 +302,7 @@ pub fn ui_set(app: AppHandle, scope: String, patch_v: Value) -> Result<(), Strin
         crate::windows::refresh_appearance(&app);
     }
     changed(&app);
+    if auto_update_enabled && !cfg!(feature = "store") { crate::menu::check_update(&app); }
     Ok(())
 }
 
@@ -516,12 +520,15 @@ pub fn ui_action(app: AppHandle, action: String, arg: Value) -> Result<Value, St
 fn with_state(app: &AppHandle, f: impl FnOnce(&mut AppState)) {
     #[cfg(target_os = "macos")]
     let appearance_changed;
+    let auto_update_enabled;
     {
         let st = crate::shared(app);
         let mut st = st.lock().unwrap();
         #[cfg(target_os = "macos")]
         let prev_appearance = st.main.appearance;
+        let prev_auto = st.main.auto_check_update;
         f(&mut st);
+        auto_update_enabled = !prev_auto && st.main.auto_check_update;
         st.rebuild_snapshots();
         st.save();
         #[cfg(target_os = "macos")]
@@ -534,4 +541,5 @@ fn with_state(app: &AppHandle, f: impl FnOnce(&mut AppState)) {
         crate::windows::refresh_appearance(app);
     }
     changed(app);
+    if auto_update_enabled && !cfg!(feature = "store") { crate::menu::check_update(app); }
 }

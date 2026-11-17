@@ -1,6 +1,7 @@
 //! UsageMeter (Rust) 앱 진입점. 계획서 3장 `um-app`.
 //! 지금 단계: 트레이(전체 메뉴·정보 패널) + 화면별 테두리 + 호버 + 로그인·로그아웃 + 사용량 실시간 조회 + 업데이트 확인.
 
+mod agy_activity;
 mod analytics_ui;
 mod data;
 mod direct;
@@ -9,6 +10,7 @@ mod locallogs;
 mod menu;
 #[cfg(target_os = "macos")]
 mod native_color;
+mod notifications;
 mod overlay;
 #[cfg(target_os = "macos")]
 mod panels;
@@ -31,7 +33,7 @@ use tauri::tray::TrayIconBuilder;
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconEvent};
 use tauri::{AppHandle, Manager};
 use um_core::i18n::tr;
-use um_core::model::{UsageSnapshot, UsageStatus};
+use um_core::model::UsageSnapshot;
 use um_providers::agy::AgyParser;
 use um_providers::spec;
 
@@ -40,9 +42,62 @@ use state::AppState;
 
 type Shared = Arc<Mutex<AppState>>;
 /// agy 단조 규칙 상태(Swift AgyQuotaFetcher.monotonicBuckets).
-struct Agy(Mutex<AgyParser>);
+#[derive(Default)]
+struct Agy {
+    parser: Mutex<AgyParser>,
+    flight: Mutex<(bool, Option<UsageSnapshot>)>,
+    ready: std::sync::Condvar,
+}
+
+impl Agy {
+    /// 실행 중인 agy 요청은 결과를 함께 쓴다. 파서 잠금은 해석할 때만 잡는다.
+    fn fetch(&self) -> Option<UsageSnapshot> {
+        let mut flight = self.flight.lock().unwrap();
+        if flight.0 {
+            while flight.0 { flight = self.ready.wait(flight).unwrap(); }
+            return flight.1.clone();
+        }
+        flight.0 = true;
+        drop(flight);
+        let result = data::fetch_agy(&self.parser);
+        let mut flight = self.flight.lock().unwrap();
+        *flight = (false, result.clone());
+        self.ready.notify_all();
+        result
+    }
+}
 /// 직접 호출용 HTTP 클라이언트(AI별, 쿠키는 메모리에만). 실패하면 버리고 다시 만든다.
-struct DirectClients(Mutex<BTreeMap<String, reqwest::blocking::Client>>);
+struct DirectClients(Mutex<BTreeMap<String, DirectSession>>);
+
+#[derive(Default)]
+struct DirectSession {
+    generation: u64,
+    client: Option<reqwest::blocking::Client>,
+}
+
+fn session_generation(app: &AppHandle, id: &str) -> u64 {
+    app.state::<DirectClients>().0.lock().unwrap().get(id).map_or(0, |s| s.generation)
+}
+
+/// 쿠키 캐시와 진행 중인 옛 조회를 함께 무효화한다(Swift WebSession.swift:380-389).
+fn invalidate_session(app: &AppHandle, id: &str) {
+    let cache = app.state::<DirectClients>();
+    let mut cache = cache.0.lock().unwrap();
+    let session = cache.entry(id.to_string()).or_default();
+    session.generation += 1;
+    session.client = None;
+}
+
+fn apply_current(app: &AppHandle, id: &str, generation: u64, snap: UsageSnapshot) {
+    let cache = app.state::<DirectClients>();
+    let cache = cache.0.lock().unwrap();
+    if cache.get(id).map_or(0, |s| s.generation) != generation
+        || app.get_webview_window(&format!("login-{id}")).is_some() { return; }
+    apply(app, id, snap);
+    drop(cache);
+    record_history(&mut shared(app).lock().unwrap());
+    ipc::changed(app);
+}
 
 /// 직접 호출 경로를 쓸지(기본 켬, 0단계 S3·S5 통과: rust/docs/adr/0004). `UM_DIRECT=0`이면 웹뷰만.
 fn direct_enabled() -> bool {
@@ -52,13 +107,17 @@ fn direct_enabled() -> bool {
 /// 직접 호출: 만들어 둔 클라이언트 → 실패하면 쿠키를 새로 읽어 한 번 더. 둘 다 실패하면 None(웹뷰로 넘어감).
 fn fetch_direct(app: &AppHandle, sp: &'static spec::ProviderSpec) -> Option<serde_json::Value> {
     let cache = app.state::<DirectClients>();
+    let generation = session_generation(app, sp.id);
     for attempt in 0..2 {
-        let cached = cache.0.lock().unwrap().get(sp.id).cloned();
+        let cached = cache.0.lock().unwrap().get(sp.id).and_then(|s| s.client.clone());
         let c = match cached {
             Some(c) if attempt == 0 => c,
             _ => {
                 let c = direct::client(app, sp)?;
-                cache.0.lock().unwrap().insert(sp.id.to_string(), c.clone());
+                let mut sessions = cache.0.lock().unwrap();
+                let session = sessions.entry(sp.id.to_string()).or_default();
+                if session.generation != generation { return None; }
+                session.client = Some(c.clone());
                 c
             }
         };
@@ -66,7 +125,10 @@ fn fetch_direct(app: &AppHandle, sp: &'static spec::ProviderSpec) -> Option<serd
         if raw["ok"] == true {
             return Some(raw);
         }
-        cache.0.lock().unwrap().remove(sp.id);
+        let mut sessions = cache.0.lock().unwrap();
+        let session = sessions.entry(sp.id.to_string()).or_default();
+        if session.generation != generation { return None; }
+        session.client = None;
     }
     None
 }
@@ -171,8 +233,11 @@ fn update_tray(app: &AppHandle, st: &AppState) {
 /// AI 하나 조회. Gemini는 agy를 먼저, 없으면 웹. (Swift WebSession.fetchUsage)
 fn fetch_one(app: &AppHandle, id: &str) -> Option<UsageSnapshot> {
     let sp = spec::spec(id)?;
+    if app.get_webview_window(&format!("login-{id}")).is_some() {
+        return None;
+    }
     if id == "gemini"
-        && let Some(s) = data::fetch_agy(&mut app.state::<Agy>().0.lock().unwrap())
+        && let Some(s) = app.state::<Agy>().fetch()
     {
         return Some(s);
     }
@@ -226,26 +291,24 @@ fn fetch_one(app: &AppHandle, id: &str) -> Option<UsageSnapshot> {
     ))
 }
 
-/// 결과 반영(Swift ProviderManager.apply). 성공·로그아웃 판정이 나면 그 AI의 이력 값은 버린다.
+/// 결과 반영(Swift ProviderManager.apply). 첫 실시간 결과가 오면 그 AI의 이력 값은 버린다.
 fn apply(app: &AppHandle, id: &str, snap: UsageSnapshot) {
+    notifications::usage(app, id, &snap);
     let st = shared(app);
     let mut st = st.lock().unwrap();
-    if matches!(snap.status, UsageStatus::Ok | UsageStatus::AuthExpired) {
-        st.seeds.remove(id);
-    }
-    st.providers.entry(id.to_string()).or_default().apply(snap);
-    st.rebuild_snapshots();
+    st.apply_snapshot(id, snap);
+    st.save();
 }
 
 fn refresh_ids(app: &AppHandle, ids: &[String]) {
-    for id in ids {
-        if let Some(s) = fetch_one(app, id) {
-            apply(app, id, s);
+    std::thread::scope(|scope| {
+        for id in ids {
+            scope.spawn(move || {
+                let generation = session_generation(app, id);
+                if let Some(s) = fetch_one(app, id) { apply_current(app, id, generation, s); }
+            });
         }
-    }
-    record_history(&mut shared(app).lock().unwrap());
-    redraw(app);
-    menu::rebuild(app); // 로그인 상태가 바뀌었을 수 있다
+    });
 }
 
 fn refresh_all(app: &AppHandle) {
@@ -253,33 +316,25 @@ fn refresh_all(app: &AppHandle) {
     refresh_ids(app, &ids);
 }
 
-/// 시작 시 조회. 읽기 실패(로그아웃 아님)한 AI만 2초 간격으로 최대 3번 더 시도. (Swift refreshWithRetry, 4회·2초)
+/// 시작 재시도도 AI별로 진행한다(Swift ProviderManager.swift refreshWithRetry).
 fn refresh_with_retry(app: &AppHandle) {
-    refresh_all(app);
-    for _ in 0..(um_providers::state::START_RETRY_ATTEMPTS - 1) {
-        let retry: Vec<String> = {
-            let st = shared(app);
-            let st = st.lock().unwrap();
-            st.main
-                .provider_order
-                .iter()
-                .filter(|id| {
-                    st.providers
-                        .get(*id)
-                        .and_then(|p| p.snapshot.as_ref())
-                        .is_some_and(um_providers::state::should_retry)
-                })
-                .cloned()
-                .collect()
-        };
-        if retry.is_empty() {
-            break;
+    let ids = shared(app).lock().unwrap().main.provider_order.clone();
+    std::thread::scope(|scope| {
+        for id in ids {
+            scope.spawn(move || {
+                for attempt in 0..um_providers::state::START_RETRY_ATTEMPTS {
+                    if attempt > 0 {
+                        std::thread::sleep(Duration::from_secs(um_providers::state::START_RETRY_INTERVAL_SECS));
+                    }
+                    let generation = session_generation(app, &id);
+                    let Some(s) = fetch_one(app, &id) else { break };
+                    let retry = um_providers::state::should_retry(&s);
+                    apply_current(app, &id, generation, s);
+                    if !retry { break; }
+                }
+            });
         }
-        std::thread::sleep(Duration::from_secs(
-            um_providers::state::START_RETRY_INTERVAL_SECS,
-        ));
-        refresh_ids(app, &retry);
-    }
+    });
 }
 
 fn record_history(st: &mut AppState) {
@@ -325,7 +380,10 @@ fn toggle_account(app: &AppHandle, id: String) {
             (st.is_logged_in(&id), st.main.language)
         };
         if logged_in {
+            invalidate_session(&app, &id);
             web::logout(&app, sp);
+            // 쿠키 삭제 중에 시작된 직접 호출도 다시 무효화한다.
+            invalidate_session(&app, &id);
             let st = shared(&app);
             let mut st = st.lock().unwrap();
             if let Some(p) = st.providers.get_mut(&id) {
@@ -334,15 +392,33 @@ fn toggle_account(app: &AppHandle, id: String) {
             st.seeds.remove(&id);
             st.rebuild_snapshots();
             drop(st);
-            redraw(&app);
-            menu::rebuild(&app);
+            ipc::changed(&app);
         } else {
-            // 이미 로그인돼 있으면 창 없이 끝낸다(Swift LoginWindowController.show: 먼저 조회 확인).
-            if let Some(s) = fetch_one(&app, &id)
-                && s.status == UsageStatus::Ok
-            {
-                apply(&app, &id, s);
-                redraw(&app);
+            // 사전 확인은 웹 쿠키만 사용하고 전체 대기는 2초로 제한한다(Swift LoginWindowController.swift:43-54).
+            let (tx, rx) = std::sync::mpsc::channel();
+            let h = app.clone();
+            std::thread::spawn(move || {
+                let cookies = web::read_cookies(&h, sp);
+                let result = if !sp.auth_cookie_names.is_empty() {
+                    cookies.iter().any(|(name, _, _, _)| sp.auth_cookie_names.contains(&name.as_str()))
+                        .then_some(None)
+                } else if cookies.is_empty() {
+                    None
+                } else {
+                    direct::client_with_cookies(sp, cookies, Duration::from_secs(2))
+                        .map(|c| direct::probe_with(&c, sp))
+                        .filter(|raw| raw["ok"] == true)
+                        .map(Some)
+                };
+                let _ = tx.send(result);
+            });
+            if let Ok(Some(raw)) = rx.recv_timeout(Duration::from_secs(2)) {
+                if let Some(raw) = raw {
+                    apply(&app, &id, um_providers::parse::snapshot_from_probe(&id, &raw, chrono::Utc::now()));
+                    ipc::changed(&app);
+                } else {
+                    refresh_ids(&app, std::slice::from_ref(&id));
+                }
                 return;
             }
             login_and_refresh(&app, sp, lang);
@@ -365,7 +441,7 @@ fn login_and_refresh(
     );
     if ok {
         // 쿠키가 바뀌었으니 직접 호출 클라이언트를 버린다.
-        app.state::<DirectClients>().0.lock().unwrap().remove(sp.id);
+        invalidate_session(app, sp.id);
         refresh_ids(app, &[sp.id.to_string()]);
     }
     ok
@@ -374,6 +450,15 @@ fn login_and_refresh(
 /// 트레이 아이콘 영역(Tauri: 물리 px, 왼쪽 위 원점) → 전역 AppKit 좌표(pt, 왼쪽 아래 원점).
 #[cfg(target_os = "macos")]
 fn tray_rect(app: &AppHandle, r: &tauri::Rect) -> panels::Rect {
+    // 서로 다른 배율의 모니터 사이에서도 AppKit의 실제 버튼 좌표를 우선한다.
+    if let Some(rect) = app.tray_by_id(TRAY_ID).and_then(|tray| tray.with_inner_tray_icon(|t| {
+        let mtm = objc2::MainThreadMarker::new()?;
+        let item = t.ns_status_item()?;
+        let button = item.button(mtm)?;
+        let window = button.window()?;
+        let rect = window.convertRectToScreen(button.convertRect_toView(button.bounds(), None));
+        Some(panels::Rect { x: rect.origin.x, y: rect.origin.y, w: rect.size.width, h: rect.size.height })
+    }).ok().flatten()) { return rect; }
     let scale = app.primary_monitor().ok().flatten().map(|m| m.scale_factor()).unwrap_or(2.0);
     let pos = r.position.to_logical::<f64>(scale);
     let size = r.size.to_logical::<f64>(scale);
@@ -406,13 +491,13 @@ fn main() {
             .as_ref()
             .map(|db| data::seed_from_history(db, &ids, chrono::Utc::now()))
             .unwrap_or_default();
-        st.seeds = seeds;
+        if st.main.keep_logged_in { st.seeds = seeds; }
         st.rebuild_snapshots();
     }
 
     tauri::Builder::default()
         .manage(shared_state.clone())
-        .manage(Agy(Mutex::new(AgyParser::new())))
+        .manage(Agy::default())
         .manage(DirectClients(Mutex::new(BTreeMap::new())))
         .manage(ipc::Editing::default())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
@@ -423,6 +508,8 @@ fn main() {
             locallogs::start(app.handle());
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+            #[cfg(target_os = "macos")]
+            notifications::init();
             let lang = shared_state.lock().unwrap().main.language;
             apply_text_locale(lang);
             let menu = menu::build(app.handle(), &shared_state.lock().unwrap())?;
@@ -455,6 +542,8 @@ fn main() {
                 #[cfg(target_os = "macos")]
                 panels::init(app.handle());
             }
+            shared_state.lock().unwrap().sync_displays(&um_platform::display::displays());
+            agy_activity::start(app.handle());
             redraw(app.handle());
             // 개발용: UM_OPEN_WINDOW=settings[#탭] 또는 analytics로 시작하면 그 창을 바로 연다.
             if let Ok(page) = std::env::var("UM_OPEN_WINDOW") {
@@ -464,6 +553,18 @@ fn main() {
             // 시작 조회(재시도 포함) 후 갱신 주기마다 전체 조회.
             let h = app.handle().clone();
             std::thread::spawn(move || {
+                if !shared(&h).lock().unwrap().main.keep_logged_in {
+                    for sp in spec::ALL {
+                        invalidate_session(&h, sp.id);
+                        web::logout(&h, sp);
+                    }
+                    let st = shared(&h);
+                    let mut st = st.lock().unwrap();
+                    st.seeds.clear();
+                    st.rebuild_snapshots();
+                    drop(st);
+                    ipc::changed(&h);
+                }
                 refresh_with_retry(&h);
                 // 개발용: UM_TEST_LOGIN=<id>면 로그인 창을 강제로 띄워 자동 판정·닫힘을 확인한다.
                 if let Some(sp) = std::env::var("UM_TEST_LOGIN")
@@ -514,6 +615,7 @@ fn main() {
                     let h2 = h.clone();
                     let _ = h.run_on_main_thread(move || {
                         if OVERLAY.with(|o| o.borrow_mut().check_displays()) {
+                            shared(&h2).lock().unwrap().sync_displays(&um_platform::display::displays());
                             #[cfg(target_os = "macos")]
                             panels::refresh_displays();
                             redraw(&h2);

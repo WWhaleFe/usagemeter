@@ -6,6 +6,9 @@
 //! macOS 전용(메인 스레드). Windows 플라이아웃은 0단계 S9 확인 뒤 붙인다.
 
 use std::cell::RefCell;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+static MENU_TRACKING: AtomicUsize = AtomicUsize::new(0);
 
 use chrono::{Local, Utc};
 use tauri::AppHandle;
@@ -44,8 +47,6 @@ struct Panels {
     hover: InfoPanel,
     card: InfoPanel,
     card_open: bool,
-    /// 메뉴바 아이콘 위에 커서가 있음(테두리 판정보다 우선).
-    over_tray: bool,
     tray: Option<Rect>,
     /// 마지막으로 그린 호버 글(같으면 위치만 옮긴다).
     hover_key: String,
@@ -54,6 +55,7 @@ struct Panels {
     chart_hover: Option<i32>,
     displays: Vec<DisplayInfo>,
     _mouse: MouseMonitor,
+    _menu_observers: Vec<objc2::rc::Retained<objc2::runtime::ProtocolObject<dyn objc2_foundation::NSObjectProtocol>>>,
 }
 
 thread_local! {
@@ -66,10 +68,20 @@ pub fn init(app: &AppHandle) {
         tracing::warn!("정보 패널을 만들지 못했습니다");
         return;
     };
+    let center = objc2_foundation::NSNotificationCenter::defaultCenter();
+    let mut observers = vec![];
+    for (name, tracking) in unsafe { [(objc2_app_kit::NSMenuDidBeginTrackingNotification, true), (objc2_app_kit::NSMenuDidEndTrackingNotification, false)] } {
+        let block = block2::RcBlock::new(move |_: std::ptr::NonNull<objc2_foundation::NSNotification>| {
+            if tracking { MENU_TRACKING.fetch_add(1, Ordering::Relaxed); }
+            else if MENU_TRACKING.load(Ordering::Relaxed) > 0 { MENU_TRACKING.fetch_sub(1, Ordering::Relaxed); }
+            if tracking { menu_opening(); }
+        });
+        observers.push(unsafe { center.addObserverForName_object_queue_usingBlock(Some(name), None, None, &block) });
+    }
     let h = app.clone();
     let mouse = MouseMonitor::start(move |x, y, kind| on_mouse(&h, x, y, kind));
     PANELS.with(|p| {
-        *p.borrow_mut() = Some(Panels { hover, card, card_open: false, over_tray: false, tray: None, hover_key: String::new(), chart_h: 0.0, chart_hover: None, displays: display::displays(), _mouse: mouse })
+        *p.borrow_mut() = Some(Panels { hover, card, card_open: false, tray: None, hover_key: String::new(), chart_h: 0.0, chart_hover: None, displays: display::displays(), _mouse: mouse, _menu_observers: observers })
     });
 }
 
@@ -141,16 +153,16 @@ fn card_image(st: &AppState, scale: f32, hover_x: Option<f32>) -> (panel::Render
             lines: s.lines.iter().map(|l| CardLine { text: l.text.clone(), dot: dot_color(st, &s.id, &l.dot_item) }).collect(),
         })
         .collect();
-    let empty = menu_text::no_ai_text(st.main.language);
+    let empty = um_core::i18n::tr("menu.noAI", st.main.language);
     let card = panel::render_card(&cards, Some(&empty), th, scale);
     if !st.main.menu_show_chart {
         return (card, 0.0);
     }
     let hours = st.main.chart_hours as f64;
     let now = Utc::now().timestamp_millis() as f64 / 1000.0;
-    let series: Vec<ChartSeries> = st
-        .snapshots
-        .keys()
+    let series: Vec<ChartSeries> = um_providers::spec::ALL.iter()
+        .map(|sp| sp.id)
+        .filter(|id| st.snapshots.contains_key(*id))
         .filter_map(|id| {
             let pts = st.history.as_ref()?.series(id, now - hours * 3600.0).ok()?;
             (pts.len() >= 2).then(|| ChartSeries {
@@ -178,17 +190,23 @@ fn card_image(st: &AppState, scale: f32, hover_x: Option<f32>) -> (panel::Render
         scale,
     );
     let ch = chart.height;
-    (stack(card, chart, scale), ch)
+    (stack(card, chart, scale, th), ch)
 }
 
 /// 두 그림을 위아래로 붙인다.
-fn stack(a: panel::Rendered, b: panel::Rendered, scale: f32) -> panel::Rendered {
+fn stack(a: panel::Rendered, b: panel::Rendered, scale: f32, theme: Theme) -> panel::Rendered {
     let w = a.pixmap.width().max(b.pixmap.width());
     let h = a.pixmap.height() + b.pixmap.height();
     let mut pm = tiny_skia::Pixmap::new(w, h).expect("panel size");
     let paint = tiny_skia::PixmapPaint::default();
     pm.draw_pixmap(0, 0, a.pixmap.as_ref(), &paint, tiny_skia::Transform::identity(), None);
     pm.draw_pixmap(0, a.pixmap.height() as i32, b.pixmap.as_ref(), &paint, tiny_skia::Transform::identity(), None);
+    let c = theme.secondary();
+    let mut line = tiny_skia::Paint::default();
+    line.set_color(tiny_skia::Color::from_rgba(c[0] as f32, c[1] as f32, c[2] as f32, 0.25).unwrap());
+    if let Some(rect) = tiny_skia::Rect::from_xywh(10.0 * scale, a.pixmap.height() as f32, (w as f32 - 20.0 * scale).max(1.0), scale) {
+        pm.fill_rect(rect, &line, tiny_skia::Transform::identity(), None);
+    }
     panel::Rendered { pixmap: pm, width: w as f32 / scale, height: h as f32 / scale }
 }
 
@@ -218,10 +236,9 @@ fn near_cursor(d: &DisplayInfo, cx: f64, cy: f64, w: f64, h: f64) -> (f64, f64) 
     (x, y)
 }
 
-fn show_hover_at(p: &mut Panels, st: &AppState, place: impl Fn(f64, f64) -> (f64, f64)) {
+fn show_hover_at(p: &mut Panels, st: &AppState, scale: f32, place: impl Fn(f64, f64) -> (f64, f64)) {
     let lines = hover_lines(st);
-    let key: String = lines.iter().map(|l| l.text.as_str()).collect::<Vec<_>>().join("\n");
-    let scale = p.displays.first().map(|d| d.scale).unwrap_or(2.0) as f32;
+    let key = format!("{scale}:{}", lines.iter().map(|l| l.text.as_str()).collect::<Vec<_>>().join("\n"));
     if key != p.hover_key || !p.hover.is_visible() {
         let r = panel::render_hover(&lines, HOVER_MAX_W, theme(&st.main), scale);
         let (x, y) = place(r.width as f64, r.height as f64);
@@ -248,7 +265,10 @@ fn with<R>(f: impl FnOnce(&mut Panels) -> R) -> Option<R> {
 fn on_mouse(app: &AppHandle, x: f64, y: f64, kind: MouseKind) {
     let st = crate::shared(app);
     let Ok(st) = st.try_lock() else { return };
+    let tray = app.tray_by_id(crate::TRAY_ID).and_then(|t| t.rect().ok().flatten()).map(|r| crate::tray_rect(app, &r));
     with(|p| {
+        if let Some(rect) = tray { p.tray = Some(rect); }
+        if MENU_TRACKING.load(Ordering::Relaxed) > 0 { return hide_hover(p); }
         if kind == MouseKind::Down {
             let (fx, fy, fw, fh) = p.card.frame();
             let in_card = Rect { x: fx, y: fy, w: fw, h: fh }.contains(x, y);
@@ -264,15 +284,27 @@ fn on_mouse(app: &AppHandle, x: f64, y: f64, kind: MouseKind) {
             card_chart_hover(p, &st, x, y);
             return;
         }
-        if p.over_tray {
-            return;
+        if st.main.menu_bar_hover_info_enabled
+            && let Some(r) = p.tray
+            && let Some((d, _, _)) = screen_of(&p.displays, r.x + r.w / 2.0, r.y + r.h / 2.0)
+        {
+            let pad = (d.width_pt * 0.006).clamp(8.0, 24.0);
+            let top = d.to_global(0.0, 0.0).1;
+            let bar_h = (top - r.y).max(r.h);
+            let below = (bar_h * 0.25).max(4.0);
+            let zone = Rect { x: r.x - pad, y: r.y - below, w: r.w + pad * 2.0, h: bar_h + below + 1.0 };
+            if zone.contains(x, y) {
+                let d = d.clone();
+                return show_hover_at(p, &st, d.scale as f32, |w, h| clamp_to_screen(&d, x - w / 2.0, r.y - h - BAR_GAP, w, h));
+            }
         }
+
         let Some((d, lx, ly)) = screen_of(&p.displays, x, y) else { return hide_hover(p) };
         let enabled = !st.disabled_displays.contains(&d.id);
         let ds = st.settings_for_display(&d.id);
         if enabled && um_core::hover::border_hover_hit(&ds, &st.main, d.width_pt, d.height_pt, lx, ly) {
             let d = d.clone();
-            show_hover_at(p, &st, |w, h| near_cursor(&d, x, y, w, h));
+            show_hover_at(p, &st, d.scale as f32, |w, h| near_cursor(&d, x, y, w, h));
         } else {
             hide_hover(p);
         }
@@ -292,7 +324,7 @@ fn card_chart_hover(p: &mut Panels, st: &AppState, x: f64, y: f64) {
         return;
     }
     p.chart_hover = hx;
-    let scale = p.displays.first().map(|d| d.scale).unwrap_or(2.0) as f32;
+    let scale = screen_of(&p.displays, fx + fw / 2.0, fy + 1.0).map(|(d, _, _)| d.scale).unwrap_or(2.0) as f32;
     let (r, _) = card_image(st, scale, hx.map(|v| v as f32));
     let _ = p.card.show(r.pixmap.data(), r.pixmap.width(), r.pixmap.height(), scale as f64, fx, fy);
 }
@@ -303,13 +335,12 @@ pub fn tray_hover(app: &AppHandle, rect: Rect, inside: bool) {
     let Ok(st) = st.try_lock() else { return };
     with(|p| {
         p.tray = Some(rect);
-        p.over_tray = inside;
-        if !inside || p.card_open || !st.main.menu_bar_hover_info_enabled {
+        if MENU_TRACKING.load(Ordering::Relaxed) > 0 || !inside || p.card_open || !st.main.menu_bar_hover_info_enabled {
             return hide_hover(p);
         }
         let ds = p.displays.clone();
         let cx = rect.x + rect.w / 2.0;
-        show_hover_at(p, &st, |w, h| {
+        show_hover_at(p, &st, screen_of(&ds, cx, rect.y + rect.h / 2.0).map(|(d, _, _)| d.scale).unwrap_or(2.0) as f32, |w, h| {
             let y = rect.y - h - BAR_GAP;
             match screen_of(&ds, cx, rect.y + rect.h / 2.0) {
                 Some((d, _, _)) => clamp_to_screen(d, cx - w / 2.0, y, w, h),
@@ -342,7 +373,7 @@ pub fn toggle_card(app: &AppHandle, rect: Rect) {
             return;
         }
         hide_hover(p);
-        let scale = p.displays.first().map(|d| d.scale).unwrap_or(2.0) as f32;
+        let scale = screen_of(&p.displays, rect.x + rect.w / 2.0, rect.y + rect.h / 2.0).map(|(d, _, _)| d.scale).unwrap_or(2.0) as f32;
         let (r, ch) = card_image(&st, scale, None);
         p.chart_h = ch;
         p.chart_hover = None;

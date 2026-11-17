@@ -9,7 +9,7 @@
 //! 이 모듈의 함수는 메인 스레드가 아닌 곳에서 부른다(결과를 기다리며 막히므로).
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, mpsc};
+use std::sync::{Arc, Mutex, mpsc};
 use std::time::Duration;
 
 use serde_json::{Value, json};
@@ -147,19 +147,33 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
     out
 }
 
+#[derive(Default)]
+struct LoginPopups {
+    closed: AtomicBool,
+    labels: Mutex<Vec<String>>,
+}
+
+fn close_popups(app: &AppHandle, popups: &LoginPopups) {
+    popups.closed.store(true, Ordering::SeqCst);
+    let labels = std::mem::take(&mut *popups.labels.lock().unwrap());
+    for label in labels {
+        if let Some(w) = app.get_webview_window(&label) { let _ = w.destroy(); }
+    }
+}
+
 /// 로그인 창을 띄우고 로그인이 끝날 때까지 기다린다(창을 닫으면 false). 로그인 판정(Swift LoginWindowController.swift):
 /// Gemini는 서비스 호스트에 있고 인증 쿠키가 있으면, 나머지는 서비스 호스트에서 사용량 JS가 ok를 주면.
 pub fn login(app: &AppHandle, spec: &'static ProviderSpec, title: &str) -> bool {
     let label = format!("login-{}", spec.id);
     if let Some(w) = app.get_webview_window(&label) {
-        let _ = w.set_focus();
+        activate(&w);
         return false;
     }
-    let token = next_token();
-    let prefix = format!("UMRESULT:{token}:");
     let (tx, rx) = mpsc::channel::<String>();
+    let closed_tx = tx.clone();
     let app2 = app.clone();
-    let popup_seq = Arc::new(AtomicU64::new(0));
+    let popups = Arc::new(LoginPopups::default());
+    let children = popups.clone();
     let built = WebviewWindowBuilder::new(
         app,
         &label,
@@ -171,55 +185,116 @@ pub fn login(app: &AppHandle, spec: &'static ProviderSpec, title: &str) -> bool 
     .user_agent(USER_AGENT)
     .initialization_script_for_all_frames(PASSKEY_OFF)
     .on_document_title_changed(move |_, t| {
-        if let Some(rest) = t.strip_prefix(&prefix) {
-            let _ = tx.send(rest.to_string());
+        if t.starts_with("UMRESULT:") {
+            let _ = tx.send(t.to_string());
         }
     })
-    // 구글 로그인 등의 팝업: 같은 쿠키·window.opener를 유지한 실제 창으로 연다(PopupWebView.swift).
-    .on_new_window(move |url, features| {
-        let n = popup_seq.fetch_add(1, Ordering::Relaxed);
-        match WebviewWindowBuilder::new(
-            &app2,
-            format!("popup-{n}"),
-            WebviewUrl::External("about:blank".parse().expect("blank")),
-        )
-        .window_features(features)
-        .user_agent(USER_AGENT)
-        .initialization_script_for_all_frames(PASSKEY_OFF)
-        .inner_size(480.0, 680.0)
-        .title(url.as_str())
-        .build()
-        {
-            Ok(window) => tauri::webview::NewWindowResponse::Create { window },
-            Err(_) => tauri::webview::NewWindowResponse::Deny,
-        }
-    })
+    // 중첩 팝업도 같은 로그인에 묶어 닫는다(Swift PopupWebView.swift:18-52).
+    .on_new_window(move |url, features| popup(&app2, url, features, children.clone()))
     .build();
     let Ok(win) = built else { return false };
-    let _ = win.set_focus();
-    let js = wrap(spec.usage_js, &token);
-    loop {
+    let h = app.clone();
+    let children = popups.clone();
+    win.on_window_event(move |event| {
+        if matches!(event, tauri::WindowEvent::Destroyed) {
+            close_popups(&h, &children);
+            let _ = closed_tx.send(String::new());
+        }
+    });
+    activate(&win);
+    let result = loop {
         std::thread::sleep(Duration::from_millis(1200));
+        if popups.closed.load(Ordering::SeqCst) { break false; }
         let Some(w) = app.get_webview_window(&label) else {
-            return false;
+            break false;
         };
         let Ok(url) = w.url() else { continue };
         if !host_matches(&url, spec) {
             continue;
         }
         let done = if spec.auth_cookie_names.is_empty() {
-            let _ = w.eval(js.clone());
-            rx.recv_timeout(Duration::from_secs(8))
-                .ok()
-                .and_then(|s| serde_json::from_str::<Value>(&s).ok())
-                .is_some_and(|v| v["ok"] == true)
+            let token = next_token();
+            let prefix = format!("UMRESULT:{token}:");
+            while rx.try_recv().is_ok() {}
+            let _ = w.eval(wrap(spec.usage_js, &token));
+            login_result(&rx, &prefix, &popups.closed, Duration::from_secs(8))
         } else {
             has_auth_cookie(&w, spec)
         };
         if done {
             let _ = w.destroy();
-            return true;
+            break true;
         }
+    };
+    close_popups(app, &popups);
+    result
+}
+
+/// 늦게 도착한 이전 회차 결과는 현재 로그인 판정에 쓰지 않는다.
+fn login_result(rx: &mpsc::Receiver<String>, prefix: &str, closed: &AtomicBool, timeout: Duration) -> bool {
+    let deadline = std::time::Instant::now() + timeout;
+    loop {
+        if closed.load(Ordering::SeqCst) { return false; }
+        let Some(left) = deadline.checked_duration_since(std::time::Instant::now()) else { return false };
+        let Ok(title) = rx.recv_timeout(left) else { return false };
+        if let Some(raw) = title.strip_prefix(prefix) {
+            return serde_json::from_str::<Value>(raw).is_ok_and(|v| v["ok"] == true);
+        }
+    }
+}
+
+/// LSUIElement 앱도 다른 앱 앞으로 활성화한다(Swift WebSession.swift:151-152).
+fn activate(win: &WebviewWindow) {
+    let _ = win.set_focus();
+    #[cfg(target_os = "macos")]
+    {
+        let w = win.clone();
+        let _ = win.app_handle().run_on_main_thread(move || {
+            let Some(mtm) = objc2::MainThreadMarker::new() else { return };
+            let app = objc2_app_kit::NSApplication::sharedApplication(mtm);
+            #[allow(deprecated)]
+            app.activateIgnoringOtherApps(true);
+            if let Ok(ptr) = w.ns_window() {
+                let window = unsafe { &*(ptr as *const objc2_app_kit::NSWindow) };
+                window.makeKeyAndOrderFront(None);
+            }
+        });
+    }
+}
+
+fn popup(
+    app: &AppHandle,
+    url: Url,
+    features: tauri::webview::NewWindowFeatures,
+    popups: Arc<LoginPopups>,
+) -> tauri::webview::NewWindowResponse<tauri::Wry> {
+    if popups.closed.load(Ordering::SeqCst) { return tauri::webview::NewWindowResponse::Deny; }
+    let label = format!("popup-{}", next_token());
+    let h = app.clone();
+    let children = popups.clone();
+    match WebviewWindowBuilder::new(app, &label, WebviewUrl::External("about:blank".parse().expect("blank")))
+        .window_features(features)
+        .user_agent(USER_AGENT)
+        .initialization_script_for_all_frames(PASSKEY_OFF)
+        .inner_size(480.0, 680.0)
+        .center()
+        .title(url.host_str().unwrap_or("UsageMeter"))
+        .on_new_window(move |url, features| popup(&h, url, features, children.clone()))
+        .build()
+    {
+        Ok(window) => {
+            let mut labels = popups.labels.lock().unwrap();
+            if popups.closed.load(Ordering::SeqCst) {
+                drop(labels);
+                let _ = window.destroy();
+                return tauri::webview::NewWindowResponse::Deny;
+            }
+            labels.push(label);
+            drop(labels);
+            activate(&window);
+            tauri::webview::NewWindowResponse::Create { window }
+        }
+        Err(_) => tauri::webview::NewWindowResponse::Deny,
     }
 }
 
@@ -298,4 +373,28 @@ pub fn read_cookies(
         .unwrap_or_default();
     let _ = w.destroy();
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn 이전_회차_성공과_실패를_무시한다() {
+        for ok in [false, true] {
+            let (tx, rx) = mpsc::channel();
+            tx.send(format!("UMRESULT:old:{{\"ok\":{}}}", !ok)).unwrap();
+            tx.send(format!("UMRESULT:current:{{\"ok\":{ok}}}")).unwrap();
+            assert_eq!(login_result(&rx, "UMRESULT:current:", &AtomicBool::new(false), Duration::from_millis(20)), ok);
+        }
+    }
+
+    #[test]
+    fn 닫힌_로그인과_시간초과는_실패() {
+        let (tx, rx) = mpsc::channel();
+        tx.send("UMRESULT:current:{\"ok\":true}".into()).unwrap();
+        assert!(!login_result(&rx, "UMRESULT:current:", &AtomicBool::new(true), Duration::from_millis(20)));
+        let (_tx, rx) = mpsc::channel();
+        assert!(!login_result(&rx, "UMRESULT:current:", &AtomicBool::new(false), Duration::from_millis(1)));
+    }
 }

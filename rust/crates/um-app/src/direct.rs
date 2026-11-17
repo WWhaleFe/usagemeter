@@ -16,9 +16,17 @@ use crate::web;
 
 /// 로그인 웹뷰 저장소의 쿠키로 클라이언트를 만든다(이때만 잠깐 숨은 웹뷰가 생긴다).
 pub fn client(app: &AppHandle, spec: &'static ProviderSpec) -> Option<Client> {
+    client_with_cookies(spec, web::read_cookies(app, spec), Duration::from_secs(15))
+}
+
+pub fn client_with_cookies(
+    spec: &ProviderSpec,
+    cookies: Vec<(String, String, String, String)>,
+    timeout: Duration,
+) -> Option<Client> {
     let jar = Arc::new(Jar::default());
     let home: Url = spec.home_url.parse().ok()?;
-    for (name, value, domain, path) in web::read_cookies(app, spec) {
+    for (name, value, domain, path) in cookies {
         let dom = domain.trim_start_matches('.');
         let base: Url = format!("https://{dom}/")
             .parse()
@@ -31,7 +39,7 @@ pub fn client(app: &AppHandle, spec: &'static ProviderSpec) -> Option<Client> {
     Client::builder()
         .cookie_provider(jar)
         .user_agent(web::USER_AGENT)
-        .timeout(Duration::from_secs(15))
+        .timeout(timeout)
         .build()
         .ok()
 }

@@ -11,7 +11,7 @@
   const status = $derived(
     u.state === 'checking' ? t('update.checking')
     : u.state === 'upToDate' ? '✓ ' + t('update.upToDate')
-    : u.state === 'available' ? '🔵 ' + tf('update.available', u.version ?? '')
+    : u.state === 'available' ? '🔵 ' + tf('update.available', 'v' + (u.version ?? ''))
     : u.state === 'failed' ? '⚠️ ' + t('update.failed') : '');
   const dl = $derived(({ downloading: 'update.downloading', done: 'update.downloaded', failed: 'update.downloadFail' } as Record<string, string>)[u.download] ?? 'update.download');
   const editing = $derived(s.editing ?? s.displays.find((d) => d.main)?.id ?? '');

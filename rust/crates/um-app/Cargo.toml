@@ -30,6 +30,7 @@ reqwest.workspace = true
 arboard.workspace = true
 open.workspace = true
 qrcode.workspace = true
+notify.workspace = true
 
 [features]
 # 정식판: Swift 버전과 같은 데이터 폴더를 쓰되 Rust 파일만 저장한다.
@@ -39,6 +40,8 @@ store = []
 
 [target.'cfg(target_os = "macos")'.dependencies]
 plist.workspace = true
+block2 = "0.6.2"
+objc2-user-notifications = "0.3.2"
 objc2 = { workspace = true }
 objc2-app-kit = { workspace = true, features = ["NSColorPanel", "NSColor", "NSColorSpace"] }
 objc2-foundation = { workspace = true, features = ["NSURLRequest", "NSURL", "NSString"] }

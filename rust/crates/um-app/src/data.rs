@@ -64,7 +64,7 @@ pub fn seed_from_history(
 }
 
 /// agy를 한 번 실행해 Gemini 스냅샷을 얻는다(12초 제한). agy가 없거나 실패하면 None.
-pub fn fetch_agy(parser: &mut AgyParser) -> Option<UsageSnapshot> {
+pub fn fetch_agy(parser: &std::sync::Mutex<AgyParser>) -> Option<UsageSnapshot> {
     let os = Os::current();
     let home = directories::BaseDirs::new()?
         .home_dir()
@@ -111,5 +111,5 @@ pub fn fetch_agy(parser: &mut AgyParser) -> Option<UsageSnapshot> {
         }
     }
     let out = reader.join().ok()?;
-    parser.parse(&out, "gemini", Utc::now())
+    parser.lock().unwrap().parse(&out, "gemini", Utc::now())
 }

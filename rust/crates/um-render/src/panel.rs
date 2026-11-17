@@ -417,7 +417,7 @@ pub fn render_chart(spec: &ChartSpec, theme: Theme, scale: f32) -> Rendered {
 
     // 호버: 점선 + 툴팁(Swift는 차트 왼쪽 위에 고정)
     if let Some(hx) = spec.hover_x {
-        let x = (CH_PAD_X + hx).clamp(pl, pr);
+        let x = hx.clamp(pl, pr);
         let mut b = PathBuilder::new();
         b.move_to(x, pt_);
         b.line_to(x, pb_);

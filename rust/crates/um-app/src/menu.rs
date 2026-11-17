@@ -5,7 +5,7 @@
 use tauri::menu::{CheckMenuItem, IsMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Wry};
 use um_core::i18n::{tf, tn, tr};
-use um_core::settings::{MAX_PRESETS, REFRESH_PRESETS, ScreenInfo, Settings, add_preset, device_fit};
+use um_core::settings::{MAX_PRESETS, REFRESH_PRESETS, ScreenInfo, Settings, device_fit};
 use um_core::types::AppLanguage;
 use um_providers::spec;
 
@@ -14,7 +14,6 @@ use crate::update::{DownloadState, UpdateState};
 
 /// 개발자 메일(Swift SupportView.swift).
 pub const REPORT_EMAIL: &str = "feedback.wwhale@gmail.com";
-const SPONSORS_URL: &str = "https://github.com/sponsors/WWhaleFe";
 
 /// 표시 정보 체크 8개: (메뉴 id, 문자열 키). 순서는 Swift와 같다.
 const INFO_ITEMS: [(&str, &str); 8] = [
@@ -92,11 +91,10 @@ pub fn build(app: &AppHandle, st: &AppState) -> R<Menu<Wry>> {
 
     // AI 로그인 / 로그아웃: "● 이름"(로그인) / "○ 이름" 머리말 + 동작 항목. (Swift :813-842)
     let acct = Submenu::with_id(app, "acct", tr("menu.aiLoginout", lang), true)?;
-    for id in &s.provider_order {
-        let Some(sp) = spec::spec(id) else { continue };
+    for sp in spec::ALL {
+        let id = sp.id;
         let on = st.is_logged_in(id);
-        let exp = if sp.id == "gemini" { tr("menu.experimental", lang) } else { String::new() };
-        acct.append(&item(app, &format!("acct-h:{id}"), format!("{} {}{exp}", if on { "●" } else { "○" }, sp.name), false, None)?)?;
+        acct.append(&item(app, &format!("acct-h:{id}"), format!("{} {}", if on { "●" } else { "○" }, sp.name), false, None)?)?;
         acct.append(&item(app, &format!("acct:{id}"), tr(if on { "menu.logout" } else { "menu.login" }, lang), true, None)?)?;
     }
     menu.append(&acct)?;
@@ -155,7 +153,7 @@ fn update_items(app: &AppHandle, st: &AppState, lang: AppLanguage) -> R<Vec<Box<
         UpdateState::Checking => v.push(Box::new(item(app, "upd-s", tr("update.checking", lang), false, None)?)),
         UpdateState::UpToDate => v.push(Box::new(item(app, "upd-s", format!("✓ {}", tr("update.upToDate", lang)), false, None)?)),
         UpdateState::Available { version, .. } => {
-            v.push(Box::new(item(app, "upd-s", format!("🔵 {}", tf("update.available", lang, version)), false, None)?))
+            v.push(Box::new(item(app, "upd-s", format!("🔵 {}", tf("update.available", lang, &format!("v{version}"))), false, None)?))
         }
         UpdateState::Failed => v.push(Box::new(item(app, "update:check", format!("⚠️ {}", tr("update.failed", lang)), true, None)?)),
     }
@@ -185,15 +183,18 @@ pub fn rebuild(app: &AppHandle) {
 
 /// 설정을 바꾸고 저장한 뒤 메뉴·테두리를 갱신한다.
 fn change(app: &AppHandle, f: impl FnOnce(&mut AppState)) {
+    let auto_update_enabled;
     {
         let st = crate::shared(app);
         let mut st = st.lock().unwrap();
+        let prev_auto = st.main.auto_check_update;
         f(&mut st);
+        auto_update_enabled = !prev_auto && st.main.auto_check_update;
         st.rebuild_snapshots();
         st.save();
     }
-    rebuild(app);
-    crate::redraw(app);
+    crate::ipc::changed(app);
+    if auto_update_enabled && !cfg!(feature = "store") { check_update(app); }
 }
 
 /// 메뉴 클릭 처리.
@@ -207,10 +208,7 @@ pub fn on_event(app: &AppHandle, id: &str) {
         "quit" => app.exit(0),
         "analytics" => crate::windows::open(app, "analytics"),
         "settings" => crate::windows::open(app, "settings"),
-        // 후원 탭(설정 창)은 5단계에서 만든다. 그 전까지는 GitHub Sponsors를 바로 연다.
-        "support" => {
-            let _ = open::that(SPONSORS_URL);
-        }
+        "support" => crate::windows::open(app, "settings#support"),
         "fit" => fit_all(app),
         "report:mail" => {
             let lang = crate::shared(app).lock().unwrap().main.language;
@@ -235,12 +233,7 @@ pub fn on_event(app: &AppHandle, id: &str) {
             change(app, |st| st.main.refresh_use_custom = true);
             crate::windows::open(app, "settings#interval");
         }
-        "preset:save" => change(app, |st| {
-            let lang = st.main.language;
-            let snap = st.main.to_snapshot();
-            let id = new_id();
-            add_preset(&mut st.presets, id, "", snap, |n| tn("preset.defaultName", lang, n as i64));
-        }),
+        "preset:save" => crate::windows::open(app, "settings#presets"),
         _ => {
             if let Some(rest) = id.strip_prefix("acct:") {
                 crate::toggle_account(app, rest.to_string());
@@ -311,8 +304,9 @@ pub fn check_update(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
         let r = crate::update::check();
+        if let UpdateState::Available { version, .. } = &r { crate::notifications::update(&app, version); }
         crate::shared(&app).lock().unwrap().update = r;
-        rebuild(&app);
+        crate::ipc::changed(&app);
     });
 }
 
