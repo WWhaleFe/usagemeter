@@ -14,7 +14,7 @@
   $effect(() => {
     const s = ui.s;
     if (!s) return;
-    document.documentElement.dataset.skin = s.platform;
+    document.documentElement.dataset.skin = s.platform === 'mac' ? 'macos' : 'win';
     const ap = s.main.appearance as string | undefined;
     document.documentElement.dataset.theme = ap === 'light' || ap === 'dark' ? ap : '';
     document.documentElement.lang = s.lang;

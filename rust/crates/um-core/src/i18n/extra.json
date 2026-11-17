@@ -1,4 +1,9 @@
 {
+  "window.settings": [
+    "UsageMeter 설정",
+    "UsageMeter Settings",
+    "UsageMeter 設定"
+  ],
   "preset.defaultName": [
     "프리셋 %d",
     "Preset %d",
@@ -173,5 +178,15 @@
     "숫자는 각 도구가 이 컴퓨터에 남긴 기록으로 계산합니다. 다른 기기에서 쓴 양은 포함되지 않습니다.",
     "Counts come from logs these tools leave on this computer; usage on other devices isn't included.",
     "数値は各ツールがこのコンピューターに残した記録から計算します。他のデバイスでの使用は含まれません。"
+  ],
+  "color.custom": [
+    "직접 선택",
+    "Custom color",
+    "カスタム"
+  ],
+  "tokens.other": [
+    "기타",
+    "Other",
+    "その他"
   ]
 }

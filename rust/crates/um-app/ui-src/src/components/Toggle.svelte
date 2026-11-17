@@ -1,11 +1,12 @@
 <script lang="ts">
-  // 켜기/끄기. macOS = 체크박스 모양 스위치, Windows = Fluent 토글 스위치(라벨 왼쪽, 스위치 오른쪽).
+  // macOS는 Swift 기본 체크박스, Windows는 Fluent 스위치.
+  import { ui } from '../lib/api.svelte';
   let { label, checked, disabled = false, onchange }: { label: string; checked: boolean; disabled?: boolean; onchange: (v: boolean) => void } = $props();
 </script>
 
-<label class="toggle" class:disabled>
+<label class="toggle" class:mac={ui.s?.platform !== 'win'} class:disabled>
   <span class="text">{label}</span>
-  <input type="checkbox" role="switch" {checked} {disabled} onchange={(e) => onchange((e.currentTarget as HTMLInputElement).checked)} />
+  <input type="checkbox" role={ui.s?.platform === 'win' ? 'switch' : undefined} {checked} {disabled} onchange={(e) => onchange((e.currentTarget as HTMLInputElement).checked)} />
 </label>
 
 <style>
@@ -20,4 +21,8 @@
   :global(:root[data-skin="win"]) input::after { top: 3px; left: 3px; width: 12px; height: 12px; background: var(--fg2); box-shadow: none; }
   :global(:root[data-skin="win"]) input:checked { background: var(--accent); border-color: var(--accent); }
   :global(:root[data-skin="win"]) input:checked::after { transform: translateX(20px); background: var(--accent-fg); }
+  .mac { flex-direction: row-reverse; justify-content: flex-end; gap: 5px; min-height: 16px; line-height: 16px; }
+  .mac .text { flex: none; }
+  .mac input { appearance: auto; width: 14px; height: 14px; border-radius: 3px; accent-color: var(--accent); transition: none; }
+  .mac input::after { content: none; }
 </style>

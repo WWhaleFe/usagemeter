@@ -3,6 +3,8 @@
   // 업데이트 줄(Store판 제외), 디스플레이 선택(화면 2대 이상). compact면(Windows 하위 화면) 디스플레이 선택만.
   import { ui, t, tf, act, set } from '../lib/api.svelte';
   import Toggle from '../components/Toggle.svelte';
+  import Section from '../components/Section.svelte';
+  import Icon from '../analytics/Icon.svelte';
   let { compact = false }: { compact?: boolean } = $props();
   const s = $derived(ui.s!);
   const u = $derived(s.update);
@@ -21,6 +23,44 @@
   }
 </script>
 
+{#if s.platform === 'mac'}
+  <div class="mac-top">
+    <Section title={t('sec.baseState')}>
+      <div class="row">
+        <button onclick={() => act('defaultSave')}>{t('base.save')}</button>
+        <button disabled={!s.hasDefault} onclick={() => act('defaultReset')}>{t('base.reset')}</button>
+        <span class="grow"></span>
+        <button class="analytics" onclick={() => act('openAnalytics')}><Icon name="bars" size={14} />{t('menu.analytics')}</button>
+      </div>
+      <hr />
+      {#if !s.store}
+        <div class="row update">
+          <strong>UsageMeter {tf('update.version', s.version)}</strong>
+          {#if status}<span class="caption">{status}</span>{/if}
+          <span class="grow"></span>
+          <button disabled={u.state === 'checking'} onclick={() => act('checkUpdate')}>{t('update.check')}</button>
+          <button class="primary" disabled={u.download === 'downloading'} onclick={() => act('download')}>{t(dl)}</button>
+          <button onclick={() => act('openReleases')}>{t('update.openPage')}</button>
+        </div>
+        <span class="caption">{t('update.installHint')}</span>
+        <div class="auto"><Toggle label={t('update.auto')} checked={!!s.main.autoCheckUpdate} onchange={(v) => set('main', { autoCheckUpdate: v })} /></div>
+      {/if}
+    </Section>
+    {#if s.displays.length > 1}
+      <Section title={t('sec.displays')}>
+        <div class="row">
+          <span>{t('display.editing')}</span>
+          <select value={editing} onchange={(e) => act('selectDisplay', { id: e.currentTarget.value })}>
+            {#each s.displays as d (d.id)}<option value={d.id}>{label(d)}</option>{/each}
+          </select>
+          <span class="grow"></span>
+          {#if edDisp}<Toggle label={t('display.show')} checked={edDisp.enabled} onchange={(v) => act('displayEnabled', { id: edDisp.id, enabled: v })} />{/if}
+        </div>
+        <div class="row"><span class="caption grow">{t('display.desc')}</span><button title={t('display.copyToOthersHelp')} onclick={() => act('copyToOthers')}>{t('display.copyToOthers')}</button></div>
+      </Section>
+    {/if}
+  </div>
+{:else}
 {#if !compact}
   <div class="row top">
     <span class="caption">{t('sec.baseState')}</span>
@@ -54,8 +94,20 @@
   </div>
 {/if}
 
+{/if}
+
 <style>
   .row { flex-wrap: wrap; }
   .displays { margin-bottom: 8px; }
   .displays select { max-width: 280px; }
+  .mac-top { margin: 0 8px; flex: none; }
+  .mac-top :global(section.mac) { margin-bottom: 0; }
+  .mac-top :global(section.mac + section.mac) { margin-top: 10px; }
+  .mac-top .row { flex-wrap: nowrap; }
+  .update strong { font-size: 12px; white-space: nowrap; }
+  .update button { white-space: nowrap; flex: none; }
+  .update .caption { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .auto { font-size: 11px; }
+  .auto :global(.toggle.mac) { line-height: 13px; min-height: 14px; }
+  .analytics { display: inline-flex; align-items: center; gap: 8px; }
 </style>

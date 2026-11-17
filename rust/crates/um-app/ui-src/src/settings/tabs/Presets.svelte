@@ -28,4 +28,6 @@
 <style>
   .name { text-align: left; }
   .danger { color: var(--danger); }
+  :global(:root[data-skin="macos"]) .name { flex: none; }
+  :global(:root[data-skin="macos"]) .danger { margin-left: auto; background: transparent; border: 0; box-shadow: none; }
 </style>

@@ -2,6 +2,10 @@
   // SF Symbols 대신 쓰는 단순 선 아이콘(24x24, 현재 글자색).
   let { name, size = 14 }: { name: string; size?: number } = $props();
   const P: Record<string, string> = {
+    send: 'M3 11 21 3l-8 18-2-8z M11 13 21 3',
+    copy: 'M8 8h12v13H8z M16 8V3H3v13h5',
+    check: 'm4 12 5 5L20 6',
+    link: 'm10 14 4-4 M8 16l-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0 M16 8l1-1a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0',
     bars: 'M5 20V11M12 20V4M19 20v-6',
     bars2: 'M4 20v-6M9 20V8M14 20v-9M19 20V4',
     pie: 'M12 3a9 9 0 1 0 9 9h-9z M15 3.5A9 9 0 0 1 20.5 9H15z',

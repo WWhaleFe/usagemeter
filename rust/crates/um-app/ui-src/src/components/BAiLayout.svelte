@@ -153,4 +153,14 @@
   .presets { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; width: 209px; }
   .small { min-height: 22px; padding: 1px 6px; font-size: var(--fs-small); }
   :global(:root[data-skin="win"]) .small { min-height: 28px; }
+  :global(:root[data-skin="macos"]) .box { flex-wrap: nowrap; gap: 10px; padding: 12px; border: 0; margin-bottom: 12px; }
+  :global(:root[data-skin="macos"]) .left { flex: none; width: 370px; gap: 8px; }
+  :global(:root[data-skin="macos"]) h3 { font-size: 13px; font-weight: 700; line-height: 16px; }
+  :global(:root[data-skin="macos"]) .caps { gap: 4px; }
+  :global(:root[data-skin="macos"]) .caprow { gap: 5px; flex-wrap: nowrap; min-height: 16px; }
+  :global(:root[data-skin="macos"]) .segname { width: 62px; flex: none; white-space: normal; }
+  :global(:root[data-skin="macos"]) .end { width: 38px; margin: 0; text-align: right; flex: none; }
+  :global(:root[data-skin="macos"]) .end:nth-of-type(3) { width: 48px; border-left: 1px solid var(--surface-stroke); padding-left: 5px; }
+  :global(:root[data-skin="macos"]) .caprow label { gap: 3px; }
+  :global(:root[data-skin="macos"]) .small { min-height: 16px; height: 16px; line-height: 12px; padding: 1px 6px; }
 </style>

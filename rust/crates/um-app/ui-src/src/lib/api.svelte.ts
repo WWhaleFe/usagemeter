@@ -58,3 +58,10 @@ export function fromHex(h: string, a = 1): number[] {
   const n = parseInt(h.slice(1), 16);
   return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, a];
 }
+
+/** 설정 행은 Swift ProviderSpec.all 순서, Windows는 현재 표시 순서를 따른다. */
+export function settingsProviders(s: UiState): Provider[] {
+  return s.platform === 'mac'
+    ? ['claude', 'gemini', 'codex'].flatMap((id) => s.providers.filter((p) => p.id === id))
+    : s.providers;
+}

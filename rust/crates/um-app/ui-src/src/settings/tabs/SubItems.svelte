@@ -1,9 +1,10 @@
 <script lang="ts">
   // 세부 항목 탭(Swift SettingsView.swift:513-579): AI별 분리 토글, 항목별 색·미니 바·바/메뉴 표시.
-  import { ui, t, set, fromHex } from '../../lib/api.svelte';
+  import { ui, settingsProviders, t, set, act, fromHex } from '../../lib/api.svelte';
   import Section from '../../components/Section.svelte';
   import Toggle from '../../components/Toggle.svelte';
   const s = $derived(ui.s!);
+  const providers = $derived(settingsProviders(s));
   const m = $derived(s.main);
   const splitIDs = $derived<string[]>(m.subItemSplitIDs ?? []);
   const colors = $derived((m.subItemColors ?? {}) as Record<string, number[]>);
@@ -21,7 +22,7 @@
 
 <span class="caption desc">{t('subItems.desc')}</span>
 
-{#each s.providers as p (p.id)}
+{#each providers as p (p.id)}
   {@const split = splitIDs.includes(p.id)}
   <Section title={p.name}>
     <Toggle label={t('subItems.split')} checked={split} onchange={(v) => set('main', { subItemSplitIDs: member(splitIDs, p.id, v) })} />
@@ -34,7 +35,11 @@
         {@const custom = it.key in colors}
         <div class="item" style:opacity={p.itemsLive ? 1 : 0.6}>
           <div class="row">
-            <input type="color" value={it.color} disabled={!split} aria-label={it.name} onchange={(e) => setColor(it.key, e.currentTarget.value)} />
+            {#if s.platform === 'mac'}
+              <button class="color-well" disabled={!split} aria-label={it.name} onclick={() => act('pickColor', { id: p.id, item: it.key })}><span style:background={it.color}></span></button>
+            {:else}
+              <input type="color" value={it.color} disabled={!split} aria-label={it.name} onchange={(e) => setColor(it.key, e.currentTarget.value)} />
+            {/if}
             <span class="name grow" title={it.name}>{it.name}</span>
             <span class="bar" style:background={it.color + '2e'} aria-hidden="true"><span style:background={it.color} style:width="{pct}%"></span></span>
             <span class="caption pct">{pct}% · {t('subItems.used')} {100 - pct}%</span>
@@ -64,4 +69,13 @@
   .chk { display: inline-flex; align-items: center; gap: 6px; }
   .chk input { accent-color: var(--accent); margin: 0; }
   .reset { min-height: 22px; padding: 0 8px; }
+  :global(:root[data-skin="macos"]) .item { flex-direction: row; gap: 8px; padding: 0; align-items: center; }
+  :global(:root[data-skin="macos"]) .item + .item { border: 0; }
+  :global(:root[data-skin="macos"]) .item > .row { display: contents; }
+  :global(:root[data-skin="macos"]) .name { width: 230px; flex: none; font-size: 12px; font-weight: 400; }
+  :global(:root[data-skin="macos"]) .pct { width: 92px; }
+  :global(:root[data-skin="macos"]) .color-well { width: 44px; height: 24px; flex: none; border: 3px solid #777; padding: 0; }
+  .color-well span { display: block; width: 100%; height: 100%; border-radius: 1px; }
+  :global(:root[data-skin="macos"]) .reset { border: 0; background: transparent; padding: 0; box-shadow: none; }
+  :global(:root[data-skin="macos"]) .chk { gap: 4px; white-space: nowrap; }
 </style>

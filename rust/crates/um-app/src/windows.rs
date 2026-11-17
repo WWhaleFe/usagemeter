@@ -24,9 +24,11 @@ pub fn open(app: &AppHandle, page: &str) {
         return;
     }
     let lang = crate::shared(app).lock().map(|s| s.main.language).unwrap_or_default();
-    let title = um_core::i18n::tr(if label == "analytics" { "analytics.title" } else { "menu.settings" }, lang);
+    let title = um_core::i18n::tr(if label == "analytics" { "analytics.title" } else if cfg!(target_os = "macos") { "window.settings" } else { "menu.settings" }, lang);
     let url = WebviewUrl::App(format!("index.html#{hash}").into());
     let builder = WebviewWindowBuilder::new(app, label, url).title(title).inner_size(w, h).min_inner_size(640.0, 520.0).center();
+    #[cfg(target_os = "macos")]
+    let builder = builder.theme(mac_theme(app)).resizable(false).maximizable(false);
     // Windows 11: Mica 배경이 비치도록 창을 투명하게(계획서 6-1). Windows 10은 Mica가 없어 단색으로 보인다.
     #[cfg(windows)]
     let builder = builder
@@ -38,6 +40,10 @@ pub fn open(app: &AppHandle, page: &str) {
             let h = app.clone();
             win.on_window_event(move |e| {
                 if let tauri::WindowEvent::Destroyed = e {
+                    #[cfg(target_os = "macos")]
+                    if label == "settings" {
+                        crate::native_color::close();
+                    }
                     // 다른 창(설정·분석)이 남아 있지 않으면 Dock 아이콘을 다시 숨긴다.
                     let left = ["settings", "analytics"].iter().filter(|l| h.get_webview_window(l).is_some()).count();
                     if left == 0 {
@@ -49,6 +55,35 @@ pub fn open(app: &AppHandle, page: &str) {
         }
         Err(e) => tracing::warn!("창 열기 실패({label}): {e}"),
     }
+}
+
+/// 언어 변경 시 이미 열린 창 제목도 Swift 분석 창처럼 다시 반영한다.
+#[cfg(target_os = "macos")]
+pub fn refresh_titles(app: &AppHandle) {
+    let lang = crate::shared(app).lock().map(|s| s.main.language).unwrap_or_default();
+    for (label, key) in [
+        ("settings", "window.settings"),
+        ("analytics", "analytics.title"),
+    ] {
+        if let Some(win) = app.get_webview_window(label) {
+            let _ = win.set_title(&um_core::i18n::tr(key, lang));
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn mac_theme(app: &AppHandle) -> Option<tauri::Theme> {
+    let appearance = crate::shared(app).lock().map(|s| s.main.appearance).unwrap_or_default();
+    match appearance {
+        um_core::settings::AppAppearance::System => None,
+        um_core::settings::AppAppearance::Light => Some(tauri::Theme::Light),
+        um_core::settings::AppAppearance::Dark => Some(tauri::Theme::Dark),
+    }
+}
+
+#[cfg(target_os = "macos")]
+pub fn refresh_appearance(app: &AppHandle) {
+    app.set_theme(mac_theme(app));
 }
 
 fn dock_visible(app: &AppHandle, on: bool) {

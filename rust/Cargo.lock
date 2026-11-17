@@ -5025,6 +5025,7 @@ dependencies = [
  "chrono",
  "directories",
  "objc2",
+ "objc2-app-kit",
  "objc2-foundation",
  "objc2-web-kit",
  "open",

@@ -7,6 +7,8 @@ mod direct;
 mod ipc;
 mod locallogs;
 mod menu;
+#[cfg(target_os = "macos")]
+mod native_color;
 mod overlay;
 #[cfg(target_os = "macos")]
 mod panels;

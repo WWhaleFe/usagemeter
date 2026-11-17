@@ -244,6 +244,8 @@ fn corner_used_value(s: &Settings) -> Value {
 /// 상태가 바뀌었음을 모든 창에 알리고 메뉴·테두리를 갱신한다.
 pub fn changed(app: &AppHandle) {
     let _ = app.emit("ui-state", ());
+    #[cfg(target_os = "macos")]
+    crate::windows::refresh_titles(app);
     crate::menu::rebuild(app);
     crate::redraw(app);
 }
@@ -265,11 +267,15 @@ fn patch(s: &mut Settings, patch: &Value) -> Result<(), String> {
 /// 설정 바꾸기. `scope` = "main"(전역 + 주 화면 테두리) 또는 "border"(편집 중인 화면의 테두리).
 #[tauri::command]
 pub fn ui_set(app: AppHandle, scope: String, patch_v: Value) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    let appearance_changed;
     {
         let st = crate::shared(&app);
         let mut st = st.lock().unwrap();
         let edit = editing_id(&app, &st);
         let prev_lang = st.main.language;
+        #[cfg(target_os = "macos")]
+        let prev_appearance = st.main.appearance;
         match (scope.as_str(), edit) {
             ("border", Some(id)) => {
                 let base = st.main.clone();
@@ -283,6 +289,14 @@ pub fn ui_set(app: AppHandle, scope: String, patch_v: Value) -> Result<(), Strin
         }
         st.rebuild_snapshots();
         st.save();
+        #[cfg(target_os = "macos")]
+        {
+            appearance_changed = prev_appearance != st.main.appearance;
+        }
+    }
+    #[cfg(target_os = "macos")]
+    if appearance_changed {
+        crate::windows::refresh_appearance(&app);
     }
     changed(&app);
     Ok(())
@@ -455,6 +469,35 @@ pub fn ui_action(app: AppHandle, action: String, arg: Value) -> Result<Value, St
             return Ok(json!({"svg": svg, "url": KAKAO_URL}));
         }
         "openAnalytics" => crate::windows::open(&app, "analytics"),
+        #[cfg(target_os = "macos")]
+        "pickColor" => {
+            let id = s("id").filter(|id| spec::spec(id).is_some()).ok_or("id")?;
+            let item = s("item");
+            let color = {
+                let st = crate::shared(&app);
+                let st = st.lock().unwrap();
+                if let Some(key) = &item {
+                    let (items, _) = st.providers.get(&id).map(|p| p.sub_items()).unwrap_or_default();
+                    let it = items.iter().find(|it| um_core::model::UsageSubItem::settings_key(&id, &it.id) == *key).ok_or("item")?;
+                    sub_item_color(&st.main, &id, &it.id, &items)
+                } else {
+                    um_render::border::provider_color(&st.main, &id)
+                }
+            };
+            let handle = app.clone();
+            app.run_on_main_thread(move || {
+                let alpha = item.is_none();
+                crate::native_color::open(color, alpha, move |color| {
+                    with_state(&handle, |st| {
+                        if let Some(key) = &item {
+                            st.main.sub_item_colors.insert(key.clone(), color);
+                        } else {
+                            st.main.provider_colors.insert(id.clone(), color);
+                        }
+                    });
+                });
+            }).map_err(|e| e.to_string())?;
+        }
         "openSettings" => crate::windows::open(&app, &s("tab").map(|t| format!("settings#{t}")).unwrap_or_else(|| "settings".into())),
         "lang" => {
             let l = match s("code").as_deref() {
@@ -471,12 +514,24 @@ pub fn ui_action(app: AppHandle, action: String, arg: Value) -> Result<Value, St
 }
 
 fn with_state(app: &AppHandle, f: impl FnOnce(&mut AppState)) {
+    #[cfg(target_os = "macos")]
+    let appearance_changed;
     {
         let st = crate::shared(app);
         let mut st = st.lock().unwrap();
+        #[cfg(target_os = "macos")]
+        let prev_appearance = st.main.appearance;
         f(&mut st);
         st.rebuild_snapshots();
         st.save();
+        #[cfg(target_os = "macos")]
+        {
+            appearance_changed = prev_appearance != st.main.appearance;
+        }
+    }
+    #[cfg(target_os = "macos")]
+    if appearance_changed {
+        crate::windows::refresh_appearance(app);
     }
     changed(app);
 }

@@ -1,7 +1,8 @@
 <script lang="ts">
   // 개발자에게 탭(Swift SupportView.swift): 리포트 메일, 후원(GitHub Sponsors, 카카오페이 QR).
-  import { t, act } from '../../lib/api.svelte';
+  import { ui, t, act } from '../../lib/api.svelte';
   import Section from '../../components/Section.svelte';
+  import Icon from '../../analytics/Icon.svelte';
   const EMAIL = 'feedback.wwhale@gmail.com';
   let copied = $state(false);
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -24,8 +25,8 @@
       <p class="caption desc">{t('report.desc')}</p>
       <code class="mail">{EMAIL}</code>
       <div class="row btns">
-        <button class="primary" onclick={() => act('openMail')}>{t('report.openMail')}</button>
-        <button onclick={() => copy()} aria-live="polite">{copied ? t('report.copied') : t('report.copyEmail')}</button>
+        <button class="primary" onclick={() => act('openMail')}>{#if ui.s?.platform === 'mac'}<Icon name="send" />{/if}{t('report.openMail')}</button>
+        <button onclick={() => copy()} aria-live="polite">{#if ui.s?.platform === 'mac'}<Icon name={copied ? 'check' : 'copy'} />{/if}{copied ? t('report.copied') : t('report.copyEmail')}</button>
       </div>
     </div>
   </Section>
@@ -38,7 +39,7 @@
       <p class="caption desc">{t('support.kakaoScan')}</p>
       {#if qr}
         <div class="qr" role="img" aria-label={t('support.kakaoTitle')}>{@html qr.svg}</div>
-        <button onclick={() => act('openUrl', { url: qr!.url })}>{t('support.kakaoOpen')}</button>
+        <button onclick={() => act('openUrl', { url: qr!.url })}>{#if ui.s?.platform === 'mac'}<Icon name="link" />{/if}{t('support.kakaoOpen')}</button>
       {/if}
       <p class="caption desc">{t('support.thanks')}</p>
     </div>
@@ -54,4 +55,9 @@
   .heart { color: #e5398a; }
   .qr { background: #fff; padding: 8px; border-radius: 8px; border: 1px solid var(--surface-stroke); line-height: 0; }
   .qr :global(svg) { width: 130px; height: 130px; display: block; }
+  :global(:root[data-skin="macos"]) .col > .desc { font-size: 12px; }
+  :global(:root[data-skin="macos"]) .col > .desc:nth-last-child(2) { font-size: 11px; }
+  :global(:root[data-skin="macos"]) .mail { padding: 8px 12px; font-weight: 600; }
+  :global(:root[data-skin="macos"]) .heart { color: var(--fg); }
+  :global(:root[data-skin="macos"]) button { display: inline-flex; gap: 8px; align-items: center; }
 </style>

@@ -21,9 +21,10 @@
   let range = $state<Range>('day1');
   // 보기: 한도(잔여율 이력) / 토큰(로컬 기록). 로컬 기록을 아직 묻지 않았으면 동의 안내를 띄운다.
   let view = $state<'limits' | 'tokens'>('limits');
+  const mac = $derived(ui.s?.platform === 'mac');
   let asked = $state(true);
   onMount(() => {
-    invoke('ui_locallogs').then((v) => (asked = (v as { asked: boolean }).asked));
+    if (ui.s?.platform === 'win') invoke('ui_locallogs').then((v) => (asked = (v as { asked: boolean }).asked));
   });
   /** 자세히 볼 AI(null = 전체 AI 비교). */
   let scope = $state<string | null>(null);
@@ -117,12 +118,14 @@
     </header>
 
     <!-- 처음 열 때 로컬 사용 기록을 쓸지 묻는다(결정 D4) -->
+    {#if !mac}
     {#if !asked}<Consent onanswer={() => (asked = true)} />{/if}
     <div class="seg view" role="radiogroup" aria-label={t('view.limits') + ' / ' + t('view.tokens')}>
       <button role="radio" aria-checked={view === 'limits'} class:on={view === 'limits'} onclick={() => (view = 'limits')}>{t('view.limits')}</button>
       <button role="radio" aria-checked={view === 'tokens'} class:on={view === 'tokens'} onclick={() => (view = 'tokens')}>{t('view.tokens')}</button>
     </div>
-    {#if view === 'tokens'}
+    {/if}
+    {#if !mac && view === 'tokens'}
       <Tokens {range} />
     {:else if d}
       <div class="chips">
@@ -255,4 +258,10 @@
   .about ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
   .about li { display: flex; gap: 6px; }
   .view { margin: 0 0 10px; }
+  :global(:root[data-skin="macos"]) .page { --card-bg: var(--surface); }
+  :global(:root[data-skin="macos"]) h1 { font-size: 17px; line-height: 20px; }
+  :global(:root[data-skin="macos"]) .seg { background: var(--segment-bg); }
+  :global(:root[data-skin="macos"]) .seg button { background: transparent; min-height: 20px; line-height: 16px; }
+  :global(:root[data-skin="macos"]) .seg button.on { background: var(--segment-selected); color: var(--fg); border-radius: 4px; }
+  :global(:root[data-skin="macos"]) .val { font-size: 22px; line-height: 26px; }
 </style>

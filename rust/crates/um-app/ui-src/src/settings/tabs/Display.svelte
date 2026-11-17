@@ -1,11 +1,12 @@
 <script lang="ts">
   // 표시 탭(Swift SettingsView.swift:297-398): 언어, 외관, AI 순서, 호버, 메뉴바 아이콘·%, 드롭다운 정보, 차트, 알림. 모두 전역(main).
-  import { ui, t, tf, tn, act, set } from '../../lib/api.svelte';
+  import { ui, settingsProviders, t, tf, tn, act, set } from '../../lib/api.svelte';
   import Section from '../../components/Section.svelte';
   import Toggle from '../../components/Toggle.svelte';
   import Slider from '../../components/Slider.svelte';
   import Segmented from '../../components/Segmented.svelte';
   const s = $derived(ui.s!);
+  const providers = $derived(settingsProviders(s));
   const m = $derived(s.main);
   const order = $derived<string[]>(s.providers.map((p) => p.id));
   const hoverOn = $derived(m.hoverInfoEnabled ?? true);
@@ -52,8 +53,8 @@
   {#each order as id, i (id)}
     <div class="row">
       <span class="grow">{i + 1}. {s.providers.find((p) => p.id === id)?.name}</span>
-      <button class="icon" aria-label={t('order.up')} title={t('order.up')} disabled={i === 0} onclick={() => move(i, -1)}>&#9650;</button>
-      <button class="icon" aria-label={t('order.down')} title={t('order.down')} disabled={i === order.length - 1} onclick={() => move(i, 1)}>&#9660;</button>
+      <button class="icon" aria-label={t('order.up')} title={t('order.up')} disabled={i === 0} onclick={() => move(i, -1)}>{s.platform === 'mac' ? '⌃' : '▲'}</button>
+      <button class="icon" aria-label={t('order.down')} title={t('order.down')} disabled={i === order.length - 1} onclick={() => move(i, 1)}>{s.platform === 'mac' ? '⌄' : '▼'}</button>
     </div>
   {/each}
   <span class="caption">{t('order.desc')}</span>
@@ -86,14 +87,14 @@
   <div class="row">
     <label class="grow" for="icon-ai">{t('disp.iconBaseAI')}</label>
     <select id="icon-ai" value={m.menuBarIconID ?? s.providers[0]?.id} onchange={(e) => set('main', { menuBarIconID: e.currentTarget.value })}>
-      {#each s.providers as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
+      {#each providers as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
     </select>
   </div>
   <span class="caption">{t('disp.iconDesc')}</span>
 </Section>
 
 <Section title={t('sec.menuPercent')}>
-  {#each s.providers as p (p.id)}
+  {#each providers as p (p.id)}
     <Toggle label={tf('disp.showPercent', p.name)} checked={percentIDs.includes(p.id)} onchange={(v) => set('main', { menuBarPercentIDs: member(percentIDs, p.id, v) })} />
   {/each}
   <span class="caption">{t('disp.percentDesc')}</span>
@@ -105,7 +106,7 @@
       <Toggle label={t(key)} checked={m[field] ?? infoDefault[field] ?? false} onchange={(v) => set('main', { [field]: v })} />
     {/each}
   </div>
-  <div class="row">
+  <div class="row" class:off={s.platform === 'mac' && !chartOn}>
     <label class="grow" for="chart-hours">{t('chart.range')}</label>
     <select id="chart-hours" value={m.chartHours ?? 24} disabled={!chartOn} onchange={(e) => set('main', { chartHours: +e.currentTarget.value })}>
       {#each [6, 12, 24] as h (h)}<option value={h}>{tn('chart.hoursFmt', h)}</option>{/each}
@@ -124,7 +125,7 @@
   <span class="caption">{t('notify.desc')}</span>
 </Section>
 
-<LocalLogsSection />
+{#if s.platform === 'win'}<LocalLogsSection />{/if}
 
 <style>
   .icon { min-width: 28px; padding: 2px 8px; font-size: 10px; }
@@ -136,4 +137,10 @@
   .chk { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; }
   .chk input { accent-color: var(--accent); margin: 0; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; }
+  :global(:root[data-skin="macos"]) .icon { background: transparent; border: 0; min-width: 16px; padding: 0 4px; box-shadow: none; color: var(--fg2); }
+  :global(:root[data-skin="macos"]) .checks { gap: 6px 14px; }
+  :global(:root[data-skin="macos"]) .chk { min-height: 16px; gap: 5px; }
+  :global(:root[data-skin="macos"]) .grid { gap: 6px 10px; }
+  :global(:root[data-skin="macos"]) .grp { gap: 8px; }
+  :global(:root[data-skin="macos"]) .row.off { opacity: .45; }
 </style>

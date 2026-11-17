@@ -76,3 +76,41 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px s
 .grow { flex: 1; min-width: 0; }
 .warn { color: var(--warn); }
 .placeholder { padding: 32px; }
+
+/* Swift의 기본 AppKit 색과 작은 컨트롤 크기는 macOS 스킨에만 적용한다. */
+:root[data-skin="macos"] {
+  --bg: #ececec; --surface: #fff; --surface-stroke: rgba(0,0,0,.12);
+  --panel-bg: #e9e9e9; --panel-stroke: #c4c4c4;
+  --slider-tick: #b8b8b8; --slider-line: #c8c8c8; --slider-thumb: #888;
+  --segment-bg: #e5e5e5; --segment-selected: #fff;
+  --control: #fff; --control-hover: #f5f5f5; --control-stroke: rgba(0,0,0,.2);
+  --r-control: 5px; --fs-title: 13px; --ok: #28cd41;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-skin="macos"]:not([data-theme="light"]) {
+    --bg: #26252e; --surface: #1e1e1e; --surface-stroke: #393939;
+    --panel-bg: #2c2b35; --panel-stroke: #484750;
+    --slider-tick: #505050; --slider-line: #414141; --slider-thumb: #929292;
+    --segment-bg: #303039; --segment-selected: #626268;
+    --control: #555; --control-hover: #666; --control-stroke: rgba(255,255,255,.06);
+  }
+}
+:root[data-skin="macos"][data-theme="dark"] {
+  --bg: #26252e; --surface: #1e1e1e; --surface-stroke: #393939;
+  --panel-bg: #2c2b35; --panel-stroke: #484750;
+  --slider-tick: #505050; --slider-line: #414141; --slider-thumb: #929292;
+  --segment-bg: #303039; --segment-selected: #626268;
+  --control: #555; --control-hover: #666; --control-stroke: rgba(255,255,255,.06);
+}
+:root[data-skin="macos"] body { line-height: 16px; }
+:root[data-skin="macos"] button { min-height: 20px; padding: 1px 8px; line-height: 16px; font-size: 12px; box-shadow: 0 1px 1px #0002; }
+:root[data-skin="macos"] button.primary { background: linear-gradient(#2583ff, #0063e1); }
+:root[data-skin="macos"] input[type="number"], :root[data-skin="macos"] input[type="text"] { min-height: 20px; height: 20px; padding: 1px 6px; background: var(--segment-bg); }
+:root[data-skin="macos"] select { appearance: none; flex: 1; min-width: 0; min-height: 20px; height: 20px; padding: 1px 24px 1px 8px; font-size: 12px; line-height: 16px; background-color: var(--control); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18'%3E%3Crect x='1' y='1' width='16' height='16' rx='4' fill='%23007aff'/%3E%3Cpath d='m6 7 3-3 3 3m-6 4 3 3 3-3' fill='none' stroke='white' stroke-width='1.2'/%3E%3C/svg%3E"); background-position: right center; background-repeat: no-repeat; }
+:root[data-skin="macos"] .row { min-height: 20px; }
+:root[data-skin="macos"] .row:has(>select) > .grow { flex: none; }
+:root[data-skin="macos"] hr { border: 0; border-top: 1px solid var(--surface-stroke); margin: 2px 0; width: 100%; }
+:root[data-skin="macos"] input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--accent); }
+:root[data-skin="macos"] input[type="color"] { border-radius: 5px; }
+
+:root[data-skin="macos"] .caption { line-height: 13px; }

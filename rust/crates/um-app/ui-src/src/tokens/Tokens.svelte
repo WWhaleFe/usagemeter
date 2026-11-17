@@ -99,7 +99,7 @@
       </svg>
       <div class="legend">
         {#each models.slice(0, palette.order.length) as m (m)}<span><i style:background={modelColor(m)}></i>{m}</span>{/each}
-        {#if models.length > palette.order.length}<span><i style:background="var(--fg3)"></i>{t('tokens.all') === 'All' ? 'Other' : '기타'}</span>{/if}
+        {#if models.length > palette.order.length}<span><i style:background="var(--fg3)"></i>{t('tokens.other')}</span>{/if}
       </div>
     </section>
 

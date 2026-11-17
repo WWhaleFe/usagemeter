@@ -33,22 +33,26 @@
 {:else}
   <div class="mac">
     <TopArea compact={false} />
+    <div class="tab-panel">
     <div class="tabs" role="tablist">
       {#each tabs as x (x.id)}
         <button role="tab" aria-selected={x.id === current.id} class:on={x.id === current.id} onclick={() => (tab = x.id)}>{t('tab.' + x.id)}</button>
       {/each}
     </div>
     <main><current.component /></main>
+    </div>
   </div>
 {/if}
 
 <style>
-  .mac { display: flex; flex-direction: column; height: 100vh; padding: 14px 18px 10px; gap: 10px; }
-  .mac .tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 0; align-self: center; border: 1px solid var(--control-stroke); border-radius: var(--r-control); overflow: hidden; }
-  .mac .tabs button { border: none; border-radius: 0; background: var(--control); padding: 3px 10px; min-height: 24px; font-size: 12px; }
-  .mac .tabs button + button { border-left: 1px solid var(--control-stroke); }
-  .mac .tabs button.on { background: var(--accent); color: var(--accent-fg); }
-  .mac main { flex: 1; overflow: auto; padding: 4px 2px; }
+  .mac { display: flex; flex-direction: column; height: 100vh; padding: 14px 10px 10px; gap: 20px; }
+  .tab-panel { flex: 1; min-height: 0; position: relative; border: 1px solid var(--panel-stroke); border-radius: 5px; background: var(--panel-bg); display: flex; flex-direction: column; }
+  .mac .tabs { display: flex; justify-content: center; align-self: center; border: 1px solid var(--panel-stroke); border-radius: 5px; background: var(--segment-bg); position: relative; margin-top: -11px; z-index: 1; flex: none; }
+  .mac .tabs button { border: none; border-radius: 0; background: transparent; padding: 1px 12px; min-height: 20px; line-height: 16px; font-size: 12px; white-space: nowrap; position: relative; }
+  .mac .tabs button + button::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 1px; background: var(--surface-stroke); }
+  .mac .tabs button.on { background: var(--segment-selected); color: var(--fg); border-radius: 4px; }
+  :global(html[lang="en"]) .mac .tabs button { padding-inline: 8px; }
+  .mac main { flex: 1; overflow: auto; padding: 20px 16px 14px; min-height: 0; }
 
   .win { display: flex; height: 100vh; }
   .win nav { width: 260px; flex: none; padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; overflow: auto; }

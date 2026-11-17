@@ -16,4 +16,7 @@
   button { border: none; border-radius: 0; background: var(--control); min-height: 24px; padding: 2px 12px; }
   button + button { border-left: 1px solid var(--control-stroke); }
   button.on { background: var(--accent); color: var(--accent-fg); }
+  :global(:root[data-skin="macos"]) .seg { display: flex; width: 100%; border-radius: 5px; background: var(--segment-bg); }
+  :global(:root[data-skin="macos"]) button { flex: 1; min-height: 20px; padding: 1px 10px; background: transparent; line-height: 16px; }
+  :global(:root[data-skin="macos"]) button.on { background: var(--segment-selected); color: var(--fg); border-radius: 4px; }
 </style>
