@@ -81,3 +81,12 @@ impl OverlayStrip {
         self.win.orderOut(None);
     }
 }
+
+/// 화면 구성이 바뀌어 띠를 다시 만들 때 옛 창이 화면에 남지 않게 한다.
+/// 화면에 올라간 NSWindow는 앱 창 목록이 붙잡고 있어서 참조만 놓으면 계속 보인다(Windows는 DestroyWindow, win/overlay.rs).
+impl Drop for OverlayStrip {
+    fn drop(&mut self) {
+        self.win.orderOut(None);
+        self.win.close();
+    }
+}
