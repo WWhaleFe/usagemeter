@@ -314,6 +314,15 @@ pub fn measure_chart_height() -> f32 {
 
 /// 차분 기반 단조 3차 보간(Fritsch-Carlson)으로 만든 경로. 점은 x 오름차순·중복 없음이어야 한다.
 fn monotone_path(pts: &[(f32, f32)]) -> Option<Path> {
+    // 시각이 가까운 점은 f32 x가 같아질 수 있다. dx가 0이면 기울기가 NaN이 되어 선 전체가 사라지므로 같은 x는 나중 값 하나로 합친다.
+    let mut merged: Vec<(f32, f32)> = Vec::with_capacity(pts.len());
+    for &p in pts.iter().filter(|p| p.0.is_finite() && p.1.is_finite()) {
+        match merged.last_mut() {
+            Some(last) if p.0 - last.0 < 1e-3 => last.1 = p.1,
+            _ => merged.push(p),
+        }
+    }
+    let pts = &merged[..];
     let n = pts.len();
     if n < 2 {
         return None;

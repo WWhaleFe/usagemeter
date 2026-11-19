@@ -237,3 +237,13 @@ fn 카드_시간() {
     }
     eprintln!("이후 평균: {:?}", t.elapsed() / 20);
 }
+
+#[test]
+fn 같은_x의_점이_있어도_선을_만든다() {
+    // 호버 때마다 기준 시각이 바뀌어 가까운 두 점이 같은 픽셀 x가 되면 선 전체가 사라지던 문제.
+    let pts = [(10.0, 50.0), (20.0, 40.0), (20.0, 45.0), (30.0, 30.0), (f32::NAN, 1.0)];
+    let p = monotone_path(&pts).expect("선");
+    let b = p.bounds();
+    assert!(b.left() >= 10.0 && b.right() <= 30.0 && b.top().is_finite() && b.bottom().is_finite());
+    assert!(monotone_path(&[(5.0, 1.0), (5.0, 2.0)]).is_none());
+}
