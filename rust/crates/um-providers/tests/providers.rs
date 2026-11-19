@@ -452,7 +452,7 @@ fn agy_executable_candidates() {
 fn agy_command_line() {
     assert_eq!(agy::args(Os::Unix), ["--log-file", "/dev/null", "-p", "/usage", "--output-format", "json"]);
     assert_eq!(agy::args(Os::Windows)[1], "NUL");
-    assert_eq!(agy::TIMEOUT_SECS, 12);
+    assert_eq!(agy::TIMEOUT_SECS, if cfg!(windows) { 30 } else { 12 });
     assert_eq!(agy::work_dir(Os::Unix, None).as_deref(), Some("/tmp"));
     assert_eq!(agy::work_dir(Os::Windows, Some(r"C:\Temp")).as_deref(), Some(r"C:\Temp"));
     assert_eq!(
