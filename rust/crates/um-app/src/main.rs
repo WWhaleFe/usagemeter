@@ -509,18 +509,9 @@ fn apply_text_locale(lang: um_core::types::AppLanguage) {
 fn main() {
     let log_path = diagnostics::init();
     tracing::info!("UsageMeter {} 시작 (OS={}, 로그={})", update::current_version(), std::env::consts::OS, log_path.display());
-    let shared_state: Shared = Arc::new(Mutex::new(AppState::load()));
-    {
-        let mut st = shared_state.lock().unwrap();
-        let ids = st.main.provider_order.clone();
-        let seeds = st
-            .history
-            .as_ref()
-            .map(|db| data::seed_from_history(db, &ids, chrono::Utc::now()))
-            .unwrap_or_default();
-        if st.main.keep_logged_in { st.seeds = seeds; }
-        st.rebuild_snapshots();
-    }
+    // 설정·이력은 setup에서 읽는다. 단일 인스턴스 플러그인이 먼저 돌아야 두 번째 실행(바로가기 등)이
+    // 무거운 로드와 설정 저장 없이 곧바로 기존 앱에 설정 창을 넘기고 끝난다.
+    let shared_state: Shared = Arc::new(Mutex::new(AppState::unloaded()));
 
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
@@ -533,6 +524,18 @@ fn main() {
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
         .invoke_handler(tauri::generate_handler![ipc::ui_state, ipc::ui_set, ipc::ui_action, analytics_ui::ui_analytics, locallogs::ui_locallogs, locallogs::ui_locallogs_set, locallogs::ui_tokens, symbols::ui_symbol])
         .setup(move |app| {
+            {
+                let mut st = shared_state.lock().unwrap();
+                *st = AppState::load();
+                let ids = st.main.provider_order.clone();
+                let seeds = st
+                    .history
+                    .as_ref()
+                    .map(|db| data::seed_from_history(db, &ids, chrono::Utc::now()))
+                    .unwrap_or_default();
+                if st.main.keep_logged_in { st.seeds = seeds; }
+                st.rebuild_snapshots();
+            }
             let dir = shared_state.lock().unwrap().dir.clone();
             app.manage(locallogs::LocalLogs::new(&dir));
             locallogs::start(app.handle());

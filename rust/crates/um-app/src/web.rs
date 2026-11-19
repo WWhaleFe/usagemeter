@@ -36,6 +36,17 @@ pub const PASSKEY_OFF: &str = r#"(function () {
   } catch (e) {}
 })();"#;
 
+/// 숨은 조회 창용: 페이지가 자신을 보이는 상태로 여기게 한다. 숨은 웹뷰는 requestAnimationFrame이 멈추고
+/// visibilityState가 hidden이라, 렌더된 화면이 필요한 Gemini가 다 그려지지 않고 25초 제한을 넘겼다(Windows).
+const PROBE_VISIBLE: &str = r#"(function () {
+  try {
+    Object.defineProperty(document, 'visibilityState', { get: function () { return 'visible'; }, configurable: true });
+    Object.defineProperty(document, 'hidden', { get: function () { return false; }, configurable: true });
+    window.requestAnimationFrame = function (cb) { return setTimeout(function () { cb(performance.now()); }, 16); };
+    window.cancelAnimationFrame = function (id) { clearTimeout(id); };
+  } catch (e) {}
+})();"#;
+
 static SEQ: AtomicU64 = AtomicU64::new(1);
 
 fn next_token() -> String {
@@ -117,13 +128,15 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
     };
     tracing::info!("조회 창 생성 시작");
     let auth_tx = tx.clone();
-    let built = WebviewWindowBuilder::new(app, &label, WebviewUrl::External("about:blank".parse().expect("blank")))
+    let builder = WebviewWindowBuilder::new(app, &label, WebviewUrl::External("about:blank".parse().expect("blank")))
         .visible(false)
         .skip_taskbar(true)
         .focused(false)
         .inner_size(460.0, 720.0)
         .user_agent(USER_AGENT)
-        .initialization_script_for_all_frames(PASSKEY_OFF)
+        .initialization_script_for_all_frames(PASSKEY_OFF);
+    let builder = if spec.needs_rendered_dom { builder.initialization_script(PROBE_VISIBLE) } else { builder };
+    let built = builder
         .on_page_load(move |w, p| {
             // 구글은 로그인된 상태에서도 accounts.google.com을 잠깐 거쳐 돌아올 수 있어, 그 페이지에 머물렀을 때만 판정한다.
             if p.event() == PageLoadEvent::Finished && login_redirect(p.url(), spec) {

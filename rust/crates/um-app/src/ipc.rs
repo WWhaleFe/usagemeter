@@ -65,9 +65,17 @@ const WIN_TERMS: [&str; 16] = [
     "part.dockBoundaryHeight", "part.dockWidth", "seg.dockVertical", "seg.dockTop", "seg.dockBottom", "seg.dockOuter",
 ];
 
-/// 화면이 그릴 값 전부.
+/// 화면이 그릴 값 전부. 창이 늦게 뜨는 원인을 찾을 수 있게 오래 걸리면 기록한다.
 #[tauri::command]
 pub fn ui_state(app: AppHandle) -> Value {
+    let t = std::time::Instant::now();
+    let out = state_value(app);
+    let ms = t.elapsed().as_millis();
+    if ms >= 200 { tracing::info!("ui_state {ms}ms"); }
+    out
+}
+
+fn state_value(app: AppHandle) -> Value {
     let st = crate::shared(&app);
     let st = st.lock().unwrap();
     let lang = st.main.language;

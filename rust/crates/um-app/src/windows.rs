@@ -6,6 +6,7 @@ use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
 /// `page` = "settings", "settings#interval", "analytics", "support" 등. 창은 종류마다 하나.
 pub fn open(app: &AppHandle, page: &str) {
+    tracing::info!("창 열기 요청({page})");
     #[cfg(windows)]
     {
         let app = app.clone();

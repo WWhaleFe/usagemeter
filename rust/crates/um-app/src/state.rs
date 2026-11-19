@@ -64,6 +64,11 @@ impl AppState {
         }
     }
 
+    /// 파일을 읽기 전 빈 상태. 두 번째 실행이 기존 앱에 넘기고 끝날 때까지 디스크를 건드리지 않으려고 쓴다.
+    pub fn unloaded() -> Self {
+        Self::new(data_dir())
+    }
+
     pub fn load() -> Self {
         let dir = data_dir();
         let _ = std::fs::create_dir_all(dir.join("displays"));
