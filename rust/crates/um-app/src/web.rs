@@ -122,7 +122,10 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
     let auth_tx = tx.clone();
     // 진단: UM_SHOW_PROBE=1이면 조회 창을 보이게 띄운다.
     let show = std::env::var("UM_SHOW_PROBE").is_ok_and(|v| v == "1");
-    let builder = WebviewWindowBuilder::new(app, &label, WebviewUrl::External("about:blank".parse().expect("blank")))
+    // Windows는 빈 문서로 만든 뒤 navigate()하면 이동이 일어나지 않고 about:blank에 머물러 25초를 넘겼다(실기 로그).
+    // 로그인 창처럼 처음부터 목적지 주소로 만든다.
+    let start: Url = if cfg!(windows) { probe_start_url(spec) } else { "about:blank".parse().expect("blank") };
+    let builder = WebviewWindowBuilder::new(app, &label, WebviewUrl::External(start))
         .visible(show)
         .skip_taskbar(true)
         .focused(false)
@@ -164,7 +167,7 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
             return json!({"ok": false, "reason": "no_webview"});
         }
     };
-    // 먼저 같은 웹뷰에서 쿠키를 확인한다. 미로그인 때는 네트워크 탐색도 시작하지 않는다.
+    // 먼저 같은 웹뷰에서 쿠키를 확인한다. 미로그인이면 바로 닫는다(macOS는 네트워크 탐색도 시작하지 않는다).
     let failure = match cookies_for(&win, spec) {
         Ok(cookies) if cookies.is_empty() => Some(json!({"ok": false, "reason": "not_logged_in", "no_cookies": true})),
         Ok(_) => None,
@@ -174,7 +177,9 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
         let _ = win.destroy();
         return failure;
     }
-    if cfg!(target_os = "macos") && !spec.needs_rendered_dom {
+    if cfg!(windows) {
+        // 이미 목적지 주소로 만들었다.
+    } else if cfg!(target_os = "macos") && !spec.needs_rendered_dom {
         load_stub(&win, spec);
     } else if win.navigate(probe_start_url(spec)).is_err() {
         let _ = win.destroy();
