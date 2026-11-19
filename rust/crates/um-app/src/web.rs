@@ -36,17 +36,6 @@ pub const PASSKEY_OFF: &str = r#"(function () {
   } catch (e) {}
 })();"#;
 
-/// 숨은 조회 창용: 페이지가 자신을 보이는 상태로 여기게 한다. 숨은 웹뷰는 requestAnimationFrame이 멈추고
-/// visibilityState가 hidden이라, 렌더된 화면이 필요한 Gemini가 다 그려지지 않고 25초 제한을 넘겼다(Windows).
-const PROBE_VISIBLE: &str = r#"(function () {
-  try {
-    Object.defineProperty(document, 'visibilityState', { get: function () { return 'visible'; }, configurable: true });
-    Object.defineProperty(document, 'hidden', { get: function () { return false; }, configurable: true });
-    window.requestAnimationFrame = function (cb) { return setTimeout(function () { cb(performance.now()); }, 16); };
-    window.cancelAnimationFrame = function (id) { clearTimeout(id); };
-  } catch (e) {}
-})();"#;
-
 static SEQ: AtomicU64 = AtomicU64::new(1);
 
 fn next_token() -> String {
@@ -118,9 +107,12 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
     let token = next_token();
     let label = format!("probe-{}-{}", spec.id, token.replace('x', "-"));
     let (tx, rx) = mpsc::channel::<String>();
-    let js = wrap(spec.usage_js, &token);
-    let prefix = format!("UMRESULT:{token}:");
+    // 회차마다 토큰 끝에 번호를 붙여 같은 결과 문자열이어도 제목 변경 이벤트가 다시 온다.
+    let prefix = format!("UMRESULT:{token}-");
+    let attempt = Arc::new(AtomicU64::new(0));
     let fired = Arc::new(AtomicBool::new(false));
+    let fired_watch = fired.clone();
+    let (token_load, attempt_load) = (token.clone(), attempt.clone());
     let delay = if spec.needs_rendered_dom {
         Duration::from_millis(1500)
     } else {
@@ -135,7 +127,6 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
         .inner_size(460.0, 720.0)
         .user_agent(USER_AGENT)
         .initialization_script_for_all_frames(PASSKEY_OFF);
-    let builder = if spec.needs_rendered_dom { builder.initialization_script(PROBE_VISIBLE) } else { builder };
     let built = builder
         .on_page_load(move |w, p| {
             // 구글은 로그인된 상태에서도 accounts.google.com을 잠깐 거쳐 돌아올 수 있어, 그 페이지에 머물렀을 때만 판정한다.
@@ -147,16 +138,16 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
                 && host_matches(p.url(), spec)
                 && !fired.swap(true, Ordering::SeqCst)
             {
-                let js = js.clone();
+                let (token, attempt) = (token_load.clone(), attempt_load.clone());
                 std::thread::spawn(move || {
                     std::thread::sleep(delay);
-                    let _ = w.eval(js);
+                    eval_attempt(&w, spec, &token, &attempt);
                 });
             }
         })
         .on_document_title_changed(move |_, t| {
-            if let Some(rest) = t.strip_prefix(&prefix) {
-                let _ = tx.send(rest.to_string());
+            if let Some((_, raw)) = t.strip_prefix(&prefix).and_then(|rest| rest.split_once(':')) {
+                let _ = tx.send(raw.to_string());
             }
         })
         .build();
@@ -183,13 +174,49 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
         let _ = win.destroy();
         return json!({"ok": false, "reason": "navigation"});
     }
-    let out = match rx.recv_timeout(timeout) {
-        Ok(s) => serde_json::from_str(&s)
-            .unwrap_or_else(|_| json!({"ok": false, "reason": "bad_result"})),
-        Err(_) => json!({"ok": false, "reason": "timeout"}),
+    let done = Arc::new(AtomicBool::new(false));
+    if spec.needs_rendered_dom {
+        // Gemini는 리소스가 많아 로드 완료(Finished)가 15~25초 뒤에 오거나 안 와서 25초 제한을 넘겼다.
+        // 주소가 서비스에 닿고 4초 뒤부터 직접 읽고, 화면을 못 읽었으면 8초마다 다시 읽는다.
+        let (w, done, token, attempt) = (win.clone(), done.clone(), token.clone(), attempt.clone());
+        std::thread::spawn(move || {
+            let mut on_host = 0u32;
+            while !done.load(Ordering::SeqCst) {
+                std::thread::sleep(Duration::from_secs(1));
+                let Ok(url) = w.url() else { break };
+                on_host = if host_matches(&url, spec) { on_host + 1 } else { 0 };
+                if on_host >= 4 && (on_host - 4).is_multiple_of(8) && !done.load(Ordering::SeqCst) {
+                    fired_watch.store(true, Ordering::SeqCst);
+                    eval_attempt(&w, spec, &token, &attempt);
+                }
+            }
+        });
+    }
+    let deadline = std::time::Instant::now() + timeout;
+    let timed_out = || json!({"ok": false, "reason": "timeout"});
+    // 화면을 못 읽은 결과(parse_failed)는 페이지가 덜 그려졌을 수 있어 다음 회차를 기다리고, 끝까지 없으면 그것을 쓴다.
+    let mut fallback: Option<Value> = None;
+    let out = loop {
+        let Some(left) = deadline.checked_duration_since(std::time::Instant::now()) else {
+            break fallback.unwrap_or_else(timed_out);
+        };
+        let Ok(s) = rx.recv_timeout(left) else { break fallback.unwrap_or_else(timed_out) };
+        let v: Value = serde_json::from_str(&s).unwrap_or_else(|_| json!({"ok": false, "reason": "bad_result"}));
+        if spec.needs_rendered_dom && v["reason"] == "parse_failed" {
+            fallback = Some(v);
+            continue;
+        }
+        break v;
     };
+    done.store(true, Ordering::SeqCst);
     let _ = win.destroy();
     out
+}
+
+/// 사용량 JS를 새 회차 번호로 실행한다(결과 제목: `UMRESULT:<토큰>-<회차>:<JSON>`).
+fn eval_attempt(w: &WebviewWindow, spec: &ProviderSpec, token: &str, attempt: &AtomicU64) {
+    let n = attempt.fetch_add(1, Ordering::SeqCst);
+    let _ = w.eval(wrap(spec.usage_js, &format!("{token}-{n}")));
 }
 
 #[derive(Default)]
