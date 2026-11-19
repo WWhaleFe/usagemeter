@@ -64,6 +64,8 @@
       {#each edgeKeys as e (e)}
         <label class="chk"><input type="checkbox" checked={edges.includes(e)} onchange={(ev) => set('main', { hoverEdges: member(edges, e, ev.currentTarget.checked) })} />{t('edge.' + e)}</label>
       {/each}
+      <label class="chk"><input type="checkbox" checked={m.hoverMenuLine ?? false} onchange={(ev) => set('main', { hoverMenuLine: ev.currentTarget.checked })} />{t('hoverArea.menuLine')}</label>
+      <label class="chk"><input type="checkbox" checked={m.hoverDockLine ?? false} onchange={(ev) => set('main', { hoverDockLine: ev.currentTarget.checked })} />{t('hoverArea.dockLine')}</label>
     </div>
     <legend>{t('hoverArea.corners')}</legend>
     <div class="checks">

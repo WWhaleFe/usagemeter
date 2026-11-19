@@ -9,6 +9,16 @@
     "Menu Bar",
     "メニューバー"
   ],
+  "hoverArea.menuLine": [
+    "메뉴바 아래 선(화면 분할)",
+    "Line under menu bar (split)",
+    "メニューバー下の線(画面分割)"
+  ],
+  "hoverArea.dockLine": [
+    "독 위 선(화면 분할)",
+    "Line above Dock (split)",
+    "Dock上の線(画面分割)"
+  ],
   "hover.emphasis": [
     "호버한 선과 해당 글 강조",
     "Emphasize hovered lines and text",
