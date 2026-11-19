@@ -247,3 +247,24 @@ fn 같은_x의_점이_있어도_선을_만든다() {
     assert!(b.left() >= 10.0 && b.right() <= 30.0 && b.top().is_finite() && b.bottom().is_finite());
     assert!(monotone_path(&[(5.0, 1.0), (5.0, 2.0)]).is_none());
 }
+
+#[test]
+fn 세부_항목_기본_색은_서로_겹치지_않는다() {
+    use crate::border::sub_item_color;
+    use um_core::model::UsageSubItem;
+    use um_core::settings::Settings;
+    let items: Vec<UsageSubItem> = (0..5)
+        .map(|k| UsageSubItem { id: format!("i{k}"), model_label: None, is_five_hour: false, remaining_ratio: 0.5, reset_at: None })
+        .collect();
+    let s = Settings::default();
+    let mut all = vec![];
+    for id in ["claude", "gemini", "codex"] {
+        for it in &items {
+            all.push(sub_item_color(&s, id, &it.id, &items).map(|v| (v * 1000.0).round() as i32));
+        }
+    }
+    let n = all.len();
+    all.sort();
+    all.dedup();
+    assert_eq!(all.len(), n, "AI 색과 세부 항목 기본 색 15개가 모두 달라야 한다");
+}

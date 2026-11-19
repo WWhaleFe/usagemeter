@@ -170,21 +170,26 @@ pub fn provider_color(s: &Settings, id: &str) -> Rgba {
     s.provider_colors.get(id).copied().or_else(|| default_provider_color(id)).unwrap_or(s.color)
 }
 
-/// 세부 항목 기본 색(첫 항목은 AI 색, 이후 이 순서). (Swift `subItemPalette`)
-const SUB_ITEM_PALETTE: [Rgba; 5] = [
-    [0.65, 0.45, 0.95, 1.0], // 보라
-    [0.96, 0.70, 0.10, 1.0], // 호박
-    [0.08, 0.72, 0.65, 1.0], // 청록
-    [0.93, 0.30, 0.60, 1.0], // 분홍
-    [0.52, 0.80, 0.20, 1.0], // 연두
+/// 세부 항목 기본 색. 첫 항목은 AI 색, 이후는 AI마다 따로 둔 4색 묶음.
+/// Swift `subItemPalette`는 AI마다 같은 5색을 처음부터 다시 써서 AI끼리 같은 색이 겹쳤다.
+/// 12색은 OKLCH 후보에서 서로(그리고 AI 기본 색 3개와) OKLab ΔE가 가장 멀어지게 골랐다(전체 최소 10.8, 묶음 안 최소 16.5).
+const SUB_ITEM_PALETTES: [(&str, [Rgba; 4]); 3] = [
+    ("claude", [[0.30, 0.84, 0.46, 1.0], [0.69, 0.50, 0.99, 1.0], [0.22, 0.57, 0.72, 1.0], [0.94, 0.74, 0.98, 1.0]]),
+    ("gemini", [[0.17, 0.93, 0.96, 1.0], [0.64, 0.65, 0.16, 1.0], [0.85, 0.86, 0.15, 1.0], [1.00, 0.56, 0.70, 1.0]]),
+    ("codex", [[0.63, 0.89, 0.68, 1.0], [0.75, 0.34, 0.72, 1.0], [0.52, 0.74, 0.96, 1.0], [0.94, 0.65, 0.27, 1.0]]),
 ];
 
-/// 세부 항목 색: 사용자 지정이 있으면 그것, 없으면 목록 안의 위치로(첫 항목 = AI 색, 이후 팔레트 순환).
+fn sub_item_palette(provider_id: &str) -> [Rgba; 4] {
+    SUB_ITEM_PALETTES.iter().find(|(id, _)| *id == provider_id).map_or(SUB_ITEM_PALETTES[0].1, |(_, p)| *p)
+}
+
+/// 세부 항목 색: 사용자 지정이 있으면 그것, 없으면 목록 안의 위치로(첫 항목 = AI 색, 이후 그 AI의 묶음 순환).
 pub fn sub_item_color(s: &Settings, provider_id: &str, item_id: &str, items: &[UsageSubItem]) -> Rgba {
     let key = UsageSubItem::settings_key(provider_id, item_id);
     s.sub_item_colors.get(&key).copied().unwrap_or_else(|| {
         let i = items.iter().position(|it| it.id == item_id).unwrap_or(0);
-        if i == 0 { provider_color(s, provider_id) } else { SUB_ITEM_PALETTE[(i - 1) % SUB_ITEM_PALETTE.len()] }
+        let palette = sub_item_palette(provider_id);
+        if i == 0 { provider_color(s, provider_id) } else { palette[(i - 1) % palette.len()] }
     })
 }
 

@@ -127,9 +127,27 @@ fn dump(name: &str, rust: &Pixmap, diff: &[u8]) {
     d.save_png(dir.join(format!("{name}.diff.png"))).unwrap();
 }
 
+/// 기준 이미지는 Swift `subItemPalette`(AI마다 같은 5색)로 찍었다. 앱 기본 색은 AI끼리 겹치지 않게 바꿨으므로 모양만 비교하도록 시험에서 Swift 색을 지정한다.
+const SWIFT_SUB_ITEM_PALETTE: [[f64; 4]; 5] = [
+    [0.65, 0.45, 0.95, 1.0],
+    [0.96, 0.70, 0.10, 1.0],
+    [0.08, 0.72, 0.65, 1.0],
+    [0.93, 0.30, 0.60, 1.0],
+    [0.52, 0.80, 0.20, 1.0],
+];
+
 fn render_case(case: &Value) -> Pixmap {
     let snap: SettingsSnapshot = serde_json::from_value(case["settings"].clone()).expect("settings 디코딩");
-    let settings = Settings::from_snapshot(&snap);
+    let mut settings = Settings::from_snapshot(&snap);
+    for ai in case["ais"].as_array().unwrap() {
+        let id = ai["id"].as_str().unwrap();
+        for (i, it) in snapshot_of(ai).sub_items().iter().enumerate().skip(1) {
+            settings
+                .sub_item_colors
+                .entry(um_core::model::UsageSubItem::settings_key(id, &it.id))
+                .or_insert(SWIFT_SUB_ITEM_PALETTE[(i - 1) % SWIFT_SUB_ITEM_PALETTE.len()]);
+        }
+    }
     let (w, h) = (f(&case["screen"][0]), f(&case["screen"][1]));
     let bands: Vec<ProviderBand> = case["ais"]
         .as_array()
