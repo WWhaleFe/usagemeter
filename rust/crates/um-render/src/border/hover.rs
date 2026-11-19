@@ -3,9 +3,11 @@
 use kurbo::{ParamCurve, ParamCurveArclen, ParamCurveNearest, PathSeg, Point};
 use super::BorderScene;
 
-// 끝이 수 pt 어긋난 띠도 고를 수 있게 한다. 긴 경로는 화면 크기에 비례해 여유를 준다.
-const NEAR_PT: f64 = 6.0;
-const NEAR_FRACTION: f64 = 0.015;
+// 번갈아 강조는 마우스로 따로 집을 수 없을 때만 한다. 끝이 이만큼 이내로 붙어 있으면(커서 정밀도 수준) 구분이 어렵다.
+// 경로 길이에 비례한 여유(예전 1.5%)는 화면 폭이면 30pt가 넘어 충분히 따로 호버할 수 있는 선까지 깜빡이게 했다.
+const NEAR_PT: f64 = 4.0;
+// 커서가 붙어 있는 두 끝 근처일 때만 번갈아 보인다. 선 가운데를 가리키면 보이는 선 하나만 강조한다.
+const NEAR_END_PT: f64 = 24.0;
 const HOVER_SLOP: f64 = 7.0;
 
 /// 장면이 바뀔 때만 길이를 계산한다. 마우스 이동 때는 기존 기하를 재사용한다.
@@ -56,10 +58,11 @@ impl HoverGeometry {
         let Some(&top) = candidates.first() else { return vec![] };
         let first = &scene.bands[top];
         let first_len = self.lengths[first.item] * first.ratio;
+        let near_end = hits[first.item].is_some_and(|along| first_len - along <= NEAR_END_PT);
+        if !near_end { return vec![top]; }
         candidates.into_iter().filter(|&i| {
             let band = &scene.bands[i];
-            let tolerance = NEAR_PT.max(NEAR_FRACTION * self.lengths[first.item].max(self.lengths[band.item]));
-            (self.lengths[band.item] * band.ratio - first_len).abs() <= tolerance
+            (self.lengths[band.item] * band.ratio - first_len).abs() <= NEAR_PT
         }).collect()
     }
 }
@@ -125,11 +128,22 @@ mod tests {
     }
 
     #[test]
-    fn 비슷한_길이는_절대값과_경로_비율_중_큰_여유() {
-        for (a, b, w, n) in [(0.5, 0.52, 200.0, 2), (0.5, 0.54, 200.0, 1),
-            (0.5, 0.51, 1000.0, 2), (0.5, 0.52, 1000.0, 1), (0.5, 0.5, 200.0, 2)] {
-            let s = scene(a, b, w);
-            assert_eq!(HoverGeometry::new(&s).candidates(&s, 20.0, 1.0).len(), n);
-        }
+    fn 번갈아_강조는_끝이_붙어_있고_커서가_끝_근처일_때만() {
+        // 끝이 4pt 이내면 마우스로 따로 집기 어려우므로 끝 근처에서만 번갈아 보인다.
+        let max_alt = |a: f64, b: f64| {
+            let s = scene(a, b, 200.0);
+            let h = HoverGeometry::new(&s);
+            (0..200).map(|x| h.candidates(&s, x as f64, 1.0).len()).max().unwrap_or(0)
+        };
+        assert_eq!(max_alt(0.5, 0.51), 2);
+        assert_eq!(max_alt(0.5, 0.5), 2);
+        // 8pt 이상 떨어지면 따로 호버할 수 있으니 번갈아 보이지 않는다(예전 기준에서는 1.5% 여유로 깜빡였다).
+        assert_eq!(max_alt(0.5, 0.54), 1);
+        let s = scene(0.5, 0.503, 1000.0); // 끝 차이 약 3pt
+        let h = HoverGeometry::new(&s);
+        let lens: Vec<usize> = (0..1000).map(|x| h.candidates(&s, x as f64, 1.0).len()).collect();
+        // 붙어 있는 두 띠라도 끝에서 먼 곳(가운데)을 가리키면 보이는 띠 하나만.
+        assert!(lens.iter().filter(|&&n| n == 2).count() <= 2 * NEAR_END_PT as usize + 2, "{:?}", lens.iter().filter(|&&n| n == 2).count());
+        assert!(lens.contains(&1) && lens.contains(&2));
     }
 }

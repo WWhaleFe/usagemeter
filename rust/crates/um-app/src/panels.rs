@@ -276,7 +276,7 @@ fn set_emphasis(p: &mut Panels, hit: Option<(&str, f64, f64)>) {
             crate::OVERLAY.with(|o| o.borrow_mut().cycle_hover());
         });
         p.emphasis_timer = Some(unsafe {
-            objc2_foundation::NSTimer::scheduledTimerWithTimeInterval_repeats_block(1.0, true, &block)
+            objc2_foundation::NSTimer::scheduledTimerWithTimeInterval_repeats_block(1.5, true, &block)
         });
     }
 }

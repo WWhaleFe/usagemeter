@@ -126,8 +126,23 @@ fn plain_hover_spans(lines: &[HoverLine], theme: Theme) -> Vec<Span<'_>> {
     spans
 }
 
+/// 강조 줄은 눈에 띄게 15.5pt bold. 앞의 색 점은 크기를 바꾸지 않는다(`emphasized_dot`).
 fn hover_style(line: &HoverLine) -> (f32, u16) {
-    if line.emphasized { (13.5, W_BOLD) } else { (12.0, W_MEDIUM) }
+    if line.emphasized { (15.5, W_BOLD) } else { (12.0, W_MEDIUM) }
+}
+
+/// 강조 줄의 색 점을 따로 떼어 낸다: (점 조각, 나머지 줄). 점은 보통 줄 크기로 그린다.
+fn emphasized_dot(line: &HoverLine) -> Option<(Rgba, &str)> {
+    if !line.emphasized { return None; }
+    Some((line.dot?, line.text.strip_prefix("● ")?))
+}
+
+/// 강조 줄 한 줄의 (폭, 높이, 점 폭). 점 폭만큼 글자를 오른쪽으로 민다.
+fn measure_emphasized(dot: Rgba, rest: &str, wrap: f32, theme: Theme) -> (f32, f32, f32) {
+    let (size, weight) = (15.5, W_BOLD);
+    let d = text::measure(&[Span { text: "● ", color: dot }], 12.0, W_MEDIUM, None);
+    let t = text::measure(&[Span { text: rest, color: theme.primary() }], size, weight, Some((wrap - d.width).max(1.0)));
+    (d.width + t.width, t.height.max(text::line_height(size)), d.width)
 }
 
 const HOVER_PAD_X: f32 = 10.0;
@@ -142,16 +157,23 @@ pub fn measure_hover(lines: &[HoverLine], max_width: f32, theme: Theme) -> (f32,
     }
     let mut width = 0.0_f32;
     let mut height = 0.0;
+    let wrap = (max_width - 2.0 * HOVER_PAD_X).max(1.0);
     for line in lines {
+        if let Some((dot, rest)) = emphasized_dot(line) {
+            let (w, h, _) = measure_emphasized(dot, rest, wrap, theme);
+            width = width.max(w);
+            height += h;
+            continue;
+        }
         let (size, weight) = hover_style(line);
-        let t = text::measure(&hover_spans(line, theme), size, weight, Some((max_width - 2.0 * HOVER_PAD_X).max(1.0)));
+        let t = text::measure(&hover_spans(line, theme), size, weight, Some(wrap));
         width = width.max(t.width);
         height += t.height.max(text::line_height(size));
     }
     (width.ceil() + 2.0 * HOVER_PAD_X, height + 2.0 * HOVER_PAD_Y)
 }
 
-/// 호버 패널: 기본 12pt medium, 강조 줄은 13.5pt bold. 좌우 10·상하 6 여백.
+/// 호버 패널: 기본 12pt medium, 강조 줄은 15.5pt bold(색 점은 12pt 그대로). 좌우 10·상하 6 여백.
 pub fn render_hover(lines: &[HoverLine], max_width: f32, theme: Theme, scale: f32) -> Rendered {
     let (w, h) = measure_hover(lines, max_width, theme);
     let mut pm = canvas(w, h, scale);
@@ -161,10 +183,20 @@ pub fn render_hover(lines: &[HoverLine], max_width: f32, theme: Theme, scale: f3
         return Rendered { pixmap: pm, width: w, height: h };
     }
     let mut y = HOVER_PAD_Y;
+    let wrap = (max_width - 2.0 * HOVER_PAD_X).max(1.0);
     for line in lines {
+        if let Some((dot, rest)) = emphasized_dot(line) {
+            let (_, h, dw) = measure_emphasized(dot, rest, wrap, theme);
+            // 점은 보통 크기 그대로, 큰 글자 첫 줄의 세로 가운데에 맞춘다.
+            let dy = (text::line_height(15.5) - text::line_height(12.0)) / 2.0;
+            text::draw(&mut pm, HOVER_PAD_X, y + dy, &[Span { text: "● ", color: dot }], 12.0, W_MEDIUM, scale, None);
+            text::draw(&mut pm, HOVER_PAD_X + dw, y, &[Span { text: rest, color: theme.primary() }], 15.5, W_BOLD, scale,
+                Some((wrap - dw).max(1.0)));
+            y += h;
+            continue;
+        }
         let (size, weight) = hover_style(line);
-        let t = text::draw(&mut pm, HOVER_PAD_X, y, &hover_spans(line, theme), size, weight, scale,
-            Some((max_width - 2.0 * HOVER_PAD_X).max(1.0)));
+        let t = text::draw(&mut pm, HOVER_PAD_X, y, &hover_spans(line, theme), size, weight, scale, Some(wrap));
         y += t.height.max(text::line_height(size));
     }
     Rendered { pixmap: pm, width: w, height: h }
