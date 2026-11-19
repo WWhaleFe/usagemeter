@@ -83,10 +83,10 @@ pub fn ui_state(app: AppHandle) -> Value {
             let items_v: Vec<Value> = items
                 .iter()
                 .map(|it| {
-                    let kind = tr(if it.is_five_hour { "menu.line5h" } else { "menu.lineWeekly" }, lang);
+                    let kind = tr(st.main.bar_fill_mode.text_key(if it.is_five_hour { "menu.line5h" } else { "menu.lineWeekly" }), lang);
                     let name = it.model_label.as_ref().map(|l| format!("{l} {kind}")).unwrap_or(kind);
                     json!({
-                        "id": it.id, "name": name, "ratio": it.remaining_ratio,
+                        "id": it.id, "name": name, "ratio": st.main.bar_fill_mode.display_ratio(it.remaining_ratio),
                         "color": rgba_hex(sub_item_color(&st.main, id, &it.id, &items)),
                         "key": um_core::model::UsageSubItem::settings_key(id, &it.id),
                     })
@@ -104,7 +104,7 @@ pub fn ui_state(app: AppHandle) -> Value {
             }))
         })
         .collect();
-    let strings: Map<String, Value> = um_core::i18n::keys().map(|k| (k.to_string(), Value::String(tr(k, lang)))).collect();
+    let strings: Map<String, Value> = um_core::i18n::keys().map(|k| (k.to_string(), Value::String(tr(st.main.bar_fill_mode.text_key(k), lang)))).collect();
     json!({
         "platform": if cfg!(target_os = "macos") { "mac" } else { "win" },
         "store": cfg!(feature = "store"),

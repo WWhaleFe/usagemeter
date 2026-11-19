@@ -1,6 +1,6 @@
 //! 메뉴바·트레이 링 아이콘. (Swift StatusBarController.swift:904-932 `ringImage`)
 //! 18×18pt, inset 2.5, 선 2.4, 반지름 6.5. 트랙 = AI 색 알파 0.28(흐림 0.25),
-//! 호 = 12시에서 시계 방향으로 잔여율 × 360°, 둥근 끝.
+//! 호 = 12시에서 시계 방향으로 표시 비율 × 360°, 둥근 끝.
 
 use kurbo::{Arc, Point, Shape, Vec2};
 use tiny_skia::{LineCap, Paint, PathBuilder, Pixmap, Stroke, Transform};
@@ -9,6 +9,11 @@ use um_core::types::Rgba;
 const SIZE: f64 = 18.0;
 const LINE: f64 = 2.4;
 const RADIUS: f64 = 6.5;
+
+/// 원본 잔여율과 표시 모드로 링을 그린다. AI가 없으면 흐린 트랙을 유지한다.
+pub fn ring_for_mode(remaining: Option<f64>, mode: um_core::settings::BarFillMode, color: Rgba, scale: f64) -> Pixmap {
+    ring(remaining.map(|r| mode.fill_ratio(r)), color, scale)
+}
 
 /// 링 아이콘. `ratio`가 None이면 흐린 트랙만(로그인된 AI 없음). 반환은 미리곱한 RGBA.
 pub fn ring(ratio: Option<f64>, color: Rgba, scale: f64) -> Pixmap {
@@ -66,6 +71,17 @@ pub fn to_straight_rgba(pm: &Pixmap) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn 쓴_양_링은_잔여율의_반대로_채운다() {
+        use um_core::settings::BarFillMode::{Remaining, Used};
+        let color = [0.85, 0.47, 0.34, 1.0];
+        for r in [0.0, 0.25, 0.62, 1.0] {
+            assert_eq!(ring_for_mode(Some(r), Used, color, 2.0), ring(Some(1.0 - r), color, 2.0));
+            assert_eq!(ring_for_mode(Some(r), Remaining, color, 2.0), ring(Some(r), color, 2.0));
+        }
+        assert_eq!(ring_for_mode(None, Used, color, 2.0), ring(None, color, 2.0));
+    }
+
     #[test]
     fn 링_크기와_채움() {
         let full = ring(Some(1.0), [0.85, 0.47, 0.34, 1.0], 2.0);

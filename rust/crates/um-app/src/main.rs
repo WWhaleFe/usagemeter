@@ -180,13 +180,13 @@ fn redraw(app: &AppHandle) {
     let _ = app.run_on_main_thread(move || {
         let st = st.lock().unwrap();
         #[cfg(target_os = "macos")]
-        let hovered = panels::reset_hover();
+        let _ = panels::reset_hover();
         OVERLAY.with(|o| o.borrow_mut().redraw(&st));
         update_tray(&h, &st);
         #[cfg(target_os = "macos")]
         {
             drop(st);
-            if hovered { panels::refresh_hover(&h); }
+            panels::refresh_hover(&h);
         }
     });
 }
@@ -204,7 +204,7 @@ fn update_tray(app: &AppHandle, st: &AppState) {
             t.set_show_menu_on_left_click(!mode.opens_card(true));
             t.set_show_menu_on_right_click(!mode.opens_card(false));
         });
-        panels::refresh_menu_card(st);
+        panels::refresh_cards(st);
     }
 
     let pick = st
@@ -224,7 +224,7 @@ fn update_tray(app: &AppHandle, st: &AppState) {
         ),
         None => (None, [0.55, 0.55, 0.58, 1.0]),
     };
-    // 메뉴바 % 표시: 선택 AI들의 잔여 %를 'AI 표시 순서'대로. 아이콘을 다시 걸 때 클릭 영역이 제목 폭까지 늘어나므로 먼저 건다.
+    // 메뉴바 % 표시: 선택 AI들의 표시 %를 'AI 표시 순서'대로. 아이콘을 다시 걸 때 클릭 영역이 제목 폭까지 늘어나므로 먼저 건다.
     #[cfg(target_os = "macos")]
     {
         let mut shown: Vec<(&String, &UsageSnapshot)> = st
@@ -236,7 +236,7 @@ fn update_tray(app: &AppHandle, st: &AppState) {
         let shown: Vec<(i64, [f64; 4])> = shown
             .into_iter()
             .map(|(id, s)| {
-                ((s.remaining_ratio * 100.0).round() as i64, um_render::border::provider_color(&st.main, id))
+                ((st.main.bar_fill_mode.display_ratio(s.remaining_ratio) * 100.0).round() as i64, um_render::border::provider_color(&st.main, id))
             })
             .collect();
         let _ = tray.with_inner_tray_icon(move |t| {
@@ -245,7 +245,7 @@ fn update_tray(app: &AppHandle, st: &AppState) {
             }
         });
     }
-    let pm = um_render::icon::ring(ratio, color, 2.0);
+    let pm = um_render::icon::ring_for_mode(ratio, st.main.bar_fill_mode, color, 2.0);
     let _ = tray.set_icon(Some(Image::new_owned(
         um_render::icon::to_straight_rgba(&pm),
         pm.width(),
@@ -257,7 +257,7 @@ fn update_tray(app: &AppHandle, st: &AppState) {
         .map(|(id, s)| {
             let name = spec::spec(id).map(|s| s.name).unwrap_or(id);
             let mark = if st.seeds.contains_key(id) { " *" } else { "" };
-            format!("{name} {}%{mark}", (s.remaining_ratio * 100.0).round())
+            format!("{name} {}%{mark}", (st.main.bar_fill_mode.display_ratio(s.remaining_ratio) * 100.0).round())
         })
         .collect();
     if tip.is_empty() {

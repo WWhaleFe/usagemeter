@@ -281,3 +281,21 @@ fn 강조_호버_줄은_더_넓고_높게_그림() {
     assert!(bold.pixmap.pixels().iter().filter(|p| p.alpha() > 0).count()
         > normal.pixmap.pixels().iter().filter(|p| p.alpha() > 0).count());
 }
+
+#[test]
+fn 쓴_양_차트의_선과_툴팁은_같은_사용률을_쓴다() {
+    use um_core::settings::BarFillMode::{Remaining, Used};
+    let mk = || ChartSeries { name: "Claude".into(), color: CLAUDE, points: vec![(100.0, 0.62), (200.0, 0.25)] };
+    let original = mk();
+    let remaining = mk().displayed(Remaining);
+    assert_eq!(remaining.points, original.points);
+    assert_eq!(remaining.tooltip(100.0).as_deref(), Some("Claude 62%"));
+    let used = mk().displayed(Used);
+    assert_eq!(used.points, vec![(100.0, 0.38), (200.0, 0.75)]);
+    assert_eq!(used.tooltip(110.0).as_deref(), Some("Claude 38%"));
+    assert_eq!(used.tooltip(190.0).as_deref(), Some("Claude 75%"));
+    let title = um_core::i18n::tn(Used.text_key("chart.titleFmt"), um_core::types::AppLanguage::Korean, 24);
+    assert_eq!(title, "최근 24시간 사용률(%)");
+    let spec = |series| ChartSpec { title: &title, series, width: 340.0, now: 200.0, hours: 1.0, x_labels: &[], hover_x: Some(300.0) };
+    assert_ne!(render_chart(&spec(&[remaining]), DARK, 1.0).pixmap, render_chart(&spec(&[used]), DARK, 1.0).pixmap);
+}

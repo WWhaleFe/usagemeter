@@ -182,7 +182,7 @@ fn card_image(st: &AppState, scale: f32, hover_x: Option<f32>) -> (panel::Render
                 name: um_providers::spec::spec(id).map(|s| s.name).unwrap_or("AI").to_string(),
                 color: provider_color(&st.main, id),
                 points: pts.iter().map(|p| (p.t, p.r)).collect(),
-            })
+            }.displayed(st.main.bar_fill_mode))
         })
         .collect();
     if series.is_empty() {
@@ -196,7 +196,7 @@ fn card_image(st: &AppState, scale: f32, hover_x: Option<f32>) -> (panel::Render
             Some((t, lt.format("%H").to_string()))
         })
         .collect();
-    let title = um_core::i18n::tn("chart.titleFmt", st.main.language, st.main.chart_hours as i64);
+    let title = um_core::i18n::tn(st.main.bar_fill_mode.text_key("chart.titleFmt"), st.main.language, st.main.chart_hours as i64);
     let chart = panel::render_chart(
         &ChartSpec { title: &title, series: &series, width: card.width, now, hours, x_labels: &labels, hover_x },
         th,
@@ -476,8 +476,22 @@ fn paint_menu_card(view: &objc2_app_kit::NSImageView, st: &AppState) {
     view.setImage(Some(&image));
 }
 
-/// 데이터·설정 갱신은 열린 메뉴의 사용자 뷰에도 바로 반영한다.
-pub fn refresh_menu_card(st: &AppState) {
+/// 데이터·설정 갱신을 열린 정보 패널과 메뉴 카드에 바로 반영한다.
+pub fn refresh_cards(st: &AppState) {
+    // 클릭으로 연 정보 패널도 커서를 움직이지 않아도 즉시 갱신한다.
+    with(|p| {
+        if !p.card_open { return; }
+        let Some(rect) = p.tray else { return };
+        let cx = rect.x + rect.w / 2.0;
+        let screen = screen_of(&p.displays, cx, rect.y + rect.h / 2.0);
+        let scale = screen.map(|(d, _, _)| d.scale).unwrap_or(2.0) as f32;
+        let (r, ch) = card_image(st, scale, p.chart_hover.map(|x| x as f32));
+        p.chart_h = ch;
+        let (w, h) = (r.width as f64, r.height as f64);
+        let (mut x, y) = (cx - w / 2.0, rect.y - h - BAR_GAP);
+        if let Some((d, _, _)) = screen { x = clamp_to_screen(d, x, y, w, h).0; }
+        let _ = p.card.show(r.pixmap.data(), r.pixmap.width(), r.pixmap.height(), scale as f64, x, y);
+    });
     MENU_CARD.with(|c| {
         if let Some(view) = c.borrow().as_ref() { paint_menu_card(view, st); }
     });

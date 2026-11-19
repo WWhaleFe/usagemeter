@@ -28,7 +28,7 @@ pub enum AppAppearance {
     Dark,
 }
 
-/// 테두리 띠의 길이 표시 방식. 모든 화면에 적용한다.
+/// 사용량 표시 방식. 모든 화면의 띠·수치·문구에 적용한다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum BarFillMode {
@@ -38,13 +38,36 @@ pub enum BarFillMode {
 }
 
 impl BarFillMode {
-    /// 잔여율을 실제로 그릴 길이 비율로 바꾼다. 사용량 수치는 바꾸지 않는다.
-    pub fn fill_ratio(self, remaining: f64) -> f64 {
-        let remaining = remaining.clamp(0.0, 1.0);
+    /// 원본 잔여율은 유지하고 화면에 보여 줄 비율만 바꾼다.
+    pub fn display_ratio(self, remaining: f64) -> f64 {
         match self {
             Self::Remaining => remaining,
             Self::Used => 1.0 - remaining,
         }
+    }
+
+    /// 쓴 양 모드의 표시 문구 키. 리셋·시간·분석 문구는 그대로 둔다.
+    pub fn text_key(self, key: &str) -> &str {
+        if self == Self::Remaining { return key; }
+        match key {
+            "menu.line5h" => "menu.line5hUsed",
+            "menu.lineWeekly" => "menu.lineWeeklyUsed",
+            "info.5h" => "info.5hUsed",
+            "info.weekly" => "info.weeklyUsed",
+            "info.opus" => "info.opusUsed",
+            "chart.titleFmt" => "chart.usedTitleFmt",
+            "disp.iconDesc" => "disp.iconUsedDesc",
+            "disp.percentDesc" => "disp.percentUsedDesc",
+            "subItems.desc" => "subItems.usedDesc",
+            // 세부 항목 탭의 보조 값은 주 표시 비율의 반대쪽이다.
+            "subItems.used" => "subItems.remaining",
+            _ => key,
+        }
+    }
+
+    /// 잔여율을 실제로 그릴 길이 비율로 바꾼다.
+    pub fn fill_ratio(self, remaining: f64) -> f64 {
+        self.display_ratio(remaining.clamp(0.0, 1.0))
     }
 }
 

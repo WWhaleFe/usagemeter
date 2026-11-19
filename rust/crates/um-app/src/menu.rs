@@ -73,7 +73,7 @@ pub fn build(app: &AppHandle, st: &AppState) -> R<Menu<Wry>> {
     for (id, key) in INFO_ITEMS {
         let mut tmp = s.clone();
         let on = info_flag(&mut tmp, id).map(|b| *b).unwrap_or(false);
-        info.append(&check(app, id, tr(key, lang), on)?)?;
+        info.append(&check(app, id, tr(s.bar_fill_mode.text_key(key), lang), on)?)?;
     }
     menu.append(&info)?;
 
