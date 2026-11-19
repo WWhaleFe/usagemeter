@@ -15,7 +15,6 @@ mod menu;
 mod native_color;
 mod notifications;
 mod overlay;
-#[cfg(target_os = "macos")]
 mod panels;
 mod state;
 mod symbols;
@@ -32,7 +31,6 @@ use std::time::Duration;
 
 use tauri::image::Image;
 use tauri::tray::TrayIconBuilder;
-#[cfg(target_os = "macos")]
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconEvent};
 use tauri::{AppHandle, Manager};
 use um_core::i18n::tr;
@@ -179,30 +177,27 @@ fn redraw(app: &AppHandle) {
     let h = app.clone();
     let _ = app.run_on_main_thread(move || {
         let st = st.lock().unwrap();
-        #[cfg(target_os = "macos")]
         let _ = panels::reset_hover();
         OVERLAY.with(|o| o.borrow_mut().redraw(&st));
         update_tray(&h, &st);
-        #[cfg(target_os = "macos")]
-        {
-            drop(st);
-            panels::refresh_hover(&h);
-        }
+        drop(st);
+        panels::refresh_hover(&h);
     });
 }
 
 /// 트레이 아이콘·툴팁. (Swift StatusBarController.swift:847-858, 813-842)
 fn update_tray(app: &AppHandle, st: &AppState) {
+    #[cfg(windows)]
+    if panels::menu_tracking() { panels::refresh_cards(st); return; }
     let lang = st.main.language;
     let Some(tray) = app.tray_by_id(TRAY_ID) else {
         return;
     };
-    #[cfg(target_os = "macos")]
     {
         let mode = st.main.tray_click_mode;
         let _ = tray.with_inner_tray_icon(move |t| {
-            t.set_show_menu_on_left_click(!mode.opens_card(true));
-            t.set_show_menu_on_right_click(!mode.opens_card(false));
+            t.set_show_menu_on_left_click(cfg!(target_os = "macos") && !mode.opens_card(true));
+            t.set_show_menu_on_right_click(cfg!(target_os = "macos") && !mode.opens_card(false));
         });
         panels::refresh_cards(st);
     }
@@ -263,8 +258,8 @@ fn update_tray(app: &AppHandle, st: &AppState) {
     if tip.is_empty() {
         tip.push(tr("menu.noAI", lang));
     }
-    // macOS는 호버 패널이 같은 정보를 보여주므로 시스템 툴팁을 끈다(겹쳐 보임). Windows는 플라이아웃 전까지 툴팁.
-    let _ = tray.set_tooltip(if cfg!(target_os = "macos") { None } else { Some(tip.join("\n")) });
+    // 호버 패널을 쓰는 동안 시스템 툴팁이 겹치지 않게 한다.
+    let _ = tray.set_tooltip(if cfg!(target_os = "macos") || st.main.menu_bar_hover_info_enabled { None } else { Some(tip.join("\n")) });
 }
 
 /// AI 하나 조회. Gemini는 agy를 먼저, 없으면 웹. (Swift WebSession.fetchUsage)
@@ -510,6 +505,14 @@ fn tray_rect(app: &AppHandle, r: &tauri::Rect) -> panels::Rect {
     panels::Rect { x: pos.x, y: primary_h - pos.y - size.height, w: size.width, h: size.height }
 }
 
+/// Windows 트레이 영역은 물리 픽셀을 유지하고 y축만 패널 기준으로 바꾼다.
+#[cfg(windows)]
+fn tray_rect(_app: &AppHandle, r: &tauri::Rect) -> panels::Rect {
+    let pos = r.position.to_physical::<f64>(1.0);
+    let size = r.size.to_physical::<f64>(1.0);
+    panels::Rect { x: pos.x, y: -pos.y - size.height, w: size.width, h: size.height }
+}
+
 /// 패널 글꼴 로케일을 앱 언어에 맞춘다(같은 한자도 언어별 글꼴 모양).
 fn apply_text_locale(lang: um_core::types::AppLanguage) {
     um_render::text::set_locale(match lang {
@@ -563,33 +566,38 @@ fn main() {
                 TrayIconBuilder::with_id(TRAY_ID)
                     .icon(Image::new_owned(um_render::icon::to_straight_rgba(&pm), pm.width(), pm.height()))
                     .menu(&menu)
-                    // macOS 클릭 설정은 첫 redraw에서 적용한다. Windows는 기존 메뉴 동작.
-                    .show_menu_on_left_click(cfg!(not(target_os = "macos")))
+                    // 클릭 설정은 첫 redraw에서 적용한다.
+                    .show_menu_on_left_click(false)
                     .on_tray_icon_event(|tray, e| {
-                        #[cfg(target_os = "macos")]
                         {
                             let app = tray.app_handle();
                             match e {
                                 TrayIconEvent::Enter { rect, .. } => panels::tray_hover(app, tray_rect(app, &rect), true),
+                                #[cfg(windows)]
+                                TrayIconEvent::Move { rect, .. } => panels::tray_hover(app, tray_rect(app, &rect), true),
                                 TrayIconEvent::Leave { rect, .. } => panels::tray_hover(app, tray_rect(app, &rect), false),
                                 TrayIconEvent::Click { button, button_state, rect, .. } if matches!(button, MouseButton::Left | MouseButton::Right) => {
                                     let mode = shared(app).lock().unwrap().main.tray_click_mode;
                                     let card = mode.opens_card(button == MouseButton::Left);
                                     if card && button_state == MouseButtonState::Up {
                                         panels::toggle_card(app, tray_rect(app, &rect));
-                                    } else if !card && button_state == MouseButtonState::Down {
-                                        panels::menu_opening();
+                                    } else if !card {
+                                        #[cfg(target_os = "macos")]
+                                        if button_state == MouseButtonState::Down { panels::menu_opening(); }
+                                        #[cfg(windows)]
+                                        if button_state == MouseButtonState::Up {
+                                            let app = app.clone();
+                                            let rect = tray_rect(&app, &rect);
+                                            let _ = tray.app_handle().run_on_main_thread(move || panels::show_menu(&app, rect, mode == um_core::settings::TrayClickMode::Together));
+                                        }
                                     }
                                 }
                                 _ => {}
                             }
                         }
-                        #[cfg(not(target_os = "macos"))]
-                        let _ = (tray, e);
                     })
                     .on_menu_event(|app, e| menu::on_event(app, e.id().as_ref()))
                     .build(app)?;
-                #[cfg(target_os = "macos")]
                 panels::init(app.handle());
             }
             shared_state.lock().unwrap().sync_displays(&um_platform::display::displays());
@@ -674,7 +682,6 @@ fn main() {
                     let _ = h.run_on_main_thread(move || {
                         if OVERLAY.with(|o| o.borrow_mut().check_displays()) {
                             shared(&h2).lock().unwrap().sync_displays(&um_platform::display::displays());
-                            #[cfg(target_os = "macos")]
                             panels::refresh_displays();
                             redraw(&h2);
                         }

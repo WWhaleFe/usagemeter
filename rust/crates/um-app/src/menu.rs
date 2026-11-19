@@ -185,6 +185,8 @@ fn update_items(app: &AppHandle, st: &AppState, lang: AppLanguage) -> R<Vec<Box<
 pub fn rebuild(app: &AppHandle) {
     let h = app.clone();
     let _ = app.run_on_main_thread(move || {
+        #[cfg(windows)]
+        if crate::panels::menu_tracking() { return; }
         let st = crate::shared(&h);
         let Ok(st) = st.lock() else { return };
         if let (Some(tray), Ok(menu)) = (h.tray_by_id(crate::TRAY_ID), build(&h, &st)) {

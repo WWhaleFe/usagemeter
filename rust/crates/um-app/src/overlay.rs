@@ -15,12 +15,9 @@ pub struct Overlay {
     strips: BTreeMap<String, Vec<(OverlayStrip, [f64; 4])>>,
     /// 마지막으로 본 화면 구성(바뀌면 띠 창을 다시 만든다).
     signature: String,
-    #[cfg(target_os = "macos")]
     scenes: BTreeMap<String, (border::BorderScene, border::HoverGeometry, f64)>,
-    #[cfg(target_os = "macos")]
     hover: Option<(String, Vec<usize>, usize)>,
     /// 호버한 선을 띠에 강조해 그리는 중인지(선 강조 옵션). 글 강조만 켜면 후보만 고르고 띠는 그대로.
-    #[cfg(target_os = "macos")]
     hover_draw: bool,
 }
 
@@ -66,8 +63,8 @@ impl Overlay {
     }
 
     pub fn redraw(&mut self, st: &AppState) {
-        #[cfg(target_os = "macos")]
-        { self.scenes.clear(); self.hover = None; }
+        self.scenes.clear();
+        self.hover = None;
         let ds = display::displays();
         if self.signature.is_empty() {
             self.signature = signature(&ds);
@@ -103,7 +100,6 @@ impl Overlay {
                 screen_h: d.height_pt,
                 bands,
             });
-            #[cfg(target_os = "macos")]
             self.scenes.insert(d.id.clone(), (scene.clone(), border::HoverGeometry::new(&scene), d.scale));
             // 띠 개수·위치가 바뀌었으면 새로 만든다.
             if entry.len() != rects.len() || entry.iter().zip(&rects).any(|((_, a), b)| a != b) {
@@ -128,7 +124,6 @@ impl Overlay {
     }
 }
 
-#[cfg(target_os = "macos")]
 impl Overlay {
     /// 후보가 달라질 때만 띠를 다시 그린다. 좌표만 바뀌면 기존 그림을 유지한다.
     pub fn hover_at(&mut self, display: Option<(&str, f64, f64)>, draw: bool) -> Vec<(String, Option<String>)> {

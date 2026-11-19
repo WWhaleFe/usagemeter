@@ -1,7 +1,6 @@
 <script lang="ts">
   // 메뉴바 아이콘·호버·클릭 동작과 드롭다운 정보. 모두 전역(main).
   import { ui, settingsProviders, t, tf, tn, set } from '../../lib/api.svelte';
-  import PlatformFeature from '../../components/PlatformFeature.svelte';
   import Section from '../../components/Section.svelte';
   import Toggle from '../../components/Toggle.svelte';
   const s = $derived(ui.s!);
@@ -28,19 +27,15 @@
     </select>
   </div>
   <span class="caption">{t('disp.iconDesc')}</span>
-  <PlatformFeature>
   <Toggle label={t('menuHover.enable')} checked={m.menuBarHoverInfoEnabled ?? true} onchange={(v) => set('main', { menuBarHoverInfoEnabled: v })} />
   <span class="caption">{t('menuHover.enableDesc')}</span>
-  </PlatformFeature>
 </Section>
 
-<PlatformFeature>
 <Section title={t('tray.clickMode')}>
   <select aria-label={t('tray.clickMode')} value={m.trayClickMode ?? 'split'} onchange={(e) => set('main', { trayClickMode: e.currentTarget.value })}>
     {#each ['split', 'swapped', 'together'] as mode (mode)}<option value={mode}>{t('tray.' + mode)}</option>{/each}
   </select>
 </Section>
-</PlatformFeature>
 
 {#if s.platform === 'mac'}
 <Section title={t('sec.menuPercent')}>
