@@ -5,6 +5,8 @@
 A macOS menu-bar overlay widget that shows your remaining **Claude · Gemini · Codex (ChatGPT plan)** usage as thin colored bands along the screen edges.
 As you use up your quota, the band gets shorter — so you can tell how much is left at a glance, without opening anything.
 
+> 🦀 **Rewritten in Rust as of v2.0.0.** Features and screens match 1.5.0, and idle memory dropped from about 100 MB to 13-36 MB. Updating from 1.5.0 keeps your settings, logins and history.
+
 ## ⬇️ Download (macOS)
 
 **🍺 Homebrew (recommended)**
@@ -34,7 +36,7 @@ Universal binary (Apple Silicon + Intel), macOS 14+.
 
 > ⚠️ The app is not notarized yet, so when installed from the zip the first launch requires **right-click → Open** (not needed with Homebrew). If it still won't open, go to System Settings → Privacy & Security and click "Open Anyway".
 
-> 🪟 **A Windows version** is also in development — but it's expected to take a **considerable amount of time** to complete.
+> 🪟 **A Windows version** is being prepared for the Microsoft Store. To try it early, get the Windows installer (`-setup.exe`) from [Releases](https://github.com/WWhaleFe/usagemeter/releases).
 
 <br>
 
