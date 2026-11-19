@@ -49,6 +49,9 @@ struct Panels {
     card: InfoPanel,
     card_open: bool,
     tray: Option<Rect>,
+    /// Windows: 트레이 아이콘 신호(Enter/Move)가 알려 준 아이콘 영역. 호버를 띄운 동안만 있다.
+    #[cfg(windows)]
+    tray_hover_rect: Option<Rect>,
     /// 마지막으로 그린 호버 글(같으면 위치만 옮긴다).
     hover_key: String,
     emphasis: Vec<(String, Option<String>)>,
@@ -113,6 +116,7 @@ pub fn init(app: &AppHandle) {
     PANELS.with(|p| {
         *p.borrow_mut() = Some(Panels { hover, card, card_open: false, tray: None, hover_key: String::new(), emphasis: vec![], emphasis_timer: None, emphasis_line: false, chart_h: 0.0, chart_hover: None, displays: display::displays(), _mouse: mouse,
             #[cfg(windows)] app: app.clone(),
+            #[cfg(windows)] tray_hover_rect: None,
             #[cfg(target_os = "macos")] _menu_observers: observers })
     });
 }
@@ -371,30 +375,27 @@ fn on_mouse(app: &AppHandle, x: f64, y: f64, kind: MouseKind) {
             card_chart_hover(p, &st, x, y);
             return;
         }
+        // Windows: 아이콘이 숨김 메뉴(^) 안에 있으면 트레이 영역이 ^ 버튼으로 잡혀, 영역 추정으로 띄우면
+        // ^에 올리기만 해도 카드가 떠 숨김 메뉴를 가렸다. 띄우기는 아이콘 신호로만 하고, 여기서는
+        // 신호가 알려 준 아이콘 영역을 벗어나면 Leave를 기다리지 않고 닫는다(숨김 메뉴가 닫히면 Leave가 안 온다).
+        #[cfg(windows)]
+        if let Some(r) = p.tray_hover_rect {
+            if r.contains(x, y) { return; }
+            p.tray_hover_rect = None;
+        }
+        #[cfg(target_os = "macos")]
         if st.main.menu_bar_hover_info_enabled
             && let Some(r) = p.tray
             && let Some((d, _, _)) = screen_of(&p.displays, r.x + r.w / 2.0, r.y + r.h / 2.0)
         {
-            #[cfg(target_os = "macos")]
             let pad = (d.width_pt * 0.006).clamp(8.0, 24.0);
-            #[cfg(target_os = "macos")]
             let top = screen_top(d).1;
-            #[cfg(target_os = "macos")]
             let bar_h = (top - r.y).max(r.h);
-            #[cfg(target_os = "macos")]
             let below = (bar_h * 0.25).max(4.0);
-            #[cfg(target_os = "macos")]
             let zone = Rect { x: r.x - pad, y: r.y - below, w: r.w + pad * 2.0, h: bar_h + below + 1.0 };
-            #[cfg(windows)]
-            let zone = r;
             if zone.contains(x, y) {
                 let d = d.clone();
-                return show_hover_at(p, &st, d.scale as f32, false, |w, h| {
-                    #[cfg(target_os = "macos")]
-                    { clamp_to_screen(&d, x - w / 2.0, r.y - h - BAR_GAP, w, h) }
-                    #[cfg(windows)]
-                    { tray_position(&d, r, w, h) }
-                });
+                return show_hover_at(p, &st, d.scale as f32, false, |w, h| clamp_to_screen(&d, x - w / 2.0, r.y - h - BAR_GAP, w, h));
             }
         }
 
@@ -440,6 +441,8 @@ pub fn tray_hover(app: &AppHandle, rect: Rect, inside: bool) {
     let Ok(st) = st.try_lock() else { return };
     with(|p| {
         p.tray = Some(rect);
+        #[cfg(windows)]
+        { p.tray_hover_rect = inside.then_some(rect); }
         if MENU_TRACKING.load(Ordering::Relaxed) > 0 || !inside || p.card_open || !st.main.menu_bar_hover_info_enabled {
             return hide_hover(p);
         }
