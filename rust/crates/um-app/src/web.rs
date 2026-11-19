@@ -193,13 +193,13 @@ fn close_popups(app: &AppHandle, popups: &LoginPopups) {
     }
 }
 
-/// 로그인 창을 띄우고 로그인이 끝날 때까지 기다린다(창을 닫으면 false). 로그인 판정(Swift LoginWindowController.swift):
+/// 로그인 창을 띄우고 로그인이 끝날 때까지 기다린다(창을 닫으면 None, 끝나면 그 창에서 읽은 사용량). 로그인 판정(Swift LoginWindowController.swift):
 /// Gemini는 서비스 호스트에 있고 인증 쿠키가 있으면, 나머지는 서비스 호스트에서 사용량 JS가 ok를 주면.
-pub fn login(app: &AppHandle, spec: &'static ProviderSpec, title: &str) -> bool {
+pub fn login(app: &AppHandle, spec: &'static ProviderSpec, title: &str) -> Option<Option<Value>> {
     let label = format!("login-{}", spec.id);
     if let Some(w) = app.get_webview_window(&label) {
         activate(&w);
-        return false;
+        return None;
     }
     let (tx, rx) = mpsc::channel::<String>();
     let closed_tx = tx.clone();
@@ -225,7 +225,7 @@ pub fn login(app: &AppHandle, spec: &'static ProviderSpec, title: &str) -> bool 
     // 중첩 팝업도 같은 로그인에 묶어 닫는다(Swift PopupWebView.swift:18-52).
     .on_new_window(move |url, features| popup(&app2, url, features, children.clone()))
     .build();
-    let Ok(win) = built else { tracing::warn!("로그인 창 생성 실패"); return false };
+    let Ok(win) = built else { tracing::warn!("로그인 창 생성 실패"); return None };
     tracing::info!("로그인 창 생성 완료");
     let h = app.clone();
     let children = popups.clone();
@@ -237,48 +237,62 @@ pub fn login(app: &AppHandle, spec: &'static ProviderSpec, title: &str) -> bool 
     });
     activate(&win);
     let result = loop {
-        std::thread::sleep(Duration::from_millis(1200));
-        if popups.closed.load(Ordering::SeqCst) { break false; }
+        std::thread::sleep(Duration::from_millis(600));
+        if popups.closed.load(Ordering::SeqCst) { break None; }
         let Some(w) = app.get_webview_window(&label) else {
-            break false;
+            break None;
         };
         let Ok(url) = w.url() else { continue };
         if !host_matches(&url, spec) {
             continue;
         }
-        let done = if spec.auth_cookie_names.is_empty() {
-            let token = next_token();
-            let prefix = format!("UMRESULT:{token}:");
-            while rx.try_recv().is_ok() {}
-            let _ = w.eval(wrap(spec.usage_js, &token));
-            login_result(&rx, &prefix, &popups.closed, Duration::from_secs(8))
-        } else {
-            has_auth_cookie(&w, spec)
-        };
-        if done {
+        if spec.auth_cookie_names.is_empty() {
+            if let Some(raw) = eval_usage(&w, spec, &rx, &popups.closed) {
+                let _ = w.destroy();
+                break Some(Some(raw));
+            }
+        } else if has_auth_cookie(&w, spec) {
+            // 로그인은 끝났다. 창을 먼저 숨기고, 이미 열린 사용량 화면에서 바로 읽어 숨은 조회 창을 새로 띄우지 않는다.
+            let _ = w.hide();
+            let raw = eval_usage(&w, spec, &rx, &popups.closed);
             let _ = w.destroy();
-            break true;
+            break Some(raw);
         }
     };
     close_popups(app, &popups);
     result
 }
 
+/// 로그인 창에서 사용량을 읽는다. 성공(ok=true)한 결과만 돌려준다.
+fn eval_usage(w: &WebviewWindow, spec: &ProviderSpec, rx: &mpsc::Receiver<String>, closed: &AtomicBool) -> Option<Value> {
+    let token = next_token();
+    let prefix = format!("UMRESULT:{token}:");
+    while rx.try_recv().is_ok() {}
+    let _ = w.eval(wrap(spec.usage_js, &token));
+    login_result(rx, &prefix, closed, Duration::from_secs(8))
+}
+
 /// 늦게 도착한 이전 회차 결과는 현재 로그인 판정에 쓰지 않는다.
-fn login_result(rx: &mpsc::Receiver<String>, prefix: &str, closed: &AtomicBool, timeout: Duration) -> bool {
+fn login_result(rx: &mpsc::Receiver<String>, prefix: &str, closed: &AtomicBool, timeout: Duration) -> Option<Value> {
     let deadline = std::time::Instant::now() + timeout;
     loop {
-        if closed.load(Ordering::SeqCst) { return false; }
-        let Some(left) = deadline.checked_duration_since(std::time::Instant::now()) else { return false };
-        let Ok(title) = rx.recv_timeout(left) else { return false };
+        if closed.load(Ordering::SeqCst) { return None; }
+        let left = deadline.checked_duration_since(std::time::Instant::now())?;
+        let title = rx.recv_timeout(left).ok()?;
         if let Some(raw) = title.strip_prefix(prefix) {
-            return serde_json::from_str::<Value>(raw).is_ok_and(|v| v["ok"] == true);
+            return serde_json::from_str::<Value>(raw).ok().filter(|v| v["ok"] == true);
         }
     }
 }
 
 /// LSUIElement 앱도 다른 앱 앞으로 활성화한다(Swift WebSession.swift:151-152).
 fn activate(win: &WebviewWindow) {
+    // Windows는 백그라운드 앱의 새 창을 다른 창 뒤에 둘 수 있어 잠깐 맨 위로 올렸다 푼다.
+    #[cfg(windows)]
+    {
+        let _ = win.set_always_on_top(true);
+        let _ = win.set_always_on_top(false);
+    }
     let _ = win.set_focus();
     #[cfg(target_os = "macos")]
     {
@@ -463,7 +477,7 @@ mod tests {
             let (tx, rx) = mpsc::channel();
             tx.send(format!("UMRESULT:old:{{\"ok\":{}}}", !ok)).unwrap();
             tx.send(format!("UMRESULT:current:{{\"ok\":{ok}}}")).unwrap();
-            assert_eq!(login_result(&rx, "UMRESULT:current:", &AtomicBool::new(false), Duration::from_millis(20)), ok);
+            assert_eq!(login_result(&rx, "UMRESULT:current:", &AtomicBool::new(false), Duration::from_millis(20)).is_some(), ok);
         }
     }
 
@@ -471,8 +485,8 @@ mod tests {
     fn 닫힌_로그인과_시간초과는_실패() {
         let (tx, rx) = mpsc::channel();
         tx.send("UMRESULT:current:{\"ok\":true}".into()).unwrap();
-        assert!(!login_result(&rx, "UMRESULT:current:", &AtomicBool::new(true), Duration::from_millis(20)));
+        assert!(login_result(&rx, "UMRESULT:current:", &AtomicBool::new(true), Duration::from_millis(20)).is_none());
         let (_tx, rx) = mpsc::channel();
-        assert!(!login_result(&rx, "UMRESULT:current:", &AtomicBool::new(false), Duration::from_millis(1)));
+        assert!(login_result(&rx, "UMRESULT:current:", &AtomicBool::new(false), Duration::from_millis(1)).is_none());
     }
 }

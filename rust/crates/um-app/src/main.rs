@@ -432,34 +432,9 @@ fn toggle_account(app: &AppHandle, id: String) {
             drop(st);
             ipc::changed(&app);
         } else {
-            // 사전 확인은 웹 쿠키만 사용하고 전체 대기는 2초로 제한한다(Swift LoginWindowController.swift:43-54).
-            let (tx, rx) = std::sync::mpsc::channel();
-            let h = app.clone();
-            std::thread::spawn(move || {
-                let cookies = web::read_cookies(&h, sp).unwrap_or_default();
-                let result = if !sp.auth_cookie_names.is_empty() {
-                    cookies.iter().any(|(name, _, _, _)| sp.auth_cookie_names.contains(&name.as_str()))
-                        .then_some(None)
-                } else if cookies.is_empty() {
-                    None
-                } else {
-                    direct::client_with_cookies(sp, cookies, Duration::from_secs(2))
-                        .map(|c| direct::probe_with(&c, sp))
-                        .filter(|raw| raw["ok"] == true)
-                        .map(Some)
-                };
-                let _ = tx.send(result);
-            });
-            if let Ok(Some(raw)) = rx.recv_timeout(Duration::from_secs(2)) {
-                invalidate_session(&app, &id);
-                if let Some(raw) = raw {
-                    apply(&app, &id, um_providers::parse::snapshot_from_probe(&id, &raw, chrono::Utc::now()));
-                    ipc::changed(&app);
-                } else {
-                    refresh_ids(&app, std::slice::from_ref(&id));
-                }
-                return;
-            }
+            // 사전 확인 없이 바로 창을 띄운다. 쿠키만 보고 건너뛰면 Gemini처럼 쿠키는 남았는데 조회가 실패할 때
+            // 창이 끝내 안 뜨고, 확인용 숨은 웹뷰 때문에 창도 최대 2초 늦게 떴다.
+            // 이미 로그인돼 있으면 로그인 창이 첫 판정에서 스스로 닫히고 조회한다.
             login_and_refresh(&app, sp, lang);
         }
     });
@@ -472,18 +447,27 @@ fn login_and_refresh(
     lang: um_core::types::AppLanguage,
 ) -> bool {
     let t = std::time::Instant::now();
-    let ok = web::login(app, sp, &format!("{}  {}", sp.name, tr("acct.login", lang)));
+    let result = web::login(app, sp, &format!("{}  {}", sp.name, tr("acct.login", lang)));
     tracing::info!(
-        "{} 로그인 창 결과 ok={ok} {:.1}초",
+        "{} 로그인 창 결과 ok={} 사용량={} {:.1}초",
         sp.id,
+        result.is_some(),
+        result.as_ref().is_some_and(Option::is_some),
         t.elapsed().as_secs_f64()
     );
-    if ok {
-        // 쿠키가 바뀌었으니 직접 호출 클라이언트를 버린다.
-        invalidate_session(app, sp.id);
-        refresh_ids(app, &[sp.id.to_string()]);
+    let Some(raw) = result else { return false };
+    // 쿠키가 바뀌었으니 직접 호출 클라이언트를 버린다.
+    invalidate_session(app, sp.id);
+    match raw {
+        // 로그인 창에서 이미 읽은 사용량을 바로 쓴다(숨은 조회 창을 다시 띄우지 않음).
+        Some(raw) => {
+            apply(app, sp.id, um_providers::parse::snapshot_from_probe(sp.id, &raw, chrono::Utc::now()));
+            record_history(&mut shared(app).lock().unwrap());
+            ipc::changed(app);
+        }
+        None => refresh_ids(app, &[sp.id.to_string()]),
     }
-    ok
+    true
 }
 
 /// 트레이 아이콘 영역(Tauri: 물리 px, 왼쪽 위 원점) → 전역 AppKit 좌표(pt, 왼쪽 아래 원점).
