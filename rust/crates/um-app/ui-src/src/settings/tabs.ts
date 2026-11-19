@@ -30,5 +30,6 @@ export const TABS: TabDef[] = [
   { id: 'support', component: Support },
 ];
 
-// 직접 해시로 접근해도 스토어판에서는 개발자 탭을 선택할 수 없다.
-export const tabsForStore = (store: boolean) => TABS.filter((tab) => !store || tab.id !== 'support');
+// 직접 해시로 접근해도 스토어판에서는 개발자 탭을, Windows에서는 노치 탭(노치 없는 OS)을 선택할 수 없다.
+export const tabsForStore = (store: boolean, win = false) =>
+  TABS.filter((tab) => !(store && tab.id === 'support') && !(win && tab.id === 'notch'));

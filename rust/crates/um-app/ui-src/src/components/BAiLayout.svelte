@@ -125,11 +125,10 @@
   </div>
   <div class="right">
     <div class="presets">
-      {#each PRESETS as pr (pr.key)}
-        <button class="small" title={win && pr.key === 'menuBar' ? t('platform.windowsUnsupported') : undefined} disabled={pr.off} onclick={() => applyPreset(pr.key, pr.caps)}>{pr.label}</button>
+      {#each PRESETS.filter((pr) => !(win && pr.key === 'menuBar')) as pr (pr.key)}
+        <button class="small" disabled={pr.off} onclick={() => applyPreset(pr.key, pr.caps)}>{pr.label}</button>
       {/each}
     </div>
-    {#if win}<span class="caption">{t('part.menuWindows')}</span>{/if}
     <BSegDiagram options={p.segOptions} color={p.color} {menuOn} {dockOn} {warning} ontoggle={toggle} onexclusive={exclusive} />
   </div>
 </section>

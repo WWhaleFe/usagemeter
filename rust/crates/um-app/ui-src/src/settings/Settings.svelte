@@ -5,7 +5,7 @@
   import { tabsForStore } from './tabs';
 
   let { initialTab = '' }: { initialTab?: string } = $props();
-  const tabs = $derived(tabsForStore(!!ui.s?.store));
+  const tabs = $derived(tabsForStore(!!ui.s?.store, ui.s?.platform === 'win'));
   let tab = $state('login');
   // 메뉴에서 특정 탭으로 열면(예: 갱신 주기 "사용자 설정…") 그 탭으로.
   $effect(() => { if (initialTab) tab = initialTab; });

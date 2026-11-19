@@ -12,11 +12,11 @@
 </script>
 
 <Section title={t('sec.partition')}>
-  <PlatformFeature hintKey="part.menuWindows">
+  <PlatformFeature>
   <Toggle label={t('part.menuLine')} checked={menuOn} onchange={(v) => set('border', { menuLineEnabled: v })} />
   <Slider label={t('part.menuHeight')} value={b.menuLineHeight ?? 25} min={5} max={200} unit="pt" disabled={!menuOn} onchange={(v) => set('border', { menuLineHeight: v })} />
-  </PlatformFeature>
   <hr />
+  </PlatformFeature>
   <Toggle label={t(win ? 'part.taskbarLine' : 'part.dockLine')} checked={dockOn} onchange={(v) => set('border', { dockLineEnabled: v })} />
   {#if win}
     <span class="caption">{t('part.taskbarDesc')}</span>

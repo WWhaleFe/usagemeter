@@ -434,6 +434,7 @@ fn agy_executable_candidates() {
         w,
         [
             r"C:\Users\fake\.local\bin\agy.exe",
+            r"C:\Users\fake\.local\bin\agy.cmd",
             r"C:\Users\fake\.gemini\antigravity-cli\bin\agy.exe",
             r"C:\Users\fake\.gemini\antigravity-cli\bin\agy.cmd",
             r"C:\Tools\agy.EXE",
@@ -444,7 +445,7 @@ fn agy_executable_candidates() {
     );
     // PATHEXT가 없으면 기본 확장자
     let d = agy::candidates(Os::Windows, "H", Some("P"), None);
-    assert_eq!(d.len(), 3 + 4);
+    assert_eq!(d.len(), 4 + 4);
 }
 
 #[test]
@@ -528,4 +529,16 @@ fn start_retry_policy() {
     assert!(!state::should_retry(&ok_snap(1.0)));
     assert!(!state::should_retry(&fail_snap(UsageStatus::AuthExpired)));
     assert!(state::should_retry(&fail_snap(UsageStatus::Unavailable("x".into()))));
+}
+
+#[test]
+fn agy_출력_앞의_bom과_안내_줄을_건너뛴다() {
+    let body = include_str!("fixtures/agy_success.json");
+    let mut p = AgyParser::default();
+    let plain = p.parse(body.as_bytes(), "gemini", chrono::Utc::now()).unwrap();
+    for prefix in ["\u{feff}", "Checking for updates...\r\n", "\u{feff}notice\n"] {
+        let mut p = AgyParser::default();
+        let s = p.parse(format!("{prefix}{body}").as_bytes(), "gemini", chrono::Utc::now()).unwrap();
+        assert_eq!(s.sub_items().len(), plain.sub_items().len());
+    }
 }

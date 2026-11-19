@@ -70,7 +70,10 @@ pub fn fetch_agy(parser: &std::sync::Mutex<AgyParser>) -> Option<UsageSnapshot> 
         .home_dir()
         .to_string_lossy()
         .to_string();
-    let exe = agy::find_executable(os, &home)?;
+    let Some(exe) = agy::find_executable(os, &home).or_else(where_agy) else {
+        tracing::info!("agy 실행 파일 없음: Gemini는 웹 조회로(세부 항목이 적다)");
+        return None;
+    };
     let mut cmd = Command::new(exe);
     cmd.args(agy::args(os))
         .stdin(Stdio::null())
@@ -90,7 +93,13 @@ pub fn fetch_agy(parser: &std::sync::Mutex<AgyParser>) -> Option<UsageSnapshot> 
         use std::os::windows::process::CommandExt;
         cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
     }
-    let mut child = cmd.spawn().ok()?;
+    let mut child = match cmd.spawn() {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::warn!("agy 실행 실패: {e}");
+            return None;
+        }
+    };
     // 출력이 파이프 버퍼보다 커도 막히지 않게 따로 읽는다.
     let mut stdout = child.stdout.take()?;
     let reader = std::thread::spawn(move || {
@@ -102,8 +111,12 @@ pub fn fetch_agy(parser: &std::sync::Mutex<AgyParser>) -> Option<UsageSnapshot> 
     loop {
         match child.try_wait() {
             Ok(Some(st)) if st.success() => break,
-            Ok(Some(_)) => return None,
+            Ok(Some(st)) => {
+                tracing::warn!("agy 비정상 종료: {st}");
+                return None;
+            }
             Ok(None) if start.elapsed() > Duration::from_secs(agy::TIMEOUT_SECS) => {
+                tracing::warn!("agy 시간 초과({}초)", agy::TIMEOUT_SECS);
                 let _ = child.kill();
                 return None;
             }
@@ -112,5 +125,27 @@ pub fn fetch_agy(parser: &std::sync::Mutex<AgyParser>) -> Option<UsageSnapshot> 
         }
     }
     let out = reader.join().ok()?;
-    parser.lock().unwrap().parse(&out, "gemini", Utc::now())
+    let snap = parser.lock().unwrap().parse(&out, "gemini", Utc::now());
+    match &snap {
+        // 출력 내용(계정·대화 정보가 섞일 수 있음)은 남기지 않고 크기·개수만.
+        Some(s) => tracing::info!("agy 조회 {:.1}초, 세부 항목 {}개", start.elapsed().as_secs_f64(), s.sub_items().len()),
+        None => tracing::warn!("agy 출력 해석 실패({}바이트)", out.len()),
+    }
+    snap
+}
+
+/// PATH가 앱 시작 뒤에 바뀌었거나 사용자 PATH에만 있을 때를 위해 Windows `where`로 한 번 더 찾는다.
+#[cfg(windows)]
+fn where_agy() -> Option<std::path::PathBuf> {
+    use std::os::windows::process::CommandExt;
+    let out = Command::new("where.exe").arg("agy").stdin(Stdio::null()).stderr(Stdio::null())
+        .creation_flags(0x0800_0000).output().ok()?;
+    if !out.status.success() { return None; }
+    String::from_utf8_lossy(&out.stdout).lines().map(str::trim).filter(|l| !l.is_empty())
+        .map(std::path::PathBuf::from).find(|p| agy::is_executable(p))
+}
+
+#[cfg(not(windows))]
+fn where_agy() -> Option<std::path::PathBuf> {
+    None
 }

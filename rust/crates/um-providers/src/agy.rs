@@ -13,7 +13,8 @@ use um_core::model::{UsageModelBucket, UsageSnapshot, UsageStatus};
 use crate::parse::parse_iso;
 
 /// 실행 제한 시간(초). (AgyIntegration.swift `runProcess` timeoutSeconds)
-pub const TIMEOUT_SECS: u64 = 12;
+/// Windows는 큰 실행 파일의 첫 실행이 백신 검사로 늦어 12초를 넘기면 웹 조회로 떨어져 세부 항목이 빠졌다.
+pub const TIMEOUT_SECS: u64 = if cfg!(windows) { 30 } else { 12 };
 /// 같은 리셋 주기 안에서 이만큼 미만의 상승은 레플리카 차이로 보고 무시한다.
 pub const MONOTONIC_EPSILON: f64 = 0.12;
 /// Gemini 대표 항목의 플랜 라벨.
@@ -52,6 +53,7 @@ pub fn candidates(os: Os, home: &str, path_env: Option<&str>, pathext: Option<&s
         }
         Os::Windows => {
             out.push(format!("{home}\\.local\\bin\\agy.exe"));
+            out.push(format!("{home}\\.local\\bin\\agy.cmd"));
             out.push(format!("{home}\\.gemini\\antigravity-cli\\bin\\agy.exe"));
             out.push(format!("{home}\\.gemini\\antigravity-cli\\bin\\agy.cmd"));
             let exts: Vec<&str> = pathext.filter(|p| !p.is_empty()).unwrap_or(".COM;.EXE;.BAT;.CMD").split(';').filter(|e| !e.is_empty()).collect();
@@ -110,6 +112,15 @@ pub fn child_path_unix(home: &str, existing: Option<&str>) -> String {
     }
 }
 
+/// 출력에서 JSON 본문만. Windows 콘솔 출력의 UTF-8 BOM이나 앞에 붙은 안내 줄을 건너뛴다.
+pub fn json_body(data: &[u8]) -> &[u8] {
+    let data = data.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(data);
+    match data.iter().position(|&b| b == b'{') {
+        Some(i) => &data[i..],
+        None => data,
+    }
+}
+
 #[derive(Debug)]
 struct Latest {
     ratio: f64,
@@ -135,7 +146,7 @@ impl AgyParser {
 
     /// 출력 바이트 -> 스냅샷. 상태가 SUCCESS가 아니거나 그룹이 없으면 None(웹 조회로 폴백).
     pub fn parse(&mut self, data: &[u8], provider_id: &str, now: DateTime<Utc>) -> Option<UsageSnapshot> {
-        let root: Value = serde_json::from_slice(data).ok()?;
+        let root: Value = serde_json::from_slice(json_body(data)).ok()?;
         if root.get("status").and_then(Value::as_str) != Some("SUCCESS") {
             return None;
         }
