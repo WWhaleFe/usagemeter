@@ -53,9 +53,9 @@ fn snapshot_value(s: &Settings) -> Value {
 }
 
 /// Windows에서 작업 표시줄 문구로 바꿔 보여 줄 Dock 관련 키(`win.<키>`가 i18n에 있어야 한다).
-const WIN_TERMS: [&str; 15] = [
+const WIN_TERMS: [&str; 14] = [
     "corner.linkMainDock", "part.dockHeight", "part.dockLine", "preset.dockWrap",
-    "part.diagramBasis", "seg.hDock", "seg.lDock", "seg.rDock", "zone.dock", "hoverArea.dockLine",
+    "seg.hDock", "seg.lDock", "seg.rDock", "zone.dock", "hoverArea.dockLine",
     "part.dockBoundaryHeight", "part.dockWidth", "seg.dockVertical", "seg.dockTop", "seg.dockBottom",
 ];
 

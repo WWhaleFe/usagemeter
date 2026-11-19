@@ -384,16 +384,6 @@
     "Follows the Dock position automatically. For a side Dock, the boundary setting is its width from the edge.",
     "Dock の位置に自動追従します。左右の Dock では境界の設定値は端からの幅です。"
   ],
-  "part.diagramBasis": [
-    "배치 그림과 방향 설정은 아래 Dock 기준입니다.",
-    "Layout diagrams and direction settings use a bottom Dock.",
-    "配置図と方向設定は下側の Dock が基準です。"
-  ],
-  "win.part.diagramBasis": [
-    "배치 그림과 방향 설정은 아래 작업 표시줄 기준입니다.",
-    "Layout diagrams and direction settings use a bottom taskbar.",
-    "配置図と方向設定は下側のタスクバーが基準です。"
-  ],
   "part.dockBoundaryHeight": [
     "Dock 경계 높이 (pt)",
     "Dock boundary height (pt)",
