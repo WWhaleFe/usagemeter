@@ -1,5 +1,4 @@
-// 설정 탭 목록. macOnly = Windows에서 숨김(Windows는 화면 테두리만: 구분선·노치 없음).
-// glyph = Windows 탐색 창 아이콘(Segoe Fluent Icons 코드).
+// 두 플랫폼이 같은 탭과 순서를 사용한다.
 import type { Component } from 'svelte';
 import Login from './tabs/Login.svelte';
 import Presets from './tabs/Presets.svelte';
@@ -14,19 +13,19 @@ import Corner from './tabs/Corner.svelte';
 import Notch from './tabs/Notch.svelte';
 import Support from './tabs/Support.svelte';
 
-export interface TabDef { id: string; component: Component; glyph: string; macOnly?: boolean }
+export interface TabDef { id: string; component: Component }
 
 export const TABS: TabDef[] = [
-  { id: 'login', component: Login, glyph: '' },
-  { id: 'presets', component: Presets, glyph: '' },
-  { id: 'display', component: Display, glyph: '' },
-  { id: 'menuBar', component: MenuBar, glyph: '\uE700' },
-  { id: 'interval', component: Interval, glyph: '' },
-  { id: 'line', component: Line, glyph: '' },
-  { id: 'subItems', component: SubItems, glyph: '' },
-  { id: 'partition', component: Partition, glyph: '', macOnly: true },
-  { id: 'layout', component: Layout, glyph: '' },
-  { id: 'corner', component: Corner, glyph: '' },
-  { id: 'notch', component: Notch, glyph: '', macOnly: true },
-  { id: 'support', component: Support, glyph: '' },
+  { id: 'login', component: Login },
+  { id: 'presets', component: Presets },
+  { id: 'display', component: Display },
+  { id: 'menuBar', component: MenuBar },
+  { id: 'interval', component: Interval },
+  { id: 'line', component: Line },
+  { id: 'subItems', component: SubItems },
+  { id: 'partition', component: Partition },
+  { id: 'layout', component: Layout },
+  { id: 'corner', component: Corner },
+  { id: 'notch', component: Notch },
+  { id: 'support', component: Support },
 ];

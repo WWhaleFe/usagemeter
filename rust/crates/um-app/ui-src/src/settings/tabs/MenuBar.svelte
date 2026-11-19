@@ -1,6 +1,7 @@
 <script lang="ts">
   // 메뉴바 아이콘·호버·클릭 동작과 드롭다운 정보. 모두 전역(main).
   import { ui, settingsProviders, t, tf, tn, set } from '../../lib/api.svelte';
+  import PlatformFeature from '../../components/PlatformFeature.svelte';
   import Section from '../../components/Section.svelte';
   import Toggle from '../../components/Toggle.svelte';
   const s = $derived(ui.s!);
@@ -27,26 +28,28 @@
     </select>
   </div>
   <span class="caption">{t('disp.iconDesc')}</span>
-  {#if s.platform === 'mac'}
+  <PlatformFeature>
   <Toggle label={t('menuHover.enable')} checked={m.menuBarHoverInfoEnabled ?? true} onchange={(v) => set('main', { menuBarHoverInfoEnabled: v })} />
   <span class="caption">{t('menuHover.enableDesc')}</span>
-  {/if}
+  </PlatformFeature>
 </Section>
 
-{#if s.platform === 'mac'}
+<PlatformFeature>
 <Section title={t('tray.clickMode')}>
   <select aria-label={t('tray.clickMode')} value={m.trayClickMode ?? 'split'} onchange={(e) => set('main', { trayClickMode: e.currentTarget.value })}>
     {#each ['split', 'swapped', 'together'] as mode (mode)}<option value={mode}>{t('tray.' + mode)}</option>{/each}
   </select>
 </Section>
-{/if}
+</PlatformFeature>
 
+{#if s.platform === 'mac'}
 <Section title={t('sec.menuPercent')}>
   {#each providers as p (p.id)}
     <Toggle label={tf('disp.showPercent', p.name)} checked={percentIDs.includes(p.id)} onchange={(v) => set('main', { menuBarPercentIDs: member(percentIDs, p.id, v) })} />
   {/each}
   <span class="caption">{t('disp.percentDesc')}</span>
 </Section>
+{/if}
 
 <Section title={t('sec.dropdownInfo')}>
   <div class="grid">
@@ -54,7 +57,7 @@
       <Toggle label={t(key)} checked={m[field] ?? infoDefault[field] ?? false} onchange={(v) => set('main', { [field]: v })} />
     {/each}
   </div>
-  <div class="row" class:off={s.platform === 'mac' && !chartOn}>
+  <div class="row" class:off={!chartOn}>
     <label class="grow" for="chart-hours">{t('chart.range')}</label>
     <select id="chart-hours" value={m.chartHours ?? 24} disabled={!chartOn} onchange={(e) => set('main', { chartHours: +e.currentTarget.value })}>
       {#each [6, 12, 24] as h (h)}<option value={h}>{tn('chart.hoursFmt', h)}</option>{/each}

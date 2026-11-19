@@ -10,11 +10,12 @@
   const page = $derived(hash.split('/')[0] || 'settings');
   const tab = $derived(hash.split('/')[1] ?? '');
 
-  // 외관(시스템·밝게·어둡게)과 OS 스킨을 문서에 반영.
+  // 레이아웃 스킨은 공통으로 쓰고, OS는 글꼴·네이티브 기능에만 반영한다.
   $effect(() => {
     const s = ui.s;
     if (!s) return;
-    document.documentElement.dataset.skin = s.platform === 'mac' ? 'macos' : 'win';
+    document.documentElement.dataset.skin = 'macos';
+    document.documentElement.dataset.platform = s.platform;
     const ap = s.main.appearance as string | undefined;
     document.documentElement.dataset.theme = ap === 'light' || ap === 'dark' ? ap : '';
     document.documentElement.lang = s.lang;

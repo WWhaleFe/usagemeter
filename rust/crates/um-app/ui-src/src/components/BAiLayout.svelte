@@ -56,16 +56,16 @@
     mutate({ hCaps: { ...caps, [capKey(h, right)]: on ? dir : 'none' } });
   }
 
-  // 모양 프리셋: 영역 둘레 + 끝 캡 묶음(Swift presetButton). Windows는 메뉴바·Dock 프리셋 없음.
+  // 모양 프리셋: 영역 둘레 + 끝 캡 묶음(Swift presetButton). Windows의 메뉴바·Dock 프리셋은 비활성.
   const PRESETS = $derived<{ key: 'all' | 'menuBar' | 'main' | 'dock'; label: string; off: boolean; caps: Record<string, SegCap> }[]>([
     { key: 'all', label: t('lay.zoneAll'), off: false, caps: {} },
-    ...(win ? [] : [{ key: 'menuBar' as const, label: t('zone.menuBar'), off: !menuOn, caps: { 'hMenu.L': 'down', 'hMenu.R': 'down' } as Record<string, SegCap> }]),
+    { key: 'menuBar', label: t('zone.menuBar'), off: win || !menuOn, caps: { 'hMenu.L': 'down', 'hMenu.R': 'down' } },
     { key: 'main', label: t('zone.main'), off: false, caps: {} },
-    ...(win ? [] : [{ key: 'dock' as const, label: t('zone.dock'), off: !dockOn, caps: { 'hDock.L': 'up', 'hDock.R': 'up' } as Record<string, SegCap> }]),
+    { key: 'dock', label: t('zone.dock'), off: win || !dockOn, caps: { 'hDock.L': 'up', 'hDock.R': 'up' } },
   ]);
   function applyPreset(key: 'all' | 'menuBar' | 'main' | 'dock', hCaps: Record<string, SegCap>) {
     const sp = p.shapePresets[key];
-    if (!sp?.allowed || (!win && ((key === 'menuBar' && !menuOn) || (key === 'dock' && !dockOn)))) return;
+    if (!sp?.allowed || ((key === 'menuBar' || key === 'dock') && (win || (key === 'menuBar' ? !menuOn : !dockOn)))) return;
     mutate({ zones: sp.zones, segments: sp.segments, hCaps });
   }
 
@@ -126,9 +126,10 @@
   <div class="right">
     <div class="presets">
       {#each PRESETS as pr (pr.key)}
-        <button class="small" disabled={pr.off} onclick={() => applyPreset(pr.key, pr.caps)}>{pr.label}</button>
+        <button class="small" title={win && (pr.key === 'menuBar' || pr.key === 'dock') ? t('platform.windowsUnsupported') : undefined} disabled={pr.off} onclick={() => applyPreset(pr.key, pr.caps)}>{pr.label}</button>
       {/each}
     </div>
+    {#if win}<span class="caption">{t('platform.windowsUnsupported')}</span>{/if}
     <BSegDiagram options={p.segOptions} color={p.color} {menuOn} {dockOn} {warning} ontoggle={toggle} onexclusive={exclusive} />
   </div>
 </section>
@@ -138,7 +139,6 @@
     display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 14px; margin: 0 0 10px; padding: 10px 12px;
     background: var(--surface); border: 1px solid var(--surface-stroke); border-radius: var(--r-card);
   }
-  :global(:root[data-skin="win"]) .box { padding: 12px 16px; margin-bottom: 12px; }
   .left { flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
   .right { flex: none; width: 209px; display: flex; flex-direction: column; gap: 4px; }
   h3 { margin: 0; font-size: var(--fs-title); font-weight: 600; }
@@ -152,7 +152,6 @@
   /* 프리셋 2x2: 다이어그램 폭에 맞춘다(Swift :762-780). */
   .presets { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; width: 209px; }
   .small { min-height: 22px; padding: 1px 6px; font-size: var(--fs-small); }
-  :global(:root[data-skin="win"]) .small { min-height: 28px; }
   :global(:root[data-skin="macos"]) .box { flex-wrap: nowrap; gap: 10px; padding: 12px; border: 0; margin-bottom: 12px; }
   /* 왼쪽 열은 남는 폭을 다 쓰고 미리보기는 오른쪽 끝에 붙인다(오른쪽 빈 공간 없앰). */
   :global(:root[data-skin="macos"]) .left { flex: 1 1 auto; width: auto; min-width: 0; gap: 8px; }

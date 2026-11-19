@@ -18,10 +18,10 @@
       {#if p.loggedIn}
         <button onclick={() => act('logout', { id: p.id })}>{t('acct.logout')}</button>
       {:else}
-        <button class:primary={s.platform === 'win'} onclick={() => act('login', { id: p.id })}>{t('acct.login')}</button>
+        <button onclick={() => act('login', { id: p.id })}>{t('acct.login')}</button>
       {/if}
     </div>
-    {#if s.platform === 'mac' && i < providers.length - 1}<hr />{/if}
+    {#if i < providers.length - 1}<hr />{/if}
   {/each}
 </Section>
 

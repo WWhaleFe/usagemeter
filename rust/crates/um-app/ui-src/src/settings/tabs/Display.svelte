@@ -1,6 +1,7 @@
 <script lang="ts">
   // 표시 탭: 언어, 모양, AI 순서, 테두리 호버, 알림, 로컬 기록. 모두 전역(main).
   import { ui, t, tn, act, set } from '../../lib/api.svelte';
+  import PlatformFeature from '../../components/PlatformFeature.svelte';
   import Section from '../../components/Section.svelte';
   import Toggle from '../../components/Toggle.svelte';
   import Slider from '../../components/Slider.svelte';
@@ -45,14 +46,14 @@
   {#each order as id, i (id)}
     <div class="row order-row">
       <span class="grow">{i + 1}. {s.providers.find((p) => p.id === id)?.name}</span>
-      <button class="icon" aria-label={t('order.up')} title={t('order.up')} disabled={i === 0} onclick={() => move(i, -1)}>{#if s.platform === 'mac'}<Icon name="chevron.up" size={10} />{:else}▲{/if}</button>
-      <button class="icon" aria-label={t('order.down')} title={t('order.down')} disabled={i === order.length - 1} onclick={() => move(i, 1)}>{#if s.platform === 'mac'}<Icon name="chevron.down" size={10} />{:else}▼{/if}</button>
+      <button class="icon" aria-label={t('order.up')} title={t('order.up')} disabled={i === 0} onclick={() => move(i, -1)}><Icon name="chevron.up" size={10} /></button>
+      <button class="icon" aria-label={t('order.down')} title={t('order.down')} disabled={i === order.length - 1} onclick={() => move(i, 1)}><Icon name="chevron.down" size={10} /></button>
     </div>
   {/each}
   <span class="caption">{t('order.desc')}</span>
 </Section>
 
-{#if s.platform === 'mac'}
+<PlatformFeature>
 <Section title={t('sec.hover')}>
   <Toggle label={t('hover.enable')} checked={hoverOn} onchange={(v) => set('main', { hoverInfoEnabled: v })} />
   <span class="caption">{t('hover.enableDesc')}</span>
@@ -75,8 +76,7 @@
   </fieldset>
 
 </Section>
-
-{/if}
+</PlatformFeature>
 
 <Section title={t('sec.notify')}>
   <Toggle label={t('notify.enable')} checked={notifyOn} onchange={(v) => set('main', { notifyEnabled: v })} />

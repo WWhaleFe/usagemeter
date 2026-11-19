@@ -1,6 +1,6 @@
 <script lang="ts">
   // 개발자에게 탭(Swift SupportView.swift): 리포트 메일, 후원(GitHub Sponsors, 카카오페이 QR).
-  import { ui, t, act } from '../../lib/api.svelte';
+  import { t, act } from '../../lib/api.svelte';
   import Section from '../../components/Section.svelte';
   import Icon from '../../analytics/Icon.svelte';
   const EMAIL = 'feedback.wwhale@gmail.com';
@@ -25,8 +25,8 @@
       <p class="caption desc">{t('report.desc')}</p>
       <code class="mail">{EMAIL}</code>
       <div class="row btns">
-        <button class="primary" onclick={() => act('openMail')}>{#if ui.s?.platform === 'mac'}<Icon name="send" />{/if}{t('report.openMail')}</button>
-        <button onclick={() => copy()} aria-live="polite">{#if ui.s?.platform === 'mac'}<Icon name={copied ? 'check' : 'copy'} />{/if}{copied ? t('report.copied') : t('report.copyEmail')}</button>
+        <button class="primary" onclick={() => act('openMail')}><Icon name="send" />{t('report.openMail')}</button>
+        <button onclick={() => copy()} aria-live="polite"><Icon name={copied ? 'check' : 'copy'} />{copied ? t('report.copied') : t('report.copyEmail')}</button>
       </div>
     </div>
   </Section>
@@ -40,7 +40,7 @@
       <p class="caption desc">{t('support.kakaoScan')}</p>
       {#if qr}
         <div class="qr" role="img" aria-label={t('support.kakaoTitle')}>{@html qr.svg}</div>
-        <button onclick={() => act('openUrl', { url: qr!.url })}>{#if ui.s?.platform === 'mac'}<Icon name="link" />{/if}{t('support.kakaoOpen')}</button>
+        <button onclick={() => act('openUrl', { url: qr!.url })}><Icon name="link" />{t('support.kakaoOpen')}</button>
       {/if}
       </div>
       <p class="caption desc">{t('support.thanks')}</p>

@@ -23,6 +23,7 @@ fn open_inner(app: &AppHandle, page: &str) {
     if kind == "linedrag" {
         return open_line_drag(app);
     }
+    // 두 플랫폼이 같은 논리 크기를 사용하며 Windows DPI 배율은 Tauri가 적용한다.
     let (label, w, h) = match kind {
         "analytics" => ("analytics", 1000.0, 720.0),
         _ => ("settings", 760.0, 880.0), // 설정·후원은 같은 창(후원 탭)
@@ -36,7 +37,7 @@ fn open_inner(app: &AppHandle, page: &str) {
         return;
     }
     let lang = crate::shared(app).lock().map(|s| s.main.language).unwrap_or_default();
-    let title = um_core::i18n::tr(if label == "analytics" { "analytics.title" } else if cfg!(target_os = "macos") { "window.settings" } else { "menu.settings" }, lang);
+    let title = um_core::i18n::tr(if label == "analytics" { "analytics.title" } else { "window.settings" }, lang);
     let url = WebviewUrl::App(format!("index.html#{hash}").into());
     let builder = WebviewWindowBuilder::new(app, label, url).title(title).inner_size(w, h).min_inner_size(640.0, 520.0).center();
     #[cfg(target_os = "macos")]

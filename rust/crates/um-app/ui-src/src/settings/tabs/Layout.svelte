@@ -25,6 +25,5 @@
 
 <style>
   .box { margin: 0 0 10px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--surface-stroke); border-radius: var(--r-card); }
-  :global(:root[data-skin="win"]) .box { padding: 10px 16px; margin-bottom: 12px; }
   :global(:root[data-skin="macos"]) .box { padding: 12px; margin-bottom: 12px; border: 0; }
 </style>

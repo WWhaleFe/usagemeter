@@ -38,7 +38,7 @@
             {#if s.platform === 'mac'}
               <button class="color-well" disabled={!split} aria-label={it.name} onclick={() => act('pickColor', { id: p.id, item: it.key })}><span style:background={it.color}></span></button>
             {:else}
-              <input type="color" value={it.color} disabled={!split} aria-label={it.name} onchange={(e) => setColor(it.key, e.currentTarget.value)} />
+              <input class="color-well" type="color" value={it.color} disabled={!split} aria-label={it.name} onchange={(e) => setColor(it.key, e.currentTarget.value)} />
             {/if}
             <span class="name grow" title={it.name}>{it.name}</span>
             <span class="bar" style:background={it.color + '2e'} aria-hidden="true"><span style:background={it.color} style:width="{pct}%"></span></span>

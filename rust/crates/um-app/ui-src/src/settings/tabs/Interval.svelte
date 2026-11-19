@@ -9,13 +9,13 @@
 </script>
 
 <Section title={t('sec.interval')}>
-  <div class="row" class:off={s.platform === 'mac' && !!m.refreshUseCustom}>
+  <div class="row" class:off={!!m.refreshUseCustom}>
     <span class="grow">{t('interval.preset')}</span>
     <select value={m.refreshPresetMinutes} disabled={m.refreshUseCustom} onchange={(e) => set('main', { refreshPresetMinutes: +(e.currentTarget as HTMLSelectElement).value })}>
       {#each s.refreshPresets as n (n)}<option value={n}>{tn('interval.minutesFmt', n)}</option>{/each}
     </select>
   </div>
-  {#if s.platform === 'mac'}<hr />{/if}
+  <hr />
   <Toggle label={t('interval.useCustom')} checked={!!m.refreshUseCustom} onchange={(v) => set('main', { refreshUseCustom: v })} />
   <Slider label={t('interval.customMin')} value={m.refreshCustomMinutes ?? 5} min={1} max={180} step={1} disabled={!m.refreshUseCustom} onchange={(v) => set('main', { refreshCustomMinutes: Math.round(v) })} />
   <span class="caption">{tn('interval.currentFmt', s.effectiveRefresh)}</span>

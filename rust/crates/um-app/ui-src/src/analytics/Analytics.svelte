@@ -4,7 +4,7 @@
   import { onMount } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
   import { listen } from '@tauri-apps/api/event';
-  import { ui, t, tf, tn, act } from '../lib/api.svelte';
+  import { t, tf, tn, act } from '../lib/api.svelte';
   import Card from './Card.svelte';
   import DetailTable from './DetailTable.svelte';
   import Donut from './Donut.svelte';
@@ -23,7 +23,6 @@
   let range = $state<Range>('day1');
   // 보기: 한도(잔여율 이력) / 토큰(로컬 기록). 로컬 기록을 아직 묻지 않았으면 동의 안내를 띄운다.
   let view = $state<'limits' | 'tokens'>('limits');
-  const mac = $derived(ui.s?.platform === 'mac');
   let asked = $state(true);
   onMount(() => {
     invoke<{ asked: boolean }>('ui_locallogs').then((v) => (asked = v.asked)).catch((e) => console.error('ui_locallogs', e));
@@ -117,24 +116,16 @@
           <button role="radio" aria-checked={range === r.id} class:on={range === r.id} onclick={() => (range = r.id)}>{t(r.key)}</button>
         {/each}
       </div>
-      {#if mac}
-        <div class="mac-view">
-          <Segmented options={[{ value: 'limits', label: t('view.limits') }, { value: 'tokens', label: t('view.tokens') }]} value={view} onchange={(v) => (view = v)} />
-        </div>
-      {/if}
+      <div class="mac-view">
+        <Segmented options={[{ value: 'limits', label: t('view.limits') }, { value: 'tokens', label: t('view.tokens') }]} value={view} onchange={(v) => (view = v)} />
+      </div>
     </header>
 
     <!-- 처음 열 때 로컬 사용 기록을 쓸지 묻는다(결정 D4) -->
     {#if !asked}<Consent onanswer={() => (asked = true)} />{/if}
-    {#if !mac}
-    <div class="seg view" role="radiogroup" aria-label={t('view.limits') + ' / ' + t('view.tokens')}>
-      <button role="radio" aria-checked={view === 'limits'} class:on={view === 'limits'} onclick={() => (view = 'limits')}>{t('view.limits')}</button>
-      <button role="radio" aria-checked={view === 'tokens'} class:on={view === 'tokens'} onclick={() => (view = 'tokens')}>{t('view.tokens')}</button>
-    </div>
-    {/if}
     {#if view === 'tokens'}
       <Tokens {range} />
-      {#if mac}<LocalLogsSection />{/if}
+      <LocalLogsSection />
     {:else if d}
       <div class="chips">
         {@render chip(t('analytics.allAI'), 'var(--accent)', scope === null, true, () => pickScope(null))}
@@ -162,13 +153,13 @@
         <div class="kpis">
           {@render kpi('bars', t('analytics.total'), tf('analytics.timesFmt', d.kpi.total), t('analytics.unitDesc'))}
           {@render kpi('cal', t('analytics.dailyAvg'), tf('analytics.timesFmt', d.kpi.dailyAvg), t('analytics.unitDesc'))}
-          {@render kpi(mac ? 'clock.fill' : 'clock', t('analytics.busiest'), d.kpi.busiest == null ? '-' : tn('analytics.hourFmt', d.kpi.busiest), ' ')}
+          {@render kpi('clock.fill', t('analytics.busiest'), d.kpi.busiest == null ? '-' : tn('analytics.hourFmt', d.kpi.busiest), ' ')}
           {@render kpi('octagon', t('analytics.hits'), tn('analytics.countFmt', d.kpi.hits), t('analytics.hitsDesc'))}
         </div>
 
         <div class="cols a">
           {#if d.itemMode}
-            <Card title={t('analytics.itemUse')} desc={t('analytics.itemUseDesc')} icon={mac ? 'chart.bar.xaxis' : 'bars'}>
+            <Card title={t('analytics.itemUse')} desc={t('analytics.itemUseDesc')} icon="chart.bar.xaxis">
               <ItemBars series={d.series} />
             </Card>
           {:else}
@@ -213,13 +204,11 @@
     --card-bg: var(--control); --card-border: 1px solid transparent; --card-r: 10px;
     height: 100vh; overflow: auto;
   }
-  :global(:root[data-skin="win"]) .page { --card-bg: var(--surface); --card-border: 1px solid var(--surface-stroke); --card-r: var(--r-card); }
   .inner { min-width: 604px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
 
   header { display: flex; flex-direction: column; gap: 14px; }
   .top { display: flex; align-items: baseline; gap: 12px; }
   h1 { margin: 0; font-size: 20px; font-weight: 700; flex: 1; }
-  :global(:root[data-skin="win"]) h1 { font-size: 28px; font-weight: 600; font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif; }
   .since { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-small); color: var(--fg2); }
   .gear { display: inline-flex; align-items: center; gap: 5px; align-self: center; }
   .seg { display: flex; border: 1px solid var(--control-stroke); border-radius: var(--r-control); overflow: hidden; }
@@ -234,7 +223,6 @@
     display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; min-height: 0; border-radius: 999px;
     border: 1px solid transparent; background: color-mix(in srgb, var(--fg2) 10%, transparent); color: var(--fg2); font-size: var(--fs-small);
   }
-  :global(:root[data-skin="win"]) .chip { min-height: 0; padding: 4px 12px; }
   .chip:hover:not(:disabled) { background: color-mix(in srgb, var(--fg2) 16%, transparent); }
   .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: color-mix(in srgb, var(--fg2) 40%, transparent); }
   .chip.on { color: var(--fg); background: color-mix(in srgb, var(--c) 16%, transparent); border-color: color-mix(in srgb, var(--c) 50%, transparent); }
@@ -265,7 +253,6 @@
   .about hr { border: none; border-top: 1px solid var(--grid); margin: 10px 0; }
   .about ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
   .about li { display: flex; gap: 6px; }
-  .view { margin: 0 0 10px; }
   .mac-view { width: 180px; align-self: center; }
   :global(:root[data-skin="macos"]) .page { --card-bg: var(--surface); }
   :global(:root[data-skin="macos"]) h1 { font-size: 17px; line-height: 20px; }

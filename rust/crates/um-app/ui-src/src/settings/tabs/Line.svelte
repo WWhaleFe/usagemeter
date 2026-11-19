@@ -22,7 +22,7 @@
 
 <Section title={t('sec.line')}>
   <Slider label={t('line.thickness')} value={b.thickness ?? 2} min={1} max={15} step={0.5} unit="pt" onchange={(v) => set('border', { thickness: v })} />
-  <Slider label={t('line.opacity')} value={(s.platform === 'win' ? Math.round((1 - (b.lineOpacity ?? 1)) * 100) : (1 - (b.lineOpacity ?? 1)) * 100)} min={0} max={100} unit="%" onchange={(v) => set('border', { lineOpacity: 1 - v / 100 })} />
+  <Slider label={t('line.opacity')} value={(1 - (b.lineOpacity ?? 1)) * 100} min={0} max={100} unit="%" onchange={(v) => set('border', { lineOpacity: 1 - v / 100 })} />
   <div class="row">
     <label class="grow" for="bar-fill-mode">{t('line.barFillMode')}</label>
     <select id="bar-fill-mode" value={s.main.barFillMode ?? 'remaining'} onchange={(e) => set('main', { barFillMode: e.currentTarget.value })}>
@@ -32,23 +32,23 @@
   <Toggle label={t('line.track')} checked={b.showTrack ?? true} onchange={(v) => set('border', { showTrack: v })} />
   <Toggle label={t('line.hideOnLaunch')} checked={!!s.main.hideOverlayOnLaunch} onchange={(v) => set('main', { hideOverlayOnLaunch: v })} />
   <Toggle label={t('line.fade')} checked={b.fadeEnabled ?? true} onchange={(v) => set('border', { fadeEnabled: v })} />
-  <Slider label={t('line.fadeLen')} value={(s.platform === 'win' ? Math.round((b.fadeFraction ?? 0.012) * 100) : (b.fadeFraction ?? 0.012) * 100)} min={0} max={20} unit="%" disabled={!b.fadeEnabled} onchange={(v) => set('border', { fadeFraction: v / 100 })} />
+  <Slider label={t('line.fadeLen')} value={(b.fadeFraction ?? 0.012) * 100} min={0} max={20} unit="%" disabled={!b.fadeEnabled} onchange={(v) => set('border', { fadeFraction: v / 100 })} />
 </Section>
 
 <Section title={t('sec.overlap')}>
-  {#if s.platform === 'mac'}<span class="caption">{t('overlap.shortestDesc')}</span>{/if}
+  <span class="caption">{t('overlap.shortestDesc')}</span>
   <Toggle label={t('lay.splitOverlap')} checked={!!b.splitOverlapLines} onchange={(v) => set('border', { splitOverlapLines: v })} />
-  <span class="caption">{s.platform === 'mac' || b.splitOverlapLines ? t('overlap.splitDesc') : t('overlap.shortestDesc')}</span>
+  <span class="caption">{t('overlap.splitDesc')}</span>
 </Section>
 
 <Section title={t('sec.aiColor')}>
   {#each providers as p, i (p.id)}
     <div class="row">
-      <span class="name">{s.platform === 'mac' ? tf('color.lineColor', p.name) : p.name}</span>
+      <span class="name">{tf('color.lineColor', p.name)}</span>
       {#if s.platform === 'mac'}
         <button class="color-well" title={t('color.custom')} aria-label={tf('color.lineColor', p.name)} onclick={() => act('pickColor', { id: p.id })}><span style:background={p.color} style:opacity={colors[p.id]?.[3] ?? 1}></span></button>
       {:else}
-        <input type="color" aria-label={tf('color.lineColor', p.name)} value={p.color} onchange={(e) => setColor(p.id, (e.currentTarget as HTMLInputElement).value)} />
+        <input class="color-well" type="color" aria-label={tf('color.lineColor', p.name)} value={p.color} onchange={(e) => setColor(p.id, (e.currentTarget as HTMLInputElement).value)} />
       {/if}
       <span class="swatches">
         {#each s.brandColors as c (c.name)}
@@ -57,7 +57,7 @@
       </span>
     </div>
     <Toggle label={t('line.showBorder')} checked={!hiddenIDs.includes(p.id)} onchange={(v) => set('main', { borderHiddenIDs: v ? hiddenIDs.filter((id) => id !== p.id) : [...hiddenIDs, p.id] })} />
-    {#if s.platform === 'mac' && i < providers.length - 1}<hr />{/if}
+    {#if i < providers.length - 1}<hr />{/if}
   {/each}
 </Section>
 
