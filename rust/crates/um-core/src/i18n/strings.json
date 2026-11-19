@@ -1130,9 +1130,9 @@
     "境界線を有効にすると、下の配置で各AIが囲む領域を選べます。隣接する領域を同時に選ぶと結合した外周になります。角の丸みは「角の丸み」タブ（全体）またはAIごとの「丸み個別設定」で頂点ごとに調整でき、境界線の端にも適用されます（上の領域=上へ、下=下へ）。"
   ],
   "part.dockHeight": [
-    "Dock 경계 높이 (아래에서, pt)",
-    "Dock line height (from bottom, pt)",
-    "Dock境界の高さ（下から、pt）"
+    "Dock 경계 거리 (가장자리에서, pt)",
+    "Dock boundary distance (from edge, pt)",
+    "Dock 境界の距離（端から、pt）"
   ],
   "part.dockLine": [
     "Dock 경계선",

@@ -53,9 +53,9 @@ fn snapshot_value(s: &Settings) -> Value {
 }
 
 /// Windows에서 작업 표시줄 문구로 바꿔 보여 줄 Dock 관련 키(`win.<키>`가 i18n에 있어야 한다).
-const WIN_TERMS: [&str; 9] = [
+const WIN_TERMS: [&str; 10] = [
     "corner.linkMainDock", "part.dockHeight", "part.dockLine", "preset.dockWrap",
-    "seg.hDock", "seg.lDock", "seg.rDock", "zone.dock", "hoverArea.dockLine",
+    "part.diagramBasis", "seg.hDock", "seg.lDock", "seg.rDock", "zone.dock", "hoverArea.dockLine",
 ];
 
 /// 화면이 그릴 값 전부.
@@ -117,6 +117,11 @@ pub fn ui_state(app: AppHandle) -> Value {
     };
     let strings: Map<String, Value> = um_core::i18n::keys().map(|k| (k.to_string(), Value::String(tr(&shown_key(k), lang)))).collect();
     json!({
+        "dockSide": ds.iter().find(|d| edit.as_ref().map_or(d.is_primary, |id| id == &d.id))
+            .and_then(|d| d.taskbar).map_or("bottom", |t| match t.side {
+                um_platform::display::TaskbarSide::Top => "top", um_platform::display::TaskbarSide::Bottom => "bottom",
+                um_platform::display::TaskbarSide::Left => "left", um_platform::display::TaskbarSide::Right => "right",
+            }),
         "platform": if cfg!(target_os = "macos") { "mac" } else { "win" },
         "store": cfg!(feature = "store"),
         "version": crate::update::current_version(),

@@ -673,7 +673,7 @@ fn main() {
                     }
                 });
             }
-            // 화면 연결·해제·해상도·Windows 작업 표시줄 변경 감지(3초 간격 비교).
+            // 화면 연결·해제·해상도·Dock·작업 표시줄 변경 감지(3초 간격 비교).
             let h = app.handle().clone();
             std::thread::spawn(move || {
                 loop {
@@ -683,7 +683,7 @@ fn main() {
                         if OVERLAY.with(|o| o.borrow_mut().check_displays()) {
                             shared(&h2).lock().unwrap().sync_displays(&um_platform::display::displays());
                             panels::refresh_displays();
-                            redraw(&h2);
+                            ipc::changed(&h2);
                         }
                     });
                 }

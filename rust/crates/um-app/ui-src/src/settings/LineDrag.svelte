@@ -7,6 +7,9 @@
 
   const b = $derived(ui.s!.border);
   let H = $state(window.innerHeight);
+  let W = $state(window.innerWidth);
+  const side = $derived(ui.s?.dockSide ?? 'bottom');
+  const lateral = $derived(side === 'left' || side === 'right');
   // 끄는 동안 화면 값을 먼저 보여 준다(설정 반영은 응답을 기다리며 합쳐 보낸다).
   let drag = $state<{ key: 'menu' | 'dock'; v: number } | null>(null);
   const menuH = $derived(drag?.key === 'menu' ? drag.v : (b.menuLineHeight ?? 25));
@@ -15,7 +18,7 @@
   onMount(() => {
     // 이 페이지만 배경을 투명하게(전역 body 배경을 덮어쓴다).
     document.documentElement.dataset.page = 'linedrag';
-    const resize = () => (H = window.innerHeight);
+    const resize = () => { H = window.innerHeight; W = window.innerWidth; };
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && done();
     addEventListener('resize', resize);
     addEventListener('keydown', esc);
@@ -27,7 +30,7 @@
   });
 
   const done = () => act('closeLineDrag');
-  const clamp = (v: number) => Math.round(Math.min(Math.max(5, v), H * 0.6));
+  const clamp = (v: number, key: 'menu' | 'dock') => Math.round(Math.min(Math.max(5, v), (key === 'dock' && lateral ? W : H) * 0.6));
 
   let sending = false, pending: { key: 'menu' | 'dock'; v: number } | null = null;
   async function push(key: 'menu' | 'dock', v: number) {
@@ -43,17 +46,18 @@
   }
   function move(e: PointerEvent, key: 'menu' | 'dock') {
     if (!(e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) return;
-    const v = clamp(key === 'menu' ? e.clientY : H - e.clientY);
+    const v = clamp(key === 'menu' ? e.clientY : side === 'left' ? e.clientX : side === 'right' ? W - e.clientX : H - e.clientY, key);
     drag = { key, v };
     push(key, v);
   }
   function key(e: KeyboardEvent, k: 'menu' | 'dock') {
-    const d = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;
+    const horizontal = k === 'dock' && lateral;
+    const d = e.key === (horizontal ? 'ArrowRight' : 'ArrowDown') ? 1 : e.key === (horizontal ? 'ArrowLeft' : 'ArrowUp') ? -1 : 0;
     if (!d) return;
     e.preventDefault();
     const cur = k === 'menu' ? menuH : dockH;
     // 메뉴선은 아래로 갈수록 커지고, Dock선은 위로 갈수록 커진다.
-    push(k, clamp(cur + (k === 'menu' ? d : -d) * (e.shiftKey ? 10 : 1)));
+    push(k, clamp(cur + (k === 'menu' || side === 'left' ? d : -d) * (e.shiftKey ? 10 : 1), k));
   }
 </script>
 
@@ -61,8 +65,10 @@
   {#each [{ k: 'menu' as const, on: b.menuLineEnabled, y: menuH, name: t('part.menuLine'), cls: 'menu', min: 5, max: 200 }, { k: 'dock' as const, on: b.dockLineEnabled, y: H - dockH, name: t('part.dockLine'), cls: 'dock', min: 5, max: 400 }] as h (h.k)}
     {#if h.on}
       <div
-        class="handle {h.cls}" style:top="{h.y}px" role="slider" tabindex="0" aria-label={h.name}
-        aria-orientation="vertical" aria-valuemin={h.min} aria-valuemax={h.max} aria-valuenow={h.k === 'menu' ? menuH : dockH}
+        class="handle {h.cls}" class:lateral={h.k === 'dock' && lateral}
+        style:top={h.k === 'dock' && lateral ? '0px' : `${h.y}px`}
+        style:left={h.k === 'dock' && lateral ? `${side === 'left' ? dockH : W - dockH}px` : '0px'} role="slider" tabindex="0" aria-label={h.name}
+        aria-orientation={h.k === 'dock' && lateral ? 'horizontal' : 'vertical'} aria-valuemin={h.min} aria-valuemax={h.max} aria-valuenow={h.k === 'menu' ? menuH : dockH}
         onpointerdown={(e) => (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)}
         onpointermove={(e) => move(e, h.k)} onpointerup={() => (drag = null)} onpointercancel={() => (drag = null)}
         onkeydown={(e) => key(e, h.k)}
@@ -86,6 +92,9 @@
     background: var(--hc); color: #000; font-size: var(--fs-small); font-weight: 700; padding: 3px 8px; border-radius: 999px;
   }
   .handle:focus-visible .line { height: 4px; top: 13px; }
+  .handle.lateral { right: auto; bottom: 0; width: 30px; height: auto; margin-top: 0; margin-left: -15px; cursor: ew-resize; }
+  .handle.lateral .line { left: 14px; top: 0; bottom: 0; width: 2px; height: auto; right: auto; }
+  .handle.lateral .chip { left: 28px; top: 50%; transform: translateY(-50%); }
   .menu { --hc: #ff9500; }
   .dock { --hc: #32ade6; }
   .done { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); font-size: var(--fs-title); font-weight: 600; padding: 8px 22px; }

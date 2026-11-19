@@ -21,6 +21,7 @@
   {#if win}
     <span class="caption">{t('part.taskbarDesc')}</span>
   {:else}
+  <span class="caption">{t('part.dockAuto')}</span>
   <Slider label={t('part.dockHeight')} value={b.dockLineHeight ?? 70} min={5} max={400} unit="pt" disabled={!dockOn} onchange={(v) => set('border', { dockLineHeight: v })} />
   <!-- 화면 위에서 경계선을 직접 끌어 조정(선 위치 끌기 화면). -->
   <div class="row"><button disabled={!menuOn && !dockOn} onclick={() => act('dragLines')}>{t('part.dragAdjust')}</button></div>

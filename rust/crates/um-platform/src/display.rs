@@ -10,7 +10,7 @@ pub struct Notch {
     pub height: f64,
 }
 
-/// Windows 작업 표시줄이 차지한 화면 변과 논리 두께.
+/// Dock·작업 표시줄이 차지한 화면 변과 논리 두께.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TaskbarSide { Bottom, Top, Left, Right }
 
@@ -21,6 +21,17 @@ pub struct Taskbar {
 }
 
 impl Taskbar {
+    /// AppKit 좌표의 프레임 차이. 위쪽 차이는 메뉴바이므로 후보에서 제외한다.
+    pub fn from_visible_frame(frame: [f64; 4], visible: [f64; 4], fallback: TaskbarSide) -> Self {
+        let [x, y, w, _] = frame;
+        let [vx, vy, vw, _] = visible;
+        [(TaskbarSide::Bottom, vy - y), (TaskbarSide::Left, vx - x),
+            (TaskbarSide::Right, x + w - vx - vw)]
+            .into_iter().filter(|(_, n)| *n > 1.0)
+            .max_by(|a, b| a.1.total_cmp(&b.1))
+            .map_or(Self { side: fallback, thickness: 0.0 }, |(side, thickness)| Self { side, thickness })
+    }
+
     /// 자동 숨김 시에도 셸 창의 방향을 유지하고 화면 안에 보이는 두께만 사용한다.
     pub fn from_window_rect(monitor: [i32; 4], window: [i32; 4], scale: f64) -> Self {
         let [l, t, r, b] = monitor;
@@ -129,7 +140,7 @@ pub fn displays() -> Vec<DisplayInfo> {
 
 #[cfg(target_os = "macos")]
 mod imp {
-    use super::{DisplayInfo, Notch};
+    use super::{DisplayInfo, Notch, Taskbar, TaskbarSide};
     use objc2::MainThreadMarker;
     use objc2_app_kit::NSScreen;
     use objc2_core_foundation::{CFRetained, CFString, CFUUID};
@@ -152,9 +163,18 @@ mod imp {
     pub fn displays() -> Vec<DisplayInfo> {
         let Some(mtm) = MainThreadMarker::new() else { return vec![] };
         let screens = NSScreen::screens(mtm);
+        // 매번 읽어 자동 숨김·다른 화면의 Dock도 방향 변경을 따라간다. 시스템 설정은 쓰지 않는다.
+        let orientation = std::process::Command::new("/usr/bin/defaults")
+            .args(["read", "com.apple.dock", "orientation"]).output().ok();
+        let fallback = match orientation.as_ref().map(|o| String::from_utf8_lossy(&o.stdout)).as_deref().map(str::trim) {
+            Some("left") => TaskbarSide::Left,
+            Some("right") => TaskbarSide::Right,
+            _ => TaskbarSide::Bottom,
+        };
         let mut out = Vec::new();
         for (i, sc) in screens.iter().enumerate() {
             let f = sc.frame();
+            let v = sc.visibleFrame();
             let num = sc
                 .deviceDescription()
                 .objectForKey(&NSString::from_str("NSScreenNumber"))
@@ -176,7 +196,9 @@ mod imp {
                 is_builtin: num.is_some_and(|n| objc2_core_graphics::CGDisplayIsBuiltin(n)),
                 is_primary: i == 0,
                 notch,
-                taskbar: None,
+                taskbar: Some(Taskbar::from_visible_frame(
+                    [f.origin.x, f.origin.y, f.size.width, f.size.height],
+                    [v.origin.x, v.origin.y, v.size.width, v.size.height], fallback)),
                 origin: (f.origin.x, f.origin.y),
             });
         }
@@ -266,6 +288,26 @@ mod imp {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn 독은_메뉴바를_제외하고_화면별_여백과_숨김_방향을_감지() {
+        let frame = [-1200.0, -800.0, 1200.0, 800.0];
+        for (visible, side) in [([-1200.0, -730.0, 1200.0, 706.0], TaskbarSide::Bottom),
+            ([-1130.0, -800.0, 1130.0, 776.0], TaskbarSide::Left),
+            ([-1200.0, -800.0, 1130.0, 776.0], TaskbarSide::Right)] {
+            assert_eq!(Taskbar::from_visible_frame(frame, visible, TaskbarSide::Bottom), Taskbar { side, thickness: 70.0 });
+        }
+        for side in [TaskbarSide::Bottom, TaskbarSide::Left, TaskbarSide::Right] {
+            // 위 메뉴바만 남거나 자동 숨김이면 환경설정의 방향을 쓴다.
+            let t = Taskbar::from_visible_frame(frame, [-1200.0, -800.0, 1200.0, 776.0], side);
+            assert_eq!(t, Taskbar { side, thickness: 0.0 });
+            let mut d = DisplayInfo::for_test((0.0, 0.0), 1200.0, 800.0, 2.0);
+            d.taskbar = Some(t);
+            let signature = d.configuration_signature();
+            d.taskbar.as_mut().unwrap().thickness = 70.0;
+            assert_ne!(signature, d.configuration_signature());
+        }
+    }
 
     #[test]
     fn 작업_표시줄_네_방향과_자동_숨김() {

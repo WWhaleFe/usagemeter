@@ -129,6 +129,7 @@
         <button class="small" disabled={pr.off} onclick={() => applyPreset(pr.key, pr.caps)}>{pr.label}</button>
       {/each}
     </div>
+    <span class="caption">{t('part.diagramBasis')}</span>
     <BSegDiagram options={p.segOptions} color={p.color} {menuOn} {dockOn} {warning} ontoggle={toggle} onexclusive={exclusive} />
   </div>
 </section>

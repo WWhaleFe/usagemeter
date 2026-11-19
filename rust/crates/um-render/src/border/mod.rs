@@ -87,15 +87,23 @@ pub struct BorderScene {
 
 /// 설정과 잔여율로 장면(경로·굵기 구간·그리기 순서)을 만든다. (Swift `drawItems` + Canvas의 준비 단계)
 pub fn build_paths(input: &BorderInput) -> BorderScene {
+    build_positioned_paths(input, StripSide::Bottom)
+}
+
+/// Dock 방향과 고정 메뉴바를 함께 반영한다. 아래 Dock은 Swift 기준 경로를 그대로 쓴다.
+pub fn build_positioned_paths(input: &BorderInput, side: StripSide) -> BorderScene {
     let s = input.settings;
     let t = s.thickness;
-    let (w, h) = (input.screen_w, input.screen_h);
+    let fixed_menu = s.menu_line_enabled && s.dock_line_enabled && matches!(side, StripSide::Left | StripSide::Right);
+    let (w, h) = if fixed_menu { (input.screen_w, input.screen_h) }
+        else { side.canonical_size(input.screen_w, input.screen_h) };
     let draw_items = items::draw_items(s, &input.bands);
     let mut scene_items = vec![];
     let mut parts_of: Vec<(Vec<BandPart>, f64, Rgba)> = vec![];
     // AI별 (경로, 굵기 구간) 준비. 노치 우회가 있으면 분할이 없어도 구간을 계산해 노치를 별도 레이어로 분리한다.
     for it in &draw_items {
-        let built = it.shape.build(w, h);
+        let built = if fixed_menu { it.shape.build_side_dock(s, w, h, side.edge()) }
+            else { it.shape.build(w, h) };
         let mut spans = vec![Span { from: 0.0, to: 1.0, width: t, notch: false }];
         let has_notch =
             it.shape.notch_detour && it.shape.notch_enabled && it.shape.segments.contains(&SegPart::HTop);
@@ -128,7 +136,7 @@ pub fn build_paths(input: &BorderInput) -> BorderScene {
         let (a_len, b_len) = (lengths[a.item] * a.ratio, lengths[b.item] * b.ratio);
         b_len.partial_cmp(&a_len).unwrap_or(std::cmp::Ordering::Equal)
     });
-    BorderScene {
+    let mut scene = BorderScene {
         screen: (w, h),
         items: scene_items,
         bands,
@@ -137,7 +145,9 @@ pub fn build_paths(input: &BorderInput) -> BorderScene {
         show_track: s.show_track,
         fade_enabled: s.fade_enabled,
         fade_fraction: s.fade_fraction,
-    }
+    };
+    if !fixed_menu { side.orient_scene(&mut scene, input.screen_w, input.screen_h); }
+    scene
 }
 
 /// 띠 창이 붙는 화면 변.
@@ -150,6 +160,12 @@ pub enum StripSide {
 }
 
 impl StripSide {
+    pub fn edge(self) -> um_core::types::BorderEdge {
+        use um_core::types::BorderEdge;
+        match self { Self::Top => BorderEdge::Top, Self::Bottom => BorderEdge::Bottom,
+            Self::Left => BorderEdge::Left, Self::Right => BorderEdge::Right }
+    }
+
     /// 작업 표시줄이 아래인 기준 좌표계의 크기.
     pub fn canonical_size(self, w: f64, h: f64) -> (f64, f64) {
         match self { Self::Left | Self::Right => (h, w), _ => (w, h) }
@@ -267,6 +283,64 @@ mod tests {
             }
         }
         assert!(overlap > 100 && long_only > 100);
+    }
+
+    #[test]
+    fn 옆_독_경계의_겹침_분할도_실제_세로_축을_따름() {
+        use kurbo::Shape;
+        let mut s = Settings { menu_line_enabled: true, dock_line_enabled: true, dock_line_height: 70.0,
+            split_overlap_lines: true, notch_enabled: false, thickness: 4.0, ..Default::default() };
+        for id in ["claude", "codex"] {
+            s.provider_layouts.get_mut(id).unwrap().segments = Some([SegPart::HDock].into());
+        }
+        for side in [StripSide::Left, StripSide::Right] {
+            let scene = build_positioned_paths(&BorderInput { settings: &s, screen_w: 1200.0, screen_h: 800.0,
+                bands: ["claude", "codex"].iter().map(|id| ProviderBand { id: (*id).into(), ratio: 1.0,
+                    color: RED, parts: vec![] }).collect() }, side);
+            let a = scene.items[0].path.bounding_box();
+            let b = scene.items[1].path.bounding_box();
+            assert_eq!((a.x0 - b.x0).abs(), 2.0);
+            assert_eq!(a.y0, b.y0);
+            assert!(scene.items.iter().all(|i| i.spans.iter().all(|s| s.width <= 2.0)));
+        }
+    }
+
+    #[test]
+    fn 독_세_방향과_메뉴바의_실제_경로와_호버() {
+        use kurbo::Shape;
+        use um_core::segments::zone_perimeter;
+        for menu_on in [false, true] {
+            let mut s = Settings { thickness: 2.0, notch_enabled: false, menu_line_enabled: menu_on,
+                menu_line_height: 25.0, dock_line_enabled: true, dock_line_height: 70.0, ..Default::default() };
+            for side in [StripSide::Bottom, StripSide::Left, StripSide::Right] {
+                for zone in [ScreenZone::MenuBar, ScreenZone::Dock, ScreenZone::Main] {
+                    if !menu_on && zone == ScreenZone::MenuBar { continue; }
+                    s.provider_layouts.get_mut("claude").unwrap().segments = Some(zone_perimeter(&[zone].into(), menu_on, true));
+                    let scene = build_positioned_paths(&BorderInput { settings: &s, screen_w: 1200.0, screen_h: 800.0,
+                        bands: vec![ProviderBand { id: "claude".into(), ratio: 1.0, color: RED, parts: vec![] }] }, side);
+                    let b = scene.items[0].path.bounding_box();
+                    assert!(!scene.items[0].path.is_empty());
+                    if zone == ScreenZone::MenuBar {
+                        assert!(b.y1 <= 25.0 && b.width() > 1100.0, "{side:?}: {b:?}");
+                    }
+                    if zone == ScreenZone::Dock {
+                        let (x, y) = match side {
+                            StripSide::Bottom => { assert!(b.y0 >= 730.0); (600.0, 730.0) },
+                            StripSide::Left => { assert!(b.x1 <= 70.0); (70.0, 400.0) },
+                            StripSide::Right => { assert!(b.x0 >= 1130.0); (1130.0, 400.0) },
+                            _ => unreachable!(),
+                        };
+                        let geometry = HoverGeometry::new(&scene);
+                        assert_eq!(geometry.candidates(&scene, x, y), vec![0]);
+                        assert!(geometry.candidates(&scene, 600.0, 400.0).is_empty());
+                    }
+                    let image = render(&scene, (0.0, 0.0), scene.screen, 1.0);
+                    let emphasized = render_emphasized(&scene, (0.0, 0.0), scene.screen, 1.0, Some(0));
+                    assert!(image.pixels().iter().any(|p| p.alpha() > 0));
+                    assert!(emphasized.pixels().iter().zip(image.pixels()).all(|(a, b)| a.alpha() == 0 || b.alpha() > 0));
+                }
+            }
+        }
     }
 
     #[test]

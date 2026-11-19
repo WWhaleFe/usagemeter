@@ -403,7 +403,8 @@ fn on_mouse(app: &AppHandle, x: f64, y: f64, kind: MouseKind) {
         let mut ds = st.settings_for_display(&d.id);
         // 실제 띠가 없는 AI는 로그아웃·숨김 모두 호버 영역에서 제외한다.
         ds.border_hidden_ids.extend(um_core::settings::PROVIDER_IDS.iter().filter(|id| !st.snapshots.contains_key(**id)).map(|id| id.to_string()));
-        if enabled && um_core::hover::border_hover_hit(&ds, &ds, d.width_pt, d.height_pt, lx, ly) {
+        let side = crate::overlay::taskbar_settings(&mut ds, d.taskbar, cfg!(windows));
+        if enabled && um_core::hover::border_hover_hit_positioned(&ds, &ds, d.width_pt, d.height_pt, lx, ly, side.edge()) {
             let d = d.clone();
             let (line, text) = (st.main.hover_emphasis_enabled, st.main.hover_text_emphasis);
             set_emphasis(p, ((line || text) && !st.hide_overlay).then_some((d.id.as_str(), lx, ly)), line);

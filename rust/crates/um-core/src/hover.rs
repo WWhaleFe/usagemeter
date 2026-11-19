@@ -57,9 +57,66 @@ pub fn border_hover_hit(display: &Settings, main: &Settings, w: f64, h: f64, x: 
     on_edge || on_menu || on_dock
 }
 
+/// 방향 변환 뒤 화면 좌표에서 옵션을 적용한다. 메뉴바는 위에 고정하고 Dock 경계는 해당 축으로 검사한다.
+#[allow(clippy::too_many_arguments)]
+pub fn border_hover_hit_positioned(display: &Settings, main: &Settings, w: f64, h: f64, x: f64, y: f64, side: BorderEdge) -> bool {
+    if side == BorderEdge::Bottom { return border_hover_hit(display, main, w, h, x, y); }
+    if !main.hover_info_enabled { return false; }
+    let th = display.thickness.max(6.0) + 7.0;
+    let i = display.thickness / 2.0;
+    let near = |a: (f64, f64), b: (f64, f64)| {
+        let (dx, dy) = (b.0 - a.0, b.1 - a.1);
+        let t = (((x - a.0) * dx + (y - a.1) * dy) / (dx * dx + dy * dy)).clamp(0.0, 1.0);
+        (x - a.0 - t * dx).hypot(y - a.1 - t * dy) <= th
+    };
+    let allowed = |edge, a, b, da, db| main.hover_edges.contains(&edge)
+        || (main.hover_corners.contains(&a) && da <= main.hover_corner_size)
+        || (main.hover_corners.contains(&b) && db <= main.hover_corner_size);
+    PROVIDER_IDS.iter().filter(|id| !main.border_hidden_ids.contains(**id)).any(|id| {
+        crate::dock::positioned_lines(display, &display.segs_for(id), w, h, side).iter().any(|line| {
+            if !near(line.a, line.b) { return false; }
+            let (a, b) = (line.a, line.b);
+            let on = |v: f64, p: f64, q: f64| (p - v).abs() < 0.01 && (q - v).abs() < 0.01;
+            if on(i, a.1, b.1) { return allowed(BorderEdge::Top, BorderCorner::TopLeft, BorderCorner::TopRight, x, w - x); }
+            if on(h - i, a.1, b.1) { return allowed(BorderEdge::Bottom, BorderCorner::BottomLeft, BorderCorner::BottomRight, x, w - x); }
+            if on(i, a.0, b.0) { return allowed(BorderEdge::Left, BorderCorner::TopLeft, BorderCorner::BottomLeft, y, h - y); }
+            if on(w - i, a.0, b.0) { return allowed(BorderEdge::Right, BorderCorner::TopRight, BorderCorner::BottomRight, y, h - y); }
+            (line.part == SegPart::HMenu && main.hover_menu_line)
+                || (line.part == SegPart::HDock && main.hover_dock_line)
+        })
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn 방향별_내부_경계선과_실제_화면_변_옵션() {
+        for menu_on in [false, true] {
+            let mut s = Settings { menu_line_enabled: menu_on, menu_line_height: 25.0,
+                dock_line_enabled: true, dock_line_height: 70.0, ..Default::default() };
+            s.provider_layouts.get_mut("claude").unwrap().segments = Some([SegPart::HDock].into());
+            s.border_hidden_ids.extend(["gemini".into(), "codex".into()]);
+            s.hover_edges.clear();
+            s.hover_corners.clear();
+            for side in [BorderEdge::Bottom, BorderEdge::Top, BorderEdge::Left, BorderEdge::Right] {
+                let (x, y) = match side { BorderEdge::Bottom => (600.0, 730.0), BorderEdge::Top => (600.0, 70.0),
+                    BorderEdge::Left => (70.0, 400.0), BorderEdge::Right => (1130.0, 400.0) };
+                s.hover_dock_line = false;
+                assert!(!border_hover_hit_positioned(&s, &s, 1200.0, 800.0, x, y, side));
+                s.hover_dock_line = true;
+                assert!(border_hover_hit_positioned(&s, &s, 1200.0, 800.0, x, y, side));
+            }
+            if menu_on {
+                s.provider_layouts.get_mut("claude").unwrap().segments = Some([SegPart::HMenu].into());
+                s.hover_menu_line = true;
+                for side in [BorderEdge::Left, BorderEdge::Right] {
+                    assert!(border_hover_hit_positioned(&s, &s, 1200.0, 800.0, 600.0, 25.0, side));
+                }
+            }
+        }
+    }
 
     #[test]
     fn 화면_분할의_메뉴바_선과_독_선_호버는_옵션() {

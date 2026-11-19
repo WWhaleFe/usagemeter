@@ -12,6 +12,7 @@
 //! - `update`     UpdateChecker.swift의 버전 비교
 
 pub mod analytics;
+pub mod dock;
 pub mod history;
 pub mod hover;
 pub mod i18n;

@@ -29,10 +29,10 @@ fn signature(ds: &[DisplayInfo]) -> String {
 }
 
 /// 저장된 독 높이는 macOS용으로 유지하고 Windows에서만 실제 예약 두께를 쓴다.
-fn taskbar_settings(s: &mut um_core::settings::Settings, taskbar: Option<display::Taskbar>, windows: bool) -> StripSide {
-    if !windows || !s.dock_line_enabled { return StripSide::Bottom; }
-    s.dock_line_height = taskbar.map_or(0.0, |t| t.thickness);
-    // 예약 영역이 없는 화면·자동 숨김에서는 별도 구역을 접어 화면 가장자리로 보낸다.
+pub(crate) fn taskbar_settings(s: &mut um_core::settings::Settings, taskbar: Option<display::Taskbar>, windows: bool) -> StripSide {
+    if !s.dock_line_enabled { return StripSide::Bottom; }
+    if windows { s.dock_line_height = taskbar.map_or(0.0, |t| t.thickness); }
+    // Windows 예약 영역이 없으면 구역을 접고, macOS는 저장한 경계 거리를 유지한다.
     match taskbar.map(|t| t.side) {
         Some(display::TaskbarSide::Top) => StripSide::Top,
         Some(display::TaskbarSide::Left) => StripSide::Left,
@@ -62,6 +62,22 @@ fn layout(s: &um_core::settings::Settings, w: f64, h: f64) -> Vec<[f64; 4]> {
     ]
 }
 
+/// 옆 Dock과 메뉴바가 함께 있으면 위 띠와 옆 띠를 각각 넓힌다.
+fn positioned_layout(s: &um_core::settings::Settings, w: f64, h: f64, side: StripSide) -> Vec<[f64; 4]> {
+    if s.menu_line_enabled && matches!(side, StripSide::Left | StripSide::Right) {
+        let extent = [StripSide::Top, StripSide::Bottom, StripSide::Left, StripSide::Right]
+            .into_iter().map(|edge| border::strip_extent(s, edge)).fold(0.0, f64::max);
+        let l = extent + if side == StripSide::Left { s.dock_line_height } else { 0.0 };
+        let r = extent + if side == StripSide::Right { s.dock_line_height } else { 0.0 };
+        let top = extent + s.menu_line_height;
+        vec![[0.0, 0.0, l, h], [w - r, 0.0, r, h],
+            [l - 2.0, 0.0, w - l - r + 4.0, top], [l - 2.0, h - extent, w - l - r + 4.0, extent]]
+    } else {
+        let (cw, ch) = side.canonical_size(w, h);
+        layout(s, cw, ch).into_iter().map(|r| side.orient_rect(r, w, h)).collect()
+    }
+}
+
 impl Overlay {
     /// 화면 구성을 확인하고 바뀌었으면 true(띠 창을 버리고 다음 `redraw`에서 새로 만든다).
     pub fn check_displays(&mut self) -> bool {
@@ -89,9 +105,7 @@ impl Overlay {
             let hidden = st.hide_overlay || st.disabled_displays.contains(&d.id);
             let mut s = st.settings_for_display(&d.id);
             let side = taskbar_settings(&mut s, d.taskbar, cfg!(windows));
-            let (cw, ch) = side.canonical_size(d.width_pt, d.height_pt);
-            let rects: Vec<_> = layout(&s, cw, ch).into_iter()
-                .map(|r| side.orient_rect(r, d.width_pt, d.height_pt)).collect();
+            let rects = positioned_layout(&s, d.width_pt, d.height_pt, side);
             let entry = self.strips.entry(d.id.clone()).or_default();
             if hidden {
                 for (w, _) in entry.iter() {
@@ -110,13 +124,12 @@ impl Overlay {
                     parts: border::sub_item_bar_parts(&st.main, id, snap),
                 })
                 .collect();
-            let mut scene = border::build_paths(&BorderInput {
+            let scene = border::build_positioned_paths(&BorderInput {
                 settings: &s,
-                screen_w: cw,
-                screen_h: ch,
+                screen_w: d.width_pt,
+                screen_h: d.height_pt,
                 bands,
-            });
-            side.orient_scene(&mut scene, d.width_pt, d.height_pt);
+            }, side);
             self.scenes.insert(d.id.clone(), (scene.clone(), border::HoverGeometry::new(&scene), d.scale));
             // 띠 개수·위치가 바뀌었으면 새로 만든다.
             if entry.len() != rects.len() || entry.iter().zip(&rects).any(|((_, a), b)| a != b) {
@@ -199,6 +212,25 @@ impl Overlay {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn 맥은_감지_두께와_무관하게_저장한_거리와_위_메뉴바_띠를_유지() {
+        for side in [display::TaskbarSide::Left, display::TaskbarSide::Right, display::TaskbarSide::Bottom] {
+            let mut s = um_core::settings::Settings { dock_line_enabled: true, menu_line_enabled: true,
+                menu_line_height: 25.0, dock_line_height: 70.0, ..Default::default() };
+            for thickness in [0.0, 50.0, 100.0] {
+                let position = taskbar_settings(&mut s, Some(display::Taskbar { side, thickness }), false);
+                assert_eq!(s.dock_line_height, 70.0);
+                let rects = positioned_layout(&s, 1200.0, 800.0, position);
+                assert!(rects.iter().any(|r| r[1] == 0.0 && r[3] > 25.0 && r[2] > 600.0));
+                match side {
+                    display::TaskbarSide::Left => assert!(rects[0][2] > 70.0),
+                    display::TaskbarSide::Right => assert!(rects[1][2] > 70.0),
+                    _ => assert!(rects[3][3] > 70.0),
+                }
+            }
+        }
+    }
 
     #[test]
     fn 작업_표시줄_실제_두께는_저장_높이와_독립() {

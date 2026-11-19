@@ -699,3 +699,131 @@ impl ChainShape {
         Built { path: em.path, rec: em.rec }
     }
 }
+
+impl ChainShape {
+    /// 메뉴바는 위에 고정하고 옆 Dock과의 T자 접합부를 실제 좌표에서 순회한다.
+    pub(crate) fn build_side_dock(&self, settings: &um_core::settings::Settings, w: f64, h: f64, side: um_core::types::BorderEdge) -> Built {
+        let mut edges = um_core::dock::positioned_lines(settings, &self.segments, w, h, side);
+        let mut em = Emitter { path: BezPath::new(), cp: Point::ZERO, rec: vec![] };
+        while !edges.is_empty() {
+            // 물리 그래프의 끝 또는 사용자가 고른 모서리에서 시작한다. 접합부 상쇄로 여러 경로가 될 수도 있다.
+            let degree = |p| edges.iter().filter(|e| e.a == p || e.b == p).count();
+            let mut start = edges.iter().flat_map(|e| [e.a, e.b]).find(|&p| degree(p) == 1)
+                .unwrap_or(edges[0].a);
+            let closed = degree(start) != 1;
+            if closed {
+                let target = match self.anchor_corner {
+                    BorderCorner::TopLeft => (0.0, 0.0), BorderCorner::TopRight => (w, 0.0),
+                    BorderCorner::BottomLeft => (0.0, h), BorderCorner::BottomRight => (w, h),
+                };
+                start = edges.iter().flat_map(|e| [e.a, e.b]).min_by(|a, b| {
+                    let distance = |p: &(f64, f64)| (p.0 - target.0).hypot(p.1 - target.1);
+                    distance(a).total_cmp(&distance(b))
+                }).unwrap();
+            }
+            let mut points = vec![Point::from(start)];
+            let mut parts = vec![];
+            let mut current = start;
+            loop {
+                let candidates: Vec<_> = edges.iter().enumerate().filter(|(_, e)| e.a == current || e.b == current).collect();
+                let pick = if self.clockwise { candidates.first() } else { candidates.last() };
+                let Some(&(index, _)) = pick else { break };
+                let edge = edges.remove(index);
+                current = if edge.a == current { edge.b } else { edge.a };
+                parts.push(edge.part);
+                points.push(Point::from(current));
+                if current == start { break; }
+            }
+            if parts.is_empty() { continue; }
+            let is_loop = points.first() == points.last();
+            if !self.clockwise && !is_loop { points.reverse(); parts.reverse(); }
+            if is_loop { points.pop(); }
+            let mut vt = Verts::default();
+            for (j, &point) in points.iter().enumerate() {
+                let part = parts[j.min(parts.len() - 1)];
+                let previous = parts[if j == 0 { parts.len() - 1 } else { j - 1 }];
+                let zone = if [part, previous].iter().any(|p| matches!(p, SegPart::LDock | SegPart::RDock | SegPart::HBottom)) {
+                    ScreenZone::Dock
+                } else if [part, previous].iter().any(|p| matches!(p, SegPart::LMain | SegPart::RMain | SegPart::HDock)) {
+                    ScreenZone::Main
+                } else { ScreenZone::MenuBar };
+                let radii = match zone { ScreenZone::MenuBar => &self.menu_radii, ScreenZone::Dock => &self.dock_radii, ScreenZone::Main => &self.main_radii };
+                let corner = corner_of(point.y > h / 2.0, point.x > w / 2.0);
+                let endpoint = !is_loop && (j == 0 || j + 1 == points.len());
+                let before = points[if j == 0 { points.len() - 1 } else { j - 1 }];
+                let after = points[(j + 1) % points.len()];
+                let straight = (before.x - point.x) * (after.y - point.y) == (before.y - point.y) * (after.x - point.x);
+                let radius = if endpoint || straight { 0.0 } else { radii.get(&corner).copied().unwrap_or(0.0).max(0.0) };
+                // 세그먼트의 실제 축으로 레인 오프셋을 옮겨 옆 Dock에서도 겹침 분할을 유지한다.
+                let mut shifted = point;
+                for (other, segment, present) in [(before, previous, is_loop || j > 0), (after, part, is_loop || j + 1 < points.len())] {
+                    if !present { continue; }
+                    let offset = self.lane_offsets.get(&segment).copied().unwrap_or(0.0);
+                    if (other.y - point.y).abs() < 0.01 {
+                        shifted.y = point.y + if matches!(segment, SegPart::RMain | SegPart::RDock) { -offset } else { offset };
+                    } else {
+                        let inward = if matches!(segment, SegPart::HDock | SegPart::HBottom) {
+                            side == um_core::types::BorderEdge::Left
+                        } else { point.x < w / 2.0 };
+                        shifted.x = point.x + if inward { offset } else { -offset };
+                    }
+                }
+                let width = self.lane_widths.get(&part).copied().unwrap_or(self.full_width);
+                // 가로선 캡의 위·아래는 기준 구역의 방향이다. Dock선에서는 본문·Dock 쪽으로 꺾는다.
+                let right_end = if matches!(part, SegPart::HDock | SegPart::HBottom) { point.y > h / 2.0 }
+                    else { point.x > w / 2.0 };
+                let cap = self.h_caps.get(&h_cap_key(part, right_end)).copied().unwrap_or(SegCap::None);
+                let cap_zone = match part {
+                    SegPart::HTop => &self.menu_radii,
+                    SegPart::HMenu if cap == SegCap::Up => &self.menu_radii,
+                    SegPart::HDock if cap == SegCap::Down => &self.dock_radii,
+                    SegPart::HBottom => &self.dock_radii,
+                    _ => &self.main_radii,
+                };
+                let cap_r = if endpoint && part.is_horizontal() && matches!(cap, SegCap::Up | SegCap::Down) {
+                    cap_zone.get(&corner).copied().unwrap_or(0.0).max(0.0)
+                } else { 0.0 };
+                let extension = if matches!(part, SegPart::HDock | SegPart::HBottom) {
+                    let toward_main = cap == SegCap::Up;
+                    let sign = if (side == um_core::types::BorderEdge::Left) == toward_main { 1.0 } else { -1.0 };
+                    Point::new(shifted.x + sign * cap_r, shifted.y)
+                } else { Point::new(shifted.x, shifted.y + if cap == SegCap::Up { -cap_r } else { cap_r }) };
+                if cap_r > 0.0 && j == 0 { vt.add(&[(pv(extension, 0.0, None), width, None)], false); }
+                vt.add(&[(pv(shifted, radius.max(cap_r), None), width, None)], false);
+                if cap_r > 0.0 && j + 1 == points.len() { vt.add(&[(pv(extension, 0.0, None), width, None)], false); }
+                if part == SegPart::HTop && j < parts.len() && self.notch_detour {
+                    let cx = Ctx { s: self, segs: self.segments.clone(), w, h, xl: self.inset, xr: w - self.inset };
+                    let next = points[(j + 1) % points.len()];
+                    let nv: Vec<Item> = cx.notch_vertices(next.x < point.x).into_iter().map(|(p, width)| (p, width, None)).collect();
+                    vt.add(&nv, true);
+                }
+            }
+            let n = vt.vs.len();
+            if n < 2 { continue; }
+            let (t1, t2) = tangents(&vt.vs);
+            if is_loop {
+                let start_at_t1 = (t1[0].y <= t2[0].y) != (self.anchor_side == AnchorSide::Right);
+                em.mv(if start_at_t1 { t1[0] } else { t2[0] });
+                if start_at_t1 {
+                    corner_arc(&mut em, &vt.vs, &vt.av, 0, &t1, &t2, vt.ew[n - 1], vt.ew[0], vt.en[n - 1], vt.en[0]);
+                }
+                for j in 1..n {
+                    em.ln(t1[j], vt.ew[j - 1], vt.en[j - 1]);
+                    corner_arc(&mut em, &vt.vs, &vt.av, j, &t1, &t2, vt.ew[j - 1], vt.ew[j], vt.en[j - 1], vt.en[j]);
+                }
+                em.ln(t1[0], vt.ew[n - 1], vt.en[n - 1]);
+                if !start_at_t1 {
+                    corner_arc(&mut em, &vt.vs, &vt.av, 0, &t1, &t2, vt.ew[n - 1], vt.ew[0], vt.en[n - 1], vt.en[0]);
+                }
+            } else {
+                em.mv(vt.vs[0].pt);
+                for j in 1..n - 1 {
+                    em.ln(t1[j], vt.ew[j - 1], vt.en[j - 1]);
+                    corner_arc(&mut em, &vt.vs, &vt.av, j, &t1, &t2, vt.ew[j - 1], vt.ew[j], vt.en[j - 1], vt.en[j]);
+                }
+                em.ln(vt.vs[n - 1].pt, vt.ew[n - 2], vt.en[n - 2]);
+            }
+        }
+        Built { path: em.path, rec: em.rec }
+    }
+}
