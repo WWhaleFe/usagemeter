@@ -11,7 +11,7 @@ export interface Provider {
   segOptions: Record<string, { on: boolean; available: boolean; toggleValid: boolean; toggleAllowed: boolean; usedByOther: boolean }>;
 }
 export interface UiState {
-  dockSide: 'top' | 'bottom' | 'left' | 'right';
+  dockSide: 'top' | 'bottom' | 'left' | 'right' | null;
   platform: 'mac' | 'win'; store: boolean; version: string; lang: 'ko' | 'en' | 'ja';
   strings: Record<string, string>;
   main: Snapshot; border: Snapshot; editing: string | null;

@@ -393,5 +393,110 @@
     "배치 그림과 방향 설정은 아래 작업 표시줄 기준입니다.",
     "Layout diagrams and direction settings use a bottom taskbar.",
     "配置図と方向設定は下側のタスクバーが基準です。"
+  ],
+  "part.dockBoundaryHeight": [
+    "Dock 경계 높이 (pt)",
+    "Dock boundary height (pt)",
+    "Dock 境界の高さ（pt）"
+  ],
+  "part.dockWidth": [
+    "Dock 경계 폭 (pt)",
+    "Dock boundary width (pt)",
+    "Dock 境界の幅（pt）"
+  ],
+  "win.part.dockBoundaryHeight": [
+    "작업 표시줄 경계 높이 (pt)",
+    "Taskbar boundary height (pt)",
+    "タスクバー境界の高さ（pt）"
+  ],
+  "win.part.dockWidth": [
+    "작업 표시줄 경계 폭 (pt)",
+    "Taskbar boundary width (pt)",
+    "タスクバー境界の幅（pt）"
+  ],
+  "lay.vCapsTitle": [
+    "세로선 캡",
+    "Vertical line caps",
+    "縦線キャップ"
+  ],
+  "cap.topEnd": [
+    "위 끝",
+    "Top end",
+    "上端"
+  ],
+  "cap.bottomEnd": [
+    "아래 끝",
+    "Bottom end",
+    "下端"
+  ],
+  "cap.leftShort": [
+    "좌로",
+    "Left",
+    "左へ"
+  ],
+  "cap.rightShort": [
+    "우로",
+    "Right",
+    "右へ"
+  ],
+  "seg.dockVertical": [
+    "Dock선 │",
+    "Dock line │",
+    "Dock線 │"
+  ],
+  "seg.dockTop": [
+    "상·Dock ─",
+    "Top·dock ─",
+    "上・Dock ─"
+  ],
+  "seg.dockBottom": [
+    "하·Dock ─",
+    "Bottom·dock ─",
+    "下・Dock ─"
+  ],
+  "win.seg.dockVertical": [
+    "작업 표시줄선 │",
+    "Taskbar line │",
+    "タスクバー線 │"
+  ],
+  "win.seg.dockTop": [
+    "상·작업 표시줄 ─",
+    "Top·taskbar ─",
+    "上・タスクバー ─"
+  ],
+  "win.seg.dockBottom": [
+    "하·작업 표시줄 ─",
+    "Bottom·taskbar ─",
+    "下・タスクバー ─"
+  ],
+  "seg.edgeLeft": [
+    "좌측 │",
+    "Left │",
+    "左 │"
+  ],
+  "seg.edgeRight": [
+    "우측 │",
+    "Right │",
+    "右 │"
+  ],
+  "seg.mainTop": [
+    "상·본문 ─",
+    "Top·main ─",
+    "上・メイン ─"
+  ],
+  "seg.mainBottom": [
+    "하·본문 ─",
+    "Bottom·main ─",
+    "下・メイン ─"
+  ],
+  "seg.mainRightBottom": [
+    "우·하단 본문 ┘",
+    "Right·bottom main ┘",
+    "右・下メイン ┘"
+  ],
+  "seg.mainLeftBottom": [
+    "좌·하단 본문 └",
+    "Left·bottom main └",
+    "左・下メイン └"
   ]
 }

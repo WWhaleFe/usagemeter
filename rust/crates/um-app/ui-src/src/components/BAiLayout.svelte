@@ -5,13 +5,16 @@
   import { ui, t, set } from '../lib/api.svelte';
   import type { LayoutProvider, Layout, SegCap } from './BTypes';
   import Toggle from './Toggle.svelte';
+  import { H_SEGS, ORDER, sideDock, segmentKey, capVector } from './BDiagram';
   import BSegDiagram from './BSegDiagram.svelte';
 
   let { p }: { p: LayoutProvider } = $props();
   const s = $derived(ui.s!);
   const b = $derived(s.border);
   const win = $derived(s.platform === 'win');
-  const menuOn = $derived(!!b.menuLineEnabled);
+  const menuOn = $derived(!win && !!b.menuLineEnabled);
+  const dockSide = $derived(b.dockLineEnabled ? s.dockSide : 'bottom');
+  const lateral = $derived(sideDock(dockSide));
   const dockOn = $derived(!!b.dockLineEnabled);
   const l = $derived(p.layout);
   const segs = $derived(new Set(p.layout.segments ?? []));
@@ -24,7 +27,6 @@
   const setSegs = (next: string[]) => mutate({ segments: next });
 
   // 다이어그램 클릭 = 토글(Rust가 유효하다고 한 경우만), 더블클릭 = 그 선만.
-  const ORDER = ['hTop', 'hMenu', 'hDock', 'hBottom', 'lMenuBar', 'lMain', 'lDock', 'rMenuBar', 'rMain', 'rDock'];
   function toggle(seg: string) {
     const o = p.segOptions[seg];
     if (!o?.toggleAllowed) return;
@@ -47,9 +49,14 @@
     setSegs([seg]);
   }
 
-  // 가로선 끝 캡: 같은 끝의 반대 방향은 자동 해제(Swift hCapFlag).
-  const H_ORDER = ['hTop', 'hMenu', 'hDock', 'hBottom'];
-  const hsSel = $derived(H_ORDER.filter((h) => segs.has(h)));
+  // 저장된 가로선 캡을 실제 축으로 나눠 표시한다. 같은 끝의 반대 방향은 자동 해제.
+  const capGroups = $derived([false, true].map((vertical) => ({
+    vertical, segs: H_SEGS.filter((h) => segs.has(h) && (lateral && (!menuOn || h === 'hDock' || h === 'hBottom')) === vertical),
+  })).filter((g) => g.segs.length));
+  function capLabel(h: string, up: boolean): string {
+    const [x, y] = capVector(h, up, dockSide, menuOn);
+    return t(x ? (x < 0 ? 'cap.leftShort' : 'cap.rightShort') : (y < 0 ? 'cap.upShort' : 'cap.downShort'));
+  }
   const capKey = (h: string, right: boolean) => `${h}.${right ? 'R' : 'L'}`;
   const capOf = (h: string, right: boolean): SegCap => caps[capKey(h, right)] ?? 'none';
   function setCap(h: string, right: boolean, dir: 'up' | 'down', on: boolean) {
@@ -61,11 +68,11 @@
     { key: 'all', label: t('lay.zoneAll'), off: false, caps: {} },
     { key: 'menuBar', label: t('zone.menuBar'), off: win || !menuOn, caps: { 'hMenu.L': 'down', 'hMenu.R': 'down' } },
     { key: 'main', label: t('zone.main'), off: false, caps: {} },
-    { key: 'dock', label: t(win ? 'part.taskbarLine' : 'zone.dock'), off: !dockOn, caps: { 'hDock.L': 'up', 'hDock.R': 'up' } },
+    { key: 'dock', label: t('preset.dockWrap'), off: !dockOn || dockSide === null, caps: { 'hDock.L': 'up', 'hDock.R': 'up' } },
   ]);
   function applyPreset(key: 'all' | 'menuBar' | 'main' | 'dock', hCaps: Record<string, SegCap>) {
     const sp = p.shapePresets[key];
-    if (!sp?.allowed || (key === 'menuBar' && (win || !menuOn)) || (key === 'dock' && !dockOn)) return;
+    if (!sp?.allowed || (key === 'menuBar' && (win || !menuOn)) || (key === 'dock' && (!dockOn || dockSide === null))) return;
     mutate({ zones: sp.zones, segments: sp.segments, hCaps });
   }
 
@@ -82,25 +89,25 @@
 <section class="box">
   <div class="left">
     <h3>{p.name}</h3>
-    {#if hsSel.length}
+    {#each capGroups as group (group.vertical)}
       <div class="caps">
-        <span class="caption">{t('lay.hCapsTitle')}</span>
-        {#each hsSel as h (h)}
-          <div class="caprow" role="group" aria-label={t('seg.' + h)}>
-            <span class="segname caption">{t('seg.' + h)}</span>
+        <span class="caption">{t(group.vertical ? 'lay.vCapsTitle' : 'lay.hCapsTitle')}</span>
+        {#each group.segs as h (h)}
+          <div class="caprow" role="group" aria-label={t(segmentKey(h, dockSide, menuOn))}>
+            <span class="segname caption">{t(segmentKey(h, dockSide, menuOn))}</span>
             {#each [false, true] as right (right)}
-              <span class="end caption">{t(right ? 'cap.rightEnd' : 'cap.leftEnd')}</span>
-              <label title={t('cap.upHelp')} class:off={h === 'hTop'}>
-                <input type="checkbox" disabled={h === 'hTop'} checked={capOf(h, right) === 'up'} onchange={(e) => setCap(h, right, 'up', e.currentTarget.checked)} />{t('cap.upShort')}
+              <span class="end caption">{t(group.vertical ? (right ? 'cap.bottomEnd' : 'cap.topEnd') : (right ? 'cap.rightEnd' : 'cap.leftEnd'))}</span>
+              <label title={dockSide === 'bottom' || dockSide === null ? t('cap.upHelp') : capLabel(h, true)} class:off={h === 'hTop'}>
+                <input type="checkbox" disabled={h === 'hTop'} checked={capOf(h, right) === 'up'} onchange={(e) => setCap(h, right, 'up', e.currentTarget.checked)} />{capLabel(h, true)}
               </label>
-              <label title={t('cap.downHelp')} class:off={h === 'hBottom'}>
-                <input type="checkbox" disabled={h === 'hBottom'} checked={capOf(h, right) === 'down'} onchange={(e) => setCap(h, right, 'down', e.currentTarget.checked)} />{t('cap.downShort')}
+              <label title={dockSide === 'bottom' || dockSide === null ? t('cap.downHelp') : capLabel(h, false)} class:off={h === 'hBottom'}>
+                <input type="checkbox" disabled={h === 'hBottom'} checked={capOf(h, right) === 'down'} onchange={(e) => setCap(h, right, 'down', e.currentTarget.checked)} />{capLabel(h, false)}
               </label>
             {/each}
           </div>
         {/each}
       </div>
-    {/if}
+    {/each}
     {#if p.chain}
       <!-- 열린 체인: 방향 반전(= clockwise). -->
       <Toggle label={t('lay.reverse')} checked={l.clockwise} onchange={(v) => mutate({ clockwise: v })} />
@@ -130,7 +137,7 @@
       {/each}
     </div>
     <span class="caption">{t('part.diagramBasis')}</span>
-    <BSegDiagram options={p.segOptions} color={p.color} {menuOn} {dockOn} {warning} ontoggle={toggle} onexclusive={exclusive} />
+    <BSegDiagram options={p.segOptions} color={p.color} {menuOn} {dockOn} {dockSide} {caps} {warning} ontoggle={toggle} onexclusive={exclusive} />
   </div>
 </section>
 
