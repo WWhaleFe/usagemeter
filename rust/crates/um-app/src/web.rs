@@ -128,13 +128,18 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
     // Windows는 빈 문서로 만든 뒤 navigate()하면 이동이 일어나지 않고 about:blank에 머물러 25초를 넘겼다(실기 로그).
     // 로그인 창처럼 처음부터 목적지 주소로 만든다.
     let start: Url = if cfg!(windows) { probe_start_url(spec) } else { "about:blank".parse().expect("blank") };
-    let builder = WebviewWindowBuilder::new(app, &label, WebviewUrl::External(start))
+    // 진단: UM_PROBE_OPTS(쉼표 목록)로 조회 창 옵션을 하나씩 빼 본다. Windows에서 조회 창의 로드가 시작되지 않는 원인 찾기용.
+    // focus=포커스 금지 안 함, taskbar=작업 표시줄 숨김 안 함, noscript=초기화 스크립트 없음, noua=사용자 에이전트 기본, activate=만든 뒤 활성화
+    let opts = std::env::var("UM_PROBE_OPTS").unwrap_or_default();
+    let opt = |k: &str| opts.split(',').any(|o| o.trim() == k);
+    let mut builder = WebviewWindowBuilder::new(app, &label, WebviewUrl::External(start))
         .visible(show)
-        .skip_taskbar(true)
-        .focused(false)
-        .inner_size(460.0, 720.0)
-        .user_agent(USER_AGENT)
-        .initialization_script_for_all_frames(PASSKEY_OFF);
+        .skip_taskbar(!opt("taskbar"))
+        .inner_size(460.0, 720.0);
+    if !opt("focus") { builder = builder.focused(false); }
+    if !opt("noua") { builder = builder.user_agent(USER_AGENT); }
+    if !opt("noscript") { builder = builder.initialization_script_for_all_frames(PASSKEY_OFF); }
+    if !opts.is_empty() { tracing::info!("조회 창 진단 옵션: {opts}"); }
     let built = builder
         .on_page_load(move |w, p| {
             if p.event() == PageLoadEvent::Started { started_load.store(true, Ordering::SeqCst); }
@@ -165,7 +170,11 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
         })
         .build();
     let win = match built {
-        Ok(w) => { tracing::info!("조회 창 생성 완료"); w }
+        Ok(w) => {
+            tracing::info!("조회 창 생성 완료");
+            if opt("activate") { activate(&w); }
+            w
+        }
         Err(_) => {
             tracing::warn!("조회 창 생성 실패");
             return json!({"ok": false, "reason": "no_webview"});
