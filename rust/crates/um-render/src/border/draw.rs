@@ -162,6 +162,7 @@ impl Painter<'_> {
 
 /// 화면 전체 장면을 `origin`만큼 옮겨 `size_pt` 크기 픽셀 버퍼에 그린다(띠 창 하나의 내용).
 /// 결과는 premultiplied RGBA. `scale` = 화면 배율(Retina 2.0).
+/// 여러 창을 이어 붙일 때는 전체 화면을 한 번 그린 뒤 `crop_strip`으로 나눠 AA와 픽셀 격자를 공유한다.
 pub fn render(scene: &BorderScene, origin: (f64, f64), size_pt: (f64, f64), scale: f64) -> Pixmap {
     render_emphasized(scene, origin, size_pt, scale, None)
 }

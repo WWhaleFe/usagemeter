@@ -9,11 +9,13 @@ mod hover;
 mod items;
 mod shape;
 mod spans;
+mod strips;
 
 use kurbo::{BezPath, ParamCurveArclen};
 use um_core::settings::Settings;
 use um_core::types::{BorderCorner, Rgba, ScreenZone, SegPart};
 
+pub use strips::{crop_strip, strip_layout};
 pub use draw::{render, render_emphasized};
 pub use hover::HoverGeometry;
 pub use items::{provider_color, sub_item_bar_parts, sub_item_color};
@@ -102,8 +104,11 @@ pub fn build_positioned_paths(input: &BorderInput, side: StripSide) -> BorderSce
     let mut parts_of: Vec<(Vec<BandPart>, f64, Rgba)> = vec![];
     // AI별 (경로, 굵기 구간) 준비. 노치 우회가 있으면 분할이 없어도 구간을 계산해 노치를 별도 레이어로 분리한다.
     for it in &draw_items {
-        let built = if fixed_menu { it.shape.build_side_dock(s, w, h, side.edge()) }
+        let mut built = if fixed_menu { it.shape.build_side_dock(s, w, h, side.edge()) }
             else { it.shape.build(w, h) };
+        if it.shape.h_caps.values().any(|cap| matches!(cap, um_core::types::SegCap::Up | um_core::types::SegCap::Down)) {
+            built.smooth_cap_returns();
+        }
         let mut spans = vec![Span { from: 0.0, to: 1.0, width: t, notch: false }];
         let has_notch =
             it.shape.notch_detour && it.shape.notch_enabled && it.shape.segments.contains(&SegPart::HTop);

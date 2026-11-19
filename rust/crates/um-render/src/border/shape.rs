@@ -22,6 +22,131 @@ pub struct Built {
     pub rec: Vec<Rec>,
 }
 
+impl Built {
+    /// 반대 캡이 같은 선을 되짚는 끝을 짧은 곡선으로 연결해 진행 방향까지 G1로 잇는다.
+    pub(crate) fn smooth_cap_returns(&mut self) {
+        use kurbo::{CubicBez, ParamCurve, ParamCurveArclen, PathSeg};
+        fn tangent(seg: PathSeg, end: bool) -> kurbo::Vec2 {
+            match seg {
+                PathSeg::Line(l) => l.p1 - l.p0,
+                PathSeg::Quad(q) => {
+                    if end {
+                        q.p2 - q.p1
+                    } else {
+                        q.p1 - q.p0
+                    }
+                }
+                PathSeg::Cubic(c) => {
+                    if end {
+                        c.p3 - c.p2
+                    } else {
+                        c.p1 - c.p0
+                    }
+                }
+            }
+        }
+        let raw: Vec<_> = self.path.segments().collect();
+        assert_eq!(raw.len(), self.rec.len());
+        let (segs, records): (Vec<_>, Vec<_>) = raw
+            .into_iter()
+            .zip(self.rec.iter().copied())
+            .filter(|(seg, _)| seg.arclen(1e-6) > 1e-7)
+            .unzip();
+        let closed = segs
+            .first()
+            .zip(segs.last())
+            .is_some_and(|(a, b)| a.start().distance(b.end()) < 1e-7);
+        let mut cuts = vec![0.0; segs.len()];
+        for i in 0..segs.len() {
+            if i + 1 == segs.len() && !closed {
+                continue;
+            }
+            let (a, b) = (segs[i], segs[(i + 1) % segs.len()]);
+            let retrace = match (a, b) {
+                (PathSeg::Line(l), PathSeg::Quad(q)) => q.p1.distance(l.p0) < 1e-7,
+                (PathSeg::Quad(q), PathSeg::Line(l)) => q.p1.distance(l.p1) < 1e-7,
+                _ => false,
+            };
+            let (u, v) = (tangent(a, true), tangent(b, false));
+            if retrace
+                && a.end().distance(b.start()) < 1e-7
+                && u.hypot() > 1e-7
+                && v.hypot() > 1e-7
+                && u.normalize().dot(v.normalize()) < -1.0 + 1e-10
+            {
+                cuts[i] = 0.25_f64.min(a.arclen(1e-6) / 4.0).min(b.arclen(1e-6) / 4.0);
+            }
+        }
+        if !cuts.iter().any(|&d| d > 0.0) {
+            return;
+        }
+        let mut path = BezPath::new();
+        let mut rec = vec![];
+        let mut previous: Option<PathSeg> = None;
+        let mut first: Option<PathSeg> = None;
+        for (i, &seg) in segs.iter().enumerate() {
+            let len = seg.arclen(1e-6);
+            let start = cuts[(i + segs.len() - 1) % segs.len()];
+            let end = cuts[i];
+            let trimmed = if start > 0.0 || end > 0.0 {
+                seg.subsegment(seg.inv_arclen(start, 1e-6)..seg.inv_arclen(len - end, 1e-6))
+            } else {
+                seg
+            };
+            if let Some(prev) = previous {
+                if start > 0.0 {
+                    let (a, b) = (prev.end(), trimmed.start());
+                    let join = PathSeg::Cubic(CubicBez::new(
+                        a,
+                        a + tangent(prev, true).normalize() * start,
+                        b - tangent(trimmed, false).normalize() * start,
+                        b,
+                    ));
+                    path.push(join.as_path_el());
+                    rec.push(Rec {
+                        len: join.arclen(1e-6),
+                        width: records[i].width,
+                        notch: records[i].notch,
+                    });
+                } else if prev.end().distance(trimmed.start()) > 1e-7 {
+                    path.move_to(trimmed.start());
+                }
+            } else {
+                path.move_to(trimmed.start());
+            }
+            path.push(trimmed.as_path_el());
+            rec.push(Rec {
+                len: if len > 1e-7 {
+                    records[i].len * trimmed.arclen(1e-6) / len
+                } else {
+                    0.0
+                },
+                ..records[i]
+            });
+            first = first.or(Some(trimmed));
+            previous = Some(trimmed);
+        }
+        let distance = cuts[segs.len() - 1];
+        if distance > 0.0 {
+            let (a, b) = (previous.unwrap(), first.unwrap());
+            let join = PathSeg::Cubic(CubicBez::new(
+                a.end(),
+                a.end() + tangent(a, true).normalize() * distance,
+                b.start() - tangent(b, false).normalize() * distance,
+                b.start(),
+            ));
+            path.push(join.as_path_el());
+            rec.push(Rec {
+                len: join.arclen(1e-6),
+                width: records[0].width,
+                notch: records[0].notch,
+            });
+        }
+        self.path = path;
+        self.rec = rec;
+    }
+}
+
 /// Swift `SegmentChainShape`의 저장 필드 전부. (BorderView.swift:14-50)
 #[derive(Debug, Clone)]
 pub struct ChainShape {

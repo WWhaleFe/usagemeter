@@ -41,43 +41,6 @@ pub(crate) fn taskbar_settings(s: &mut um_core::settings::Settings, taskbar: Opt
     }
 }
 
-/// 화면 안 띠 4개(왼쪽 위 원점, pt). 메뉴선·Dock선(macOS)이 켜져 있으면 위·아래 띠를 그 높이까지 넓힌다.
-fn layout(s: &um_core::settings::Settings, w: f64, h: f64) -> Vec<[f64; 4]> {
-    let l = border::strip_extent(s, StripSide::Left);
-    let r = border::strip_extent(s, StripSide::Right);
-    let mut t = border::strip_extent(s, StripSide::Top);
-    let mut b = border::strip_extent(s, StripSide::Bottom);
-    if s.menu_line_enabled {
-        t = t.max(s.menu_line_height + border::strip_extent(s, StripSide::Top));
-    }
-    if s.dock_line_enabled {
-        b = b.max(s.dock_line_height + border::strip_extent(s, StripSide::Bottom));
-    }
-    let seam = 2.0; // 띠 경계 이음매가 안 보이게 살짝 겹침(Swift OverlayFrameController.swift:42)
-    vec![
-        [0.0, 0.0, l, h],
-        [w - r, 0.0, r, h],
-        [l - seam, 0.0, w - l - r + 2.0 * seam, t],
-        [l - seam, h - b, w - l - r + 2.0 * seam, b],
-    ]
-}
-
-/// 옆 Dock과 메뉴바가 함께 있으면 위 띠와 옆 띠를 각각 넓힌다.
-fn positioned_layout(s: &um_core::settings::Settings, w: f64, h: f64, side: StripSide) -> Vec<[f64; 4]> {
-    if s.menu_line_enabled && matches!(side, StripSide::Left | StripSide::Right) {
-        let extent = [StripSide::Top, StripSide::Bottom, StripSide::Left, StripSide::Right]
-            .into_iter().map(|edge| border::strip_extent(s, edge)).fold(0.0, f64::max);
-        let l = extent + if side == StripSide::Left { s.dock_line_height } else { 0.0 };
-        let r = extent + if side == StripSide::Right { s.dock_line_height } else { 0.0 };
-        let top = extent + s.menu_line_height;
-        vec![[0.0, 0.0, l, h], [w - r, 0.0, r, h],
-            [l - 2.0, 0.0, w - l - r + 4.0, top], [l - 2.0, h - extent, w - l - r + 4.0, extent]]
-    } else {
-        let (cw, ch) = side.canonical_size(w, h);
-        layout(s, cw, ch).into_iter().map(|r| side.orient_rect(r, w, h)).collect()
-    }
-}
-
 impl Overlay {
     /// 화면 구성을 확인하고 바뀌었으면 true(띠 창을 버리고 다음 `redraw`에서 새로 만든다).
     pub fn check_displays(&mut self) -> bool {
@@ -105,7 +68,7 @@ impl Overlay {
             let hidden = st.hide_overlay || st.disabled_displays.contains(&d.id);
             let mut s = st.settings_for_display(&d.id);
             let side = taskbar_settings(&mut s, d.taskbar, cfg!(windows));
-            let rects = positioned_layout(&s, d.width_pt, d.height_pt, side);
+            let rects = border::strip_layout(&s, d.width_pt, d.height_pt, side, d.scale);
             let entry = self.strips.entry(d.id.clone()).or_default();
             if hidden {
                 for (w, _) in entry.iter() {
@@ -142,8 +105,9 @@ impl Overlay {
                     }
                 }
             }
+            let full = border::render(&scene, (0.0, 0.0), scene.screen, d.scale);
             for (w, r) in entry.iter() {
-                let pm = border::render(&scene, (r[0], r[1]), (r[2], r[3]), d.scale);
+                let pm = border::crop_strip(&full, *r, d.scale);
                 if let Err(e) = w.present(pm.data(), pm.width(), pm.height(), d.scale) {
                     tracing::warn!("띠 그리기 실패: {e}");
                 }
@@ -199,8 +163,9 @@ impl Overlay {
         let Some((scene, _, scale)) = self.scenes.get(id) else { return };
         let selected = self.hover.as_ref().filter(|h| self.hover_draw && h.0 == id).map(|h| h.1[h.2]);
         if let Some(strips) = self.strips.get(id) {
+            let full = border::render_emphasized(scene, (0.0, 0.0), scene.screen, *scale, selected);
             for (w, r) in strips {
-                let pm = border::render_emphasized(scene, (r[0], r[1]), (r[2], r[3]), *scale, selected);
+                let pm = border::crop_strip(&full, *r, *scale);
                 if let Err(e) = w.present(pm.data(), pm.width(), pm.height(), *scale) {
                     tracing::warn!("강조 띠 그리기 실패: {e}");
                 }
@@ -213,6 +178,95 @@ impl Overlay {
 mod tests {
     use super::*;
 
+    fn legacy_strips(scene: &border::BorderScene, s: &um_core::settings::Settings, scale: f64) -> tiny_skia::Pixmap {
+        let (w,h)=scene.screen;
+        let full=border::render(scene,(0.0,0.0),scene.screen,scale);
+        let l=border::strip_extent(s,StripSide::Left);
+        let r=border::strip_extent(s,StripSide::Right);
+        let t=border::strip_extent(s,StripSide::Top);
+        let b=border::strip_extent(s,StripSide::Bottom);
+        let mut before=tiny_skia::Pixmap::new(full.width(),full.height()).unwrap();
+        for rect in [[0.0,0.0,l,h],[w-r,0.0,r,h],[l-2.0,0.0,w-l-r+4.0,t],[l-2.0,h-b,w-l-r+4.0,b]] {
+            let pm=border::render(scene,(rect[0],rect[1]),(rect[2],rect[3]),scale);
+            before.draw_pixmap((rect[0]*scale).round() as i32,(rect[1]*scale).round() as i32,
+                pm.as_ref(),&Default::default(),tiny_skia::Transform::identity(),None);
+        }
+        before
+    }
+
+    #[test]
+    fn 띠_합성_재현() {
+        let s = um_core::settings::Settings { thickness: 3.5, notch_enabled: false,
+            line_opacity: 0.7, ..Default::default() };
+        let (w, h, scale) = (1512.0, 982.0, 1.25);
+        let scene = border::build_paths(&BorderInput { settings: &s, screen_w: w, screen_h: h,
+            bands: vec![ProviderBand { id: "claude".into(), ratio: 1.0, color: [1.0, 0.2, 0.0, 1.0], parts: vec![] }] });
+        let full = border::render(&scene, (0.0, 0.0), (w, h), scale);
+        let mut tiled = tiny_skia::Pixmap::new(full.width(), full.height()).unwrap();
+        for r in border::strip_layout(&s, w, h, StripSide::Bottom, scale) {
+            let pm = border::crop_strip(&full, r, scale);
+            tiled.draw_pixmap((r[0]*scale).round() as i32, (r[1]*scale).round() as i32,
+                pm.as_ref(), &Default::default(), tiny_skia::Transform::identity(), None);
+        }
+        assert_eq!(full.data(),tiled.data(),"공통 픽셀 버퍼 분할은 채널 차 0이어야 한다");
+        // 이전 앱과 같은 반올림 전 원점·2pt 중복 합성으로 결함을 재현한다.
+        let before=legacy_strips(&scene,&s,scale);
+        let differences:Vec<_>=full.pixels().iter().zip(before.pixels()).enumerate()
+            .filter(|(_, (a,b))| a!=b).map(|(i,_)|(i as u32%full.width(),i as u32/full.width())).collect();
+        let max=full.data().iter().zip(before.data()).map(|(a,b)|a.abs_diff(*b)).max().unwrap();
+        assert!(!differences.is_empty(),"이전 띠 합성 결함이 재현돼야 한다");
+        println!("이전 합성: {}픽셀, 채널 최대 {max}, 위치 {differences:?}",differences.len());
+        if std::env::var_os("CORNER_DUMP").is_some() {
+            let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("..").join("target").join("corner-check");
+            std::fs::create_dir_all(&dir).unwrap();
+            for (name,pm) in [("full",&full),("strips-before",&before),("strips-after",&tiled)] {
+                pm.save_png(dir.join(format!("{name}.png"))).unwrap();
+                for (corner,x) in [("left",0),("right",full.width()-96)] {
+                    let small=pm.clone_rect(tiny_skia::IntRect::from_xywh(x as i32,0,96,96).unwrap()).unwrap();
+                    let mut zoom=tiny_skia::Pixmap::new(768,768).unwrap();
+                    zoom.draw_pixmap(0,0,small.as_ref(),&Default::default(),tiny_skia::Transform::from_scale(8.0,8.0),None);
+                    zoom.save_png(dir.join(format!("{name}-{corner}-8x.png"))).unwrap();
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn 둥근_모서리의_분수_픽셀_원점_재현() {
+        let mut s=um_core::settings::Settings { thickness:3.5,notch_enabled:false,line_opacity:0.7,..Default::default() };
+        for c in um_core::types::BorderCorner::ALL {s.corner_radii.insert(c,40.0);}
+        s.provider_layouts.get_mut("claude").unwrap().segments=Some(um_core::segments::zone_perimeter(
+            &[um_core::types::ScreenZone::Main].into(),false,false));
+        let scene=border::build_paths(&BorderInput {settings:&s,screen_w:1366.0,screen_h:768.0,
+            bands:vec![ProviderBand {id:"claude".into(),ratio:1.0,color:[1.0,0.2,0.0,1.0],parts:vec![]}]});
+        let scale=1.5;
+        let full=border::render(&scene,(0.0,0.0),scene.screen,scale);
+        let before=legacy_strips(&scene,&s,scale);
+        let bad=full.pixels().iter().zip(before.pixels()).filter(|(a,b)|a!=b).count();
+        let max=full.data().iter().zip(before.data()).map(|(a,b)|a.abs_diff(*b)).max().unwrap();
+        assert!(bad>0);
+        println!("둥근 모서리 이전 합성: {bad}픽셀, 최대 채널 차 {max}, 오른쪽 창 원점 오차 {}px",
+            ((scene.screen.0-border::strip_extent(&s,StripSide::Right))*scale).round()
+                -(scene.screen.0-border::strip_extent(&s,StripSide::Right))*scale);
+        let mut after=tiny_skia::Pixmap::new(full.width(),full.height()).unwrap();
+        for r in border::strip_layout(&s,scene.screen.0,scene.screen.1,StripSide::Bottom,scale) {
+            let pm=border::crop_strip(&full,r,scale);
+            after.draw_pixmap((r[0]*scale).round() as i32,(r[1]*scale).round() as i32,
+                pm.as_ref(),&Default::default(),tiny_skia::Transform::identity(),None);
+        }
+        assert_eq!(full.data(),after.data());
+        if std::env::var_os("CORNER_DUMP").is_some() {
+            let dir=std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("..").join("target").join("corner-check");
+            std::fs::create_dir_all(&dir).unwrap();
+            for (name,pm) in [("curve-before",&before),("curve-after",&after)] {
+                let small=pm.clone_rect(tiny_skia::IntRect::from_xywh((full.width()-96) as i32,0,96,96).unwrap()).unwrap();
+                let mut zoom=tiny_skia::Pixmap::new(768,768).unwrap();
+                zoom.draw_pixmap(0,0,small.as_ref(),&Default::default(),tiny_skia::Transform::from_scale(8.0,8.0),None);
+                zoom.save_png(dir.join(format!("{name}-right-8x.png"))).unwrap();
+            }
+        }
+    }
+
     #[test]
     fn 맥은_감지_두께와_무관하게_저장한_거리와_위_메뉴바_띠를_유지() {
         for side in [display::TaskbarSide::Left, display::TaskbarSide::Right, display::TaskbarSide::Bottom] {
@@ -221,7 +275,7 @@ mod tests {
             for thickness in [0.0, 50.0, 100.0] {
                 let position = taskbar_settings(&mut s, Some(display::Taskbar { side, thickness }), false);
                 assert_eq!(s.dock_line_height, 70.0);
-                let rects = positioned_layout(&s, 1200.0, 800.0, position);
+                let rects = border::strip_layout(&s, 1200.0, 800.0, position, 1.0);
                 assert!(rects.iter().any(|r| r[1] == 0.0 && r[3] > 25.0 && r[2] > 600.0));
                 match side {
                     display::TaskbarSide::Left => assert!(rects[0][2] > 70.0),
@@ -241,7 +295,7 @@ mod tests {
             assert_eq!(taskbar_settings(&mut s, Some(display::Taskbar { side: position, thickness: 48.0 }), true), side);
             assert_eq!(s.dock_line_height, 48.0);
             let (cw, ch) = side.canonical_size(1200.0, 800.0);
-            let rects = layout(&s, cw, ch);
+            let rects = border::strip_layout(&s, cw, ch, StripSide::Bottom, 1.0);
             let dock = side.orient_rect(rects[3], 1200.0, 800.0);
             match side {
                 StripSide::Bottom => assert!(dock[1] < 752.0 && dock[1] + dock[3] == 800.0),

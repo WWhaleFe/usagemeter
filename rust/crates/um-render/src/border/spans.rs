@@ -81,6 +81,30 @@ pub fn tapered(spans: &[Span], total: f64, thickness: f64) -> Vec<Span> {
             }
         }
     }
+    // 고정 노치 바로 옆의 블러 값이 낮으면 계단이 남는다. 원형 거리로 바깥 램프를 이어 준다.
+    if pin.iter().any(|&p| p) {
+        let mut distances = vec![n; n];
+        let mut distance = n;
+        for j in 0..2 * n {
+            let i = j % n;
+            distance = if pin[i] { 0 } else { (distance + 1).min(n) };
+            distances[i] = distances[i].min(distance);
+        }
+        distance = n;
+        for j in (0..2 * n).rev() {
+            let i = j % n;
+            distance = if pin[i] { 0 } else { (distance + 1).min(n) };
+            distances[i] = distances[i].min(distance);
+        }
+        let join_radius = (radius / 4).max(3);
+        for i in 0..n {
+            if !pin[i] && distances[i] < join_radius {
+                let t = distances[i] as f64 / join_radius as f64;
+                let blend = t * t * (3.0 - 2.0 * t);
+                w[i] = thickness + (w[i] - thickness) * blend;
+            }
+        }
+    }
     // 비슷한 굵기의 인접 슬라이스 병합.
     let mut out: Vec<Span> = vec![];
     for i in 0..n {

@@ -86,14 +86,18 @@ impl DisplayInfo {
 
     /// 화면 안 띠(왼쪽 위 원점, pt)를 띠 창 프레임(OS 좌표)으로 바꾼다.
     pub fn strip_frame(&self, x: f64, y: f64, w: f64, h: f64) -> StripFrame {
+        let s = self.scale;
+        let (x0, y0) = ((x * s).round(), (y * s).round());
+        let (x1, y1) = (((x + w) * s).round(), ((y + h) * s).round());
         #[cfg(target_os = "macos")]
         {
-            StripFrame { x: self.origin.0 + x, y: self.origin.1 + self.height_pt - y - h, w, h }
+            StripFrame { x: self.origin.0 + x0 / s, y: self.origin.1 + self.height_pt - y1 / s,
+                w: (x1 - x0) / s, h: (y1 - y0) / s }
         }
         #[cfg(not(target_os = "macos"))]
         {
-            let s = self.scale;
-            StripFrame { x: (self.origin.0 + x * s).round(), y: (self.origin.1 + y * s).round(), w: (w * s).ceil().max(1.0), h: (h * s).ceil().max(1.0) }
+            StripFrame { x: self.origin.0 + x0, y: self.origin.1 + y0,
+                w: x1 - x0, h: y1 - y0 }
         }
     }
 
@@ -108,13 +112,15 @@ impl DisplayInfo {
 
     /// 화면 안 좌표(왼쪽 위 원점, pt)의 점을 OS 전역 좌표로.
     pub fn to_global(&self, x: f64, y: f64) -> (f64, f64) {
-        let f = self.strip_frame(x, y, 0.0, 0.0);
-        (f.x, f.y)
+        #[cfg(target_os = "macos")]
+        { (self.origin.0 + x, self.origin.1 + self.height_pt - y) }
+        #[cfg(not(target_os = "macos"))]
+        { ((self.origin.0 + x * self.scale).round(), (self.origin.1 + y * self.scale).round()) }
     }
 
-    /// 띠의 픽셀 크기.
+    /// 픽셀 격자에 맞춘 띠의 크기. 원점이 있는 프레임은 양 끝점을 반올림한다.
     pub fn pixel_size(&self, w: f64, h: f64) -> (u32, u32) {
-        ((w * self.scale).ceil().max(1.0) as u32, (h * self.scale).ceil().max(1.0) as u32)
+        ((w * self.scale).round().max(1.0) as u32, (h * self.scale).round().max(1.0) as u32)
     }
 
     #[cfg(test)]
@@ -355,10 +361,10 @@ mod tests {
     }
 
     #[test]
-    fn 배율별_픽셀_크기는_올림() {
+    fn 배율별_픽셀_크기는_반올림() {
         for scale in [1.0, 1.25, 1.5, 2.0] {
             let d = DisplayInfo::for_test((0.0, 0.0), 1000.0, 800.0, scale);
-            assert_eq!(d.pixel_size(7.0, 29.0), ((7.0 * scale).ceil() as u32, (29.0 * scale).ceil() as u32));
+            assert_eq!(d.pixel_size(7.0, 29.0), ((7.0 * scale).round() as u32, (29.0 * scale).round() as u32));
             #[cfg(not(target_os = "macos"))]
             {
                 let f = d.strip_frame(0.0, 0.0, 7.0, 29.0);
@@ -366,6 +372,29 @@ mod tests {
             }
             if scale == 1.0 || scale == 2.0 {
                 assert_eq!(d.pixel_size(7.0, 29.0), ((7.0 * scale).round() as u32, (29.0 * scale).round() as u32));
+            }
+        }
+    }
+
+    #[test]
+    fn 분수_배율의_인접_창은_같은_픽셀_경계를_공유() {
+        for scale in [1.0,1.25,1.5,2.0] {
+            for origin in [(0.0,0.0),(-2176.0,-1360.0),(1512.0,982.0)] {
+                let d=DisplayInfo::for_test(origin,1512.0,982.0,scale);
+                for edge in [7.25,31.75,55.5,103.1] {
+                    let a=d.strip_frame(0.0,0.0,edge,982.0);
+                    let b=d.strip_frame(edge,0.0,1512.0-edge,982.0);
+                    assert!((a.x+a.w-b.x).abs()<1e-9);
+                    let top=d.strip_frame(0.0,0.0,1512.0,edge);
+                    let bottom=d.strip_frame(0.0,edge,1512.0,982.0-edge);
+                    #[cfg(target_os="macos")]
+                    assert!((bottom.y+bottom.h-top.y).abs()<1e-9);
+                    #[cfg(not(target_os="macos"))]
+                    assert!((top.y+top.h-bottom.y).abs()<1e-9);
+                    let unit=if cfg!(target_os="macos") {scale} else {1.0};
+                    assert!((a.w*unit-(edge*scale).round()).abs()<1e-9);
+                    assert!((top.h*unit-(edge*scale).round()).abs()<1e-9);
+                }
             }
         }
     }
