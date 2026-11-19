@@ -82,6 +82,24 @@ mod tests {
     const SWIFT_KEYS: usize = 335;
 
     #[test]
+    fn 사용량_표시_모드의_문구와_보조_값() {
+        use crate::settings::BarFillMode::{Remaining, Used};
+        for key in ["menu.line5h", "menu.lineWeekly", "info.5h", "info.weekly", "info.opus", "chart.titleFmt",
+            "disp.iconDesc", "disp.percentDesc", "subItems.desc", "subItems.used"] {
+            assert_eq!(Remaining.text_key(key), key);
+            assert!(has(Used.text_key(key)), "{key}");
+        }
+        for key in ["info.countdown", "info.reset", "info.pace", "analytics.remaining"] {
+            assert_eq!(Used.text_key(key), key);
+        }
+        assert_eq!(tr(Used.text_key("subItems.used"), Korean), "잔여");
+        assert_eq!(tr(Used.text_key("subItems.used"), English), "remaining");
+        assert_eq!(tr(Used.text_key("subItems.used"), Japanese), "残量");
+        assert_eq!(Used.display_ratio(0.62), 0.38);
+        assert_eq!(Remaining.display_ratio(0.62), 0.62);
+    }
+
+    #[test]
     fn 키_개수() {
         let base = parse(STRINGS_JSON, "strings.json");
         let extra = parse(EXTRA_JSON, "extra.json");

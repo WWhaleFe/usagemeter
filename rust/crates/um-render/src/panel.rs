@@ -302,8 +302,23 @@ pub fn render_card(sections: &[CardSection], empty_text: Option<&str>, theme: Th
 pub struct ChartSeries {
     pub name: String,
     pub color: Rgba,
-    /// (유닉스 초, 0..1 잔여율)
+    /// (유닉스 초, 0..1 표시 비율). 선과 툴팁이 같은 값을 쓴다.
     pub points: Vec<(f64, f64)>,
+}
+
+impl ChartSeries {
+    /// 이력의 잔여율을 표시 비율로 바꾼다. 저장된 이력은 바꾸지 않는다.
+    pub fn displayed(mut self, mode: um_core::settings::BarFillMode) -> Self {
+        for (_, ratio) in &mut self.points {
+            *ratio = mode.display_ratio(*ratio);
+        }
+        self
+    }
+
+    fn tooltip(&self, t: f64) -> Option<String> {
+        let n = self.points.iter().min_by(|a, b| (a.0 - t).abs().partial_cmp(&(b.0 - t).abs()).unwrap_or(std::cmp::Ordering::Equal))?;
+        Some(format!("{} {}%", self.name, (n.1 * 100.0).round() as i32))
+    }
 }
 
 /// 차트 입력: 폭(pt), 기준 시각(now, 유닉스 초), 기간(시간), x축 눈금 라벨(시각, 문자열),
@@ -466,10 +481,7 @@ fn draw_tooltip(pm: &mut Pixmap, spec: &ChartSpec, theme: Theme, scale: f32, t: 
     let rows: Vec<(String, Rgba)> = spec
         .series
         .iter()
-        .filter_map(|s| {
-            let n = s.points.iter().min_by(|a, b| (a.0 - t).abs().partial_cmp(&(b.0 - t).abs()).unwrap_or(std::cmp::Ordering::Equal))?;
-            Some((format!("{} {}%", s.name, (n.1 * 100.0).round() as i32), s.color))
-        })
+        .filter_map(|s| Some((s.tooltip(t)?, s.color)))
         .collect();
     let lh = text::line_height(CH_LABEL);
     let measure = |s: &str| text::measure(&[Span { text: s, color: theme.primary() }], CH_LABEL, W_REGULAR, None).width;

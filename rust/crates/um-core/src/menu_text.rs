@@ -115,12 +115,12 @@ fn info_lines<Tz: TimeZone>(
             continue;
         }
         // subItemName :919
-        let kind = tr(if item.is_five_hour { "menu.line5h" } else { "menu.lineWeekly" }, lang);
+        let kind = tr(s.bar_fill_mode.text_key(if item.is_five_hour { "menu.line5h" } else { "menu.lineWeekly" }), lang);
         let name = match &item.model_label {
             Some(l) => format!("{l} {kind}"),
             None => kind,
         };
-        let text = format!("{name}  {}%{}", pct(item.remaining_ratio), reset_suffix(item.reset_at));
+        let text = format!("{name}  {}%{}", pct(s.bar_fill_mode.display_ratio(item.remaining_ratio)), reset_suffix(item.reset_at));
         lines.push(InfoLine { text, dot_item: colored.then(|| item.id.clone()) });
     }
     if s.menu_show_pace
@@ -197,7 +197,7 @@ pub fn hover_text<Tz: TimeZone>(
 pub fn status_percents(s: &Settings, active: &[ActiveAi]) -> Vec<(String, String)> {
     let mut v: Vec<&ActiveAi> = active.iter().filter(|a| s.menu_bar_percent_ids.contains(a.0)).collect();
     v.sort_by_key(|a| s.order_index(a.0));
-    v.into_iter().map(|a| (a.0.to_string(), format!("{}%", pct(a.2.remaining_ratio)))).collect()
+    v.into_iter().map(|a| (a.0.to_string(), format!("{}%", pct(s.bar_fill_mode.display_ratio(a.2.remaining_ratio))))).collect()
 }
 
 #[cfg(test)]
@@ -232,6 +232,40 @@ mod tests {
     }
     fn no_pace(_: &str) -> Option<PaceInfo> {
         None
+    }
+
+    #[test]
+    fn 쓴_양_문구와_퍼센트는_세_언어에_적용한다() {
+        use crate::settings::BarFillMode;
+        let mut sn = snap("claude", 0.62);
+        sn.secondary_ratio = Some(0.8);
+        sn.reset_at = Some(now() + chrono::Duration::minutes(34));
+        sn.model_buckets = Some(vec![UsageModelBucket {
+            label: "Fable".into(), remaining_ratio: 0.25, reset_at: None, is_five_hour: false,
+        }]);
+        for (lang, five, weekly) in [
+            (AppLanguage::Korean, "5시간 사용", "주간 사용"),
+            (AppLanguage::English, "5h used", "Weekly used"),
+            (AppLanguage::Japanese, "5時間使用", "週間使用"),
+        ] {
+            let mut s = st(lang);
+            s.menu_show_pace = true;
+            s.menu_show_updated = true;
+            s.menu_bar_percent_ids.insert("claude".into());
+            let active = [("claude", "Claude", &sn)];
+            let pace = |_: &str| Some(PaceInfo { depletion: now().timestamp() as f64 + 3600.0, rate_per_hour: 0.1 });
+            let before = info_sections(&s, &active, pace, now(), &tz());
+            s.bar_fill_mode = BarFillMode::Used;
+            let after = info_sections(&s, &active, pace, now(), &tz());
+            let lines = &after[0].lines;
+            assert_eq!(lines[0].text, before[0].lines[0].text.replace(&tr("menu.line5h", lang), five).replacen("62%", "38%", 1));
+            assert_eq!(lines[1].text, format!("{weekly}  20%"));
+            assert_eq!(lines[2].text, format!("Fable {weekly}  75%"));
+            assert_eq!(lines[3..], before[0].lines[3..]); // 소진 예측·갱신 시각 유지
+            assert!(hover_text(&s, &active, pace, now(), &tz()).contains(&format!("{five}  38%")));
+            assert_eq!(status_percents(&s, &active), vec![("claude".into(), "38%".into())]);
+            assert_eq!(sn.remaining_ratio, 0.62);
+        }
     }
 
     #[test]

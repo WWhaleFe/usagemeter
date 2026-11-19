@@ -1,4 +1,4 @@
-//! 메뉴바 링 옆 퍼센트(Swift StatusBarController.swift:859-877): 선택한 AI의 잔여 %를 각자 색으로 나란히 붙인다.
+//! 메뉴바 링 옆 퍼센트(Swift StatusBarController.swift:859-877): 선택한 AI의 표시 %를 각자 색으로 나란히 붙인다.
 //! Tauri `set_title`은 색을 못 넣어서 NSStatusItem 버튼에 서식 있는 제목을 직접 건다.
 
 use objc2::{AllocAnyThread, MainThreadMarker};
@@ -9,7 +9,7 @@ use objc2_app_kit::{
 };
 use objc2_foundation::{NSAttributedString, NSDictionary, NSMutableAttributedString, NSString};
 
-/// `shown` = (잔여 %, 색) 목록, 'AI 표시 순서'대로. 비어 있으면 링만 보인다.
+/// `shown` = (표시 %, 색) 목록, 'AI 표시 순서'대로. 비어 있으면 링만 보인다.
 pub fn apply(item: &NSStatusItem, shown: &[(i64, [f64; 4])]) {
     let Some(mtm) = MainThreadMarker::new() else { return };
     let Some(button) = item.button(mtm) else { return };

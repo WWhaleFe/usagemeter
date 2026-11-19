@@ -253,5 +253,55 @@
     "겹치는 띠는 실제로 그려지는 길이가 짧은 띠가 맨 위에 표시됩니다. 겹침 분할을 켜면 공유 구간의 굵기를 나눠 나란히 표시합니다.",
     "Overlapping bands stack with the shortest drawn band on top. Enable thickness splitting to show shared spans side by side.",
     "重なるバンドは実際に描画される長さが短いものが最前面に表示されます。重なりの分割を有効にすると、共有区間の太さを分けて並べて表示します。"
+  ],
+  "menu.line5hUsed": [
+    "5시간 사용",
+    "5h used",
+    "5時間使用"
+  ],
+  "menu.lineWeeklyUsed": [
+    "주간 사용",
+    "Weekly used",
+    "週間使用"
+  ],
+  "info.5hUsed": [
+    "5시간 사용",
+    "5-hour used",
+    "5時間の使用量"
+  ],
+  "info.weeklyUsed": [
+    "주간 사용",
+    "Weekly used",
+    "週間の使用量"
+  ],
+  "info.opusUsed": [
+    "모델별 주간 사용 (예: Fable)",
+    "Per-model weekly used (e.g. Fable)",
+    "モデル別の週間使用量（例: Fable）"
+  ],
+  "chart.usedTitleFmt": [
+    "최근 %d시간 사용률(%)",
+    "Used % (last %dh)",
+    "使用率%（直近%d時間）"
+  ],
+  "disp.iconUsedDesc": [
+    "메뉴바 링 아이콘이 이 AI의 사용률·색으로 표시됩니다 (로그인 안 됐으면 자동).",
+    "The menu bar ring shows this AI's used ratio and color (auto if not logged in).",
+    "メニューバーのリングにこのAIの使用率と色を表示します（未ログイン時は自動）。"
+  ],
+  "disp.percentUsedDesc": [
+    "선택한 AI의 사용 %가 각자 색으로 표시됩니다. 표시 순서는 'AI 표시 순서' 설정을 따릅니다.",
+    "Selected AIs' used % are shown in their colors. Order follows the 'AI Display Order' setting.",
+    "選択したAIの使用%をそれぞれの色で表示します。順序は「AI表示順」の設定に従います。"
+  ],
+  "subItems.usedDesc": [
+    "AI마다 5시간·주간·모델별 한도를 따로 확인합니다. 색상 겹침을 켜면 테두리 바 한 줄에 항목별 색이 겹쳐 그려지고, 각 색이 자기 한도의 사용량만큼 늘어납니다. 사용량이 적은 색이 위에 표시됩니다.",
+    "See each AI's 5-hour, weekly and per-model limits separately. With color overlay on, every item is drawn in its own color on the same border line and grows with its used ratio. The lowest used ratio is on top.",
+    "AIごとに5時間・週間・モデル別の上限を個別に確認します。色の重ね表示をオンにすると、1本の枠線に項目別の色が重なり、各色がそれぞれの上限の使用量に応じて増えます。使用量の少ない色が上に表示されます。"
+  ],
+  "subItems.remaining": [
+    "잔여",
+    "remaining",
+    "残量"
   ]
 }
