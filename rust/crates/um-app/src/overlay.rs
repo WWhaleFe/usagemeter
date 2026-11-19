@@ -26,9 +26,22 @@ pub struct Overlay {
 
 fn signature(ds: &[DisplayInfo]) -> String {
     ds.iter()
-        .map(|d| format!("{}:{}x{}@{}", d.id, d.width_pt, d.height_pt, d.scale))
+        .map(DisplayInfo::configuration_signature)
         .collect::<Vec<_>>()
         .join("|")
+}
+
+/// 저장된 독 높이는 macOS용으로 유지하고 Windows에서만 실제 예약 두께를 쓴다.
+fn taskbar_settings(s: &mut um_core::settings::Settings, taskbar: Option<display::Taskbar>, windows: bool) -> StripSide {
+    if !windows || !s.dock_line_enabled { return StripSide::Bottom; }
+    s.dock_line_height = taskbar.map_or(0.0, |t| t.thickness);
+    // 예약 영역이 없는 화면·자동 숨김에서는 별도 구역을 접어 화면 가장자리로 보낸다.
+    match taskbar.map(|t| t.side) {
+        Some(display::TaskbarSide::Top) => StripSide::Top,
+        Some(display::TaskbarSide::Left) => StripSide::Left,
+        Some(display::TaskbarSide::Right) => StripSide::Right,
+        _ => StripSide::Bottom,
+    }
 }
 
 /// 화면 안 띠 4개(왼쪽 위 원점, pt). 메뉴선·Dock선(macOS)이 켜져 있으면 위·아래 띠를 그 높이까지 넓힌다.
@@ -77,8 +90,11 @@ impl Overlay {
         for d in &ds {
             seen.push(d.id.clone());
             let hidden = st.hide_overlay || st.disabled_displays.contains(&d.id);
-            let s = st.settings_for_display(&d.id);
-            let rects = layout(&s, d.width_pt, d.height_pt);
+            let mut s = st.settings_for_display(&d.id);
+            let side = taskbar_settings(&mut s, d.taskbar, cfg!(windows));
+            let (cw, ch) = side.canonical_size(d.width_pt, d.height_pt);
+            let rects: Vec<_> = layout(&s, cw, ch).into_iter()
+                .map(|r| side.orient_rect(r, d.width_pt, d.height_pt)).collect();
             let entry = self.strips.entry(d.id.clone()).or_default();
             if hidden {
                 for (w, _) in entry.iter() {
@@ -97,12 +113,13 @@ impl Overlay {
                     parts: border::sub_item_bar_parts(&st.main, id, snap),
                 })
                 .collect();
-            let scene = border::build_paths(&BorderInput {
+            let mut scene = border::build_paths(&BorderInput {
                 settings: &s,
-                screen_w: d.width_pt,
-                screen_h: d.height_pt,
+                screen_w: cw,
+                screen_h: ch,
                 bands,
             });
+            side.orient_scene(&mut scene, d.width_pt, d.height_pt);
             #[cfg(target_os = "macos")]
             self.scenes.insert(d.id.clone(), (scene.clone(), border::HoverGeometry::new(&scene), d.scale));
             // 띠 개수·위치가 바뀌었으면 새로 만든다.
@@ -181,5 +198,36 @@ impl Overlay {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn 작업_표시줄_실제_두께는_저장_높이와_독립() {
+        for (position, side) in [(display::TaskbarSide::Bottom, StripSide::Bottom),
+            (display::TaskbarSide::Top, StripSide::Top), (display::TaskbarSide::Left, StripSide::Left),
+            (display::TaskbarSide::Right, StripSide::Right)] {
+            let mut s = um_core::settings::Settings { dock_line_enabled: true, dock_line_height: 123.0, ..Default::default() };
+            assert_eq!(taskbar_settings(&mut s, Some(display::Taskbar { side: position, thickness: 48.0 }), true), side);
+            assert_eq!(s.dock_line_height, 48.0);
+            let (cw, ch) = side.canonical_size(1200.0, 800.0);
+            let rects = layout(&s, cw, ch);
+            let dock = side.orient_rect(rects[3], 1200.0, 800.0);
+            match side {
+                StripSide::Bottom => assert!(dock[1] < 752.0 && dock[1] + dock[3] == 800.0),
+                StripSide::Top => assert!(dock[1] == 0.0 && dock[3] > 48.0),
+                StripSide::Left => assert!(dock[0] == 0.0 && dock[2] > 48.0),
+                StripSide::Right => assert!(dock[0] < 1152.0 && dock[0] + dock[2] == 1200.0),
+            }
+        }
+        let mut s = um_core::settings::Settings::default();
+        taskbar_settings(&mut s, None, false);
+        assert_eq!(s.dock_line_height, 70.0);
+        s.dock_line_enabled = true;
+        taskbar_settings(&mut s, None, true);
+        assert_eq!(s.dock_line_height, 0.0);
     }
 }

@@ -29,3 +29,6 @@ export const TABS: TabDef[] = [
   { id: 'notch', component: Notch },
   { id: 'support', component: Support },
 ];
+
+// 직접 해시로 접근해도 스토어판에서는 개발자 탭을 선택할 수 없다.
+export const tabsForStore = (store: boolean) => TABS.filter((tab) => !store || tab.id !== 'support');

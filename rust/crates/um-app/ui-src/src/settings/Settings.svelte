@@ -1,11 +1,11 @@
 <script lang="ts">
   // 설정 창 틀: 두 플랫폼이 상단 영역과 가운데 탭 12개를 함께 쓴다.
-  import { t } from '../lib/api.svelte';
+  import { ui, t } from '../lib/api.svelte';
   import TopArea from './TopArea.svelte';
-  import { TABS } from './tabs';
+  import { tabsForStore } from './tabs';
 
   let { initialTab = '' }: { initialTab?: string } = $props();
-  const tabs = TABS;
+  const tabs = $derived(tabsForStore(!!ui.s?.store));
   let tab = $state('login');
   // 메뉴에서 특정 탭으로 열면(예: 갱신 주기 "사용자 설정…") 그 탭으로.
   $effect(() => { if (initialTab) tab = initialTab; });

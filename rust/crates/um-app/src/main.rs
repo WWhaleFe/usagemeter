@@ -665,7 +665,7 @@ fn main() {
                     }
                 });
             }
-            // 화면 연결·해제·해상도 변경 감지(3초 간격 비교, 변화 없으면 아무것도 하지 않음).
+            // 화면 연결·해제·해상도·Windows 작업 표시줄 변경 감지(3초 간격 비교).
             let h = app.handle().clone();
             std::thread::spawn(move || {
                 loop {

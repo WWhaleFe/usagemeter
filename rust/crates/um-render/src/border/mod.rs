@@ -149,6 +149,35 @@ pub enum StripSide {
     Right,
 }
 
+impl StripSide {
+    /// 작업 표시줄이 아래인 기준 좌표계의 크기.
+    pub fn canonical_size(self, w: f64, h: f64) -> (f64, f64) {
+        match self { Self::Left | Self::Right => (h, w), _ => (w, h) }
+    }
+
+    fn orientation(self, w: f64, h: f64) -> kurbo::Affine {
+        kurbo::Affine::new(match self {
+            Self::Bottom => [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+            Self::Top => [1.0, 0.0, 0.0, -1.0, 0.0, h],
+            Self::Left => [0.0, 1.0, -1.0, 0.0, w, 0.0],
+            Self::Right => [0.0, 1.0, 1.0, 0.0, 0.0, 0.0],
+        })
+    }
+
+    /// 세그먼트·시작점·굵기 구간을 유지한 채 장면 전체를 실제 화면으로 옮긴다.
+    pub fn orient_scene(self, scene: &mut BorderScene, w: f64, h: f64) {
+        let transform = self.orientation(w, h);
+        for item in &mut scene.items { item.path.apply_affine(transform); }
+        scene.screen = (w, h);
+    }
+
+    /// 장면과 동일한 변환을 띠 창에도 적용해 내부 경계가 잘리지 않게 한다.
+    pub fn orient_rect(self, r: [f64; 4], w: f64, h: f64) -> [f64; 4] {
+        let rect = self.orientation(w, h).transform_rect_bbox(kurbo::Rect::new(r[0], r[1], r[0] + r[2], r[1] + r[3]));
+        [rect.x0, rect.y0, rect.width(), rect.height()]
+    }
+}
+
 /// 띠 창 두께(pt, 화면 가장자리에서 안쪽으로). 계획서 4-3 ②:
 /// inset + 선 두께 + 해당 변의 최대 곡률 + (윗변이면 노치 깊이) + 여유 4pt.
 /// 곡률은 켜진 영역(본문, 메뉴바선·Dock선이 켜졌으면 그 영역)의 그 변 두 꼭짓점 중 최댓값.
@@ -238,6 +267,50 @@ mod tests {
             }
         }
         assert!(overlap > 100 && long_only > 100);
+    }
+
+    #[test]
+    fn 작업_표시줄_구역과_경계선_네_방향() {
+        use kurbo::Shape;
+        let mut s = Settings { dock_line_enabled: true, dock_line_height: 40.0,
+            thickness: 2.0, notch_enabled: false, ..Settings::default() };
+        let l = s.provider_layouts.get_mut("claude").unwrap();
+        l.segments = Some([SegPart::HDock].into());
+        for side in [StripSide::Bottom, StripSide::Top, StripSide::Left, StripSide::Right] {
+            let (w, h) = side.canonical_size(1200.0, 800.0);
+            let mut scene = build_paths(&BorderInput { settings: &s, screen_w: w, screen_h: h,
+                bands: vec![ProviderBand { id: "claude".into(), ratio: 1.0, color: RED, parts: vec![] }] });
+            let original = scene.items[0].path.bounding_box();
+            assert!((original.y0 - (h - 40.0)).abs() < 3.0);
+            side.orient_scene(&mut scene, 1200.0, 800.0);
+            let bounds = scene.items[0].path.bounding_box();
+            match side {
+                StripSide::Bottom => assert!((bounds.y0 - 760.0).abs() < 3.0),
+                StripSide::Top => assert!((bounds.y0 - 40.0).abs() < 3.0),
+                StripSide::Left => assert!((bounds.x0 - 40.0).abs() < 3.0),
+                StripSide::Right => assert!((bounds.x0 - 1160.0).abs() < 3.0),
+            }
+            let zone = side.orient_rect([0.0, h - 40.0, w, 40.0], 1200.0, 800.0);
+            let expected = match side {
+                StripSide::Bottom => [0.0, 760.0, 1200.0, 40.0],
+                StripSide::Top => [0.0, 0.0, 1200.0, 40.0],
+                StripSide::Left => [0.0, 0.0, 40.0, 800.0],
+                StripSide::Right => [1160.0, 0.0, 40.0, 800.0],
+            };
+            assert_eq!(zone, expected);
+            // 내부 경계뿐 아니라 작업 표시줄 구역의 네 변이 모두 그 안에 놓인다.
+            let mut zone_settings = s.clone();
+            zone_settings.provider_layouts.get_mut("claude").unwrap().segments =
+                Some([SegPart::HDock, SegPart::LDock, SegPart::HBottom, SegPart::RDock].into());
+            let mut perimeter = build_paths(&BorderInput { settings: &zone_settings, screen_w: w, screen_h: h,
+                bands: vec![ProviderBand { id: "claude".into(), ratio: 1.0, color: RED, parts: vec![] }] });
+            side.orient_scene(&mut perimeter, 1200.0, 800.0);
+            let bounds = perimeter.items[0].path.bounding_box();
+            assert!(bounds.x0 >= expected[0] && bounds.y0 >= expected[1]);
+            assert!(bounds.x1 <= expected[0] + expected[2] && bounds.y1 <= expected[1] + expected[3]);
+            assert!((bounds.width() - expected[2]).abs() <= 2.0);
+            assert!((bounds.height() - expected[3]).abs() <= 2.0);
+        }
     }
 
     #[test]

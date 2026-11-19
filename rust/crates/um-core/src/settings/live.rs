@@ -542,17 +542,14 @@ impl Settings {
         };
     }
 
-    /// 플랫폼 규칙. Windows에는 화면 가장자리 테두리만 있다: 메뉴바선·Dock선·노치를 끄고,
-    /// 세그먼트는 hTop/hBottom/lMain/rMain만 남긴다. 비거나 한 줄로 이어지지 않으면
-    /// 그 AI의 기본 세그먼트(Swift 기본값 :809-821)로 되돌린다.
+    /// Windows는 메뉴바선·노치만 끈다. 독 세그먼트는 작업 표시줄에 사용한다.
     pub fn apply_platform_rules(&mut self, windows: bool) {
         if !windows {
             return;
         }
         self.menu_line_enabled = false;
-        self.dock_line_enabled = false;
         self.notch_enabled = false;
-        const KEEP: [SegPart; 4] = [SegPart::HTop, SegPart::HBottom, SegPart::LMain, SegPart::RMain];
+        const KEEP: [SegPart; 7] = [SegPart::HTop, SegPart::HBottom, SegPart::LMain, SegPart::RMain, SegPart::HDock, SegPart::LDock, SegPart::RDock];
         let keep_set = |set: &BTreeSet<SegPart>| -> BTreeSet<SegPart> {
             set.iter().copied().filter(|s| KEEP.contains(s)).collect()
         };
@@ -568,7 +565,7 @@ impl Settings {
         }
         for (id, l) in self.provider_layouts.iter_mut() {
             let kept = keep_set(l.segments.as_ref().unwrap_or(&BTreeSet::new()));
-            l.segments = Some(if is_valid_segments(&kept, false, false) {
+            l.segments = Some(if is_valid_segments(&kept, false, self.dock_line_enabled) {
                 kept
             } else {
                 [default_segment_for(id)].into()
@@ -581,10 +578,10 @@ impl Settings {
             }
         }
         let kept = keep_set(&self.seg_parts);
-        self.seg_parts = if is_valid_segments(&kept, false, false) {
+        self.seg_parts = if is_valid_segments(&kept, false, self.dock_line_enabled) {
             kept
         } else {
-            KEEP.into_iter().collect()
+            crate::segments::zone_perimeter(&[ScreenZone::Main, ScreenZone::Dock].into(), false, self.dock_line_enabled)
         };
     }
 }
@@ -749,11 +746,12 @@ mod tests {
         s.provider_layouts.get_mut("gemini").unwrap().segments = Some([SegPart::HDock, SegPart::LDock].into());
         s.seg_parts = [SegPart::HMenu].into();
         s.apply_platform_rules(true);
-        assert!(!s.menu_line_enabled && !s.dock_line_enabled && !s.notch_enabled);
+        assert!(!s.menu_line_enabled && s.dock_line_enabled && !s.notch_enabled);
         assert_eq!(s.segs_for("claude"), [SegPart::HTop].into());
-        // 비면 그 AI의 기본값(gemini = hBottom)
-        assert_eq!(s.segs_for("gemini"), [SegPart::HBottom].into());
-        assert_eq!(s.seg_parts.len(), 4);
+        // 작업 표시줄 구역은 유지한다.
+        assert_eq!(s.segs_for("gemini"), [SegPart::HDock, SegPart::LDock].into());
+        assert_eq!(s.seg_parts.len(), 6);
+        assert!(is_valid_segments(&s.seg_parts, false, true));
         // macOS에서는 아무 것도 안 한다.
         let mut m = Settings::default();
         m.notch_enabled = true;

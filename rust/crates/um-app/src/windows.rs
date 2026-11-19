@@ -19,6 +19,7 @@ pub fn open(app: &AppHandle, page: &str) {
 
 fn open_inner(app: &AppHandle, page: &str) {
     let (kind, tab) = page.split_once('#').unwrap_or((page, ""));
+    if cfg!(feature = "store") && (kind == "support" || tab == "support") { return; }
     // 개발용: UM_OPEN_WINDOW=linedrag로 선 위치 끌기 화면을 바로 연다.
     if kind == "linedrag" {
         return open_line_drag(app);

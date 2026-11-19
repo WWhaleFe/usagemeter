@@ -3,14 +3,14 @@
   import type { Snippet } from 'svelte';
   import { ui, t } from '../lib/api.svelte';
   const featureId = $props.id();
-  let { children }: { children: Snippet } = $props();
+  let { children, hintKey = 'platform.windowsUnsupported' }: { children: Snippet; hintKey?: string } = $props();
 </script>
 
 {#if ui.s?.platform === 'win'}
   <fieldset disabled aria-describedby="{featureId}-hint">
     {@render children()}
   </fieldset>
-  <p class="caption" id="{featureId}-hint">{t('platform.windowsUnsupported')}</p>
+  <p class="caption" id="{featureId}-hint">{t(hintKey)}</p>
 {:else}
   {@render children()}
 {/if}

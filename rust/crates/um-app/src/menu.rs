@@ -136,15 +136,17 @@ pub fn build(app: &AppHandle, st: &AppState) -> R<Menu<Wry>> {
     menu.append(&item(app, "fit", tr("menu.deviceFit", lang), true, None)?)?;
     menu.append(&sep(app)?)?;
 
-    let report = Submenu::with_id(app, "report", tr("menu.reportSubmenu", lang), true)?;
-    report.append(&item(app, "report-h", format!("{}  {REPORT_EMAIL}", tr("menu.reportTitle", lang)), false, None)?)?;
-    report.append(&sep(app)?)?;
-    report.append(&item(app, "report:mail", tr("menu.reportMail", lang), true, None)?)?;
-    report.append(&item(app, "report:copy", tr("menu.reportCopy", lang), true, None)?)?;
-    menu.append(&report)?;
-    menu.append(&sep(app)?)?;
-    menu.append(&item(app, "support", format!("☕ {}", tr("menu.support", lang)), true, None)?)?;
-    menu.append(&sep(app)?)?;
+    if !cfg!(feature = "store") {
+        let report = Submenu::with_id(app, "report", tr("menu.reportSubmenu", lang), true)?;
+        report.append(&item(app, "report-h", format!("{}  {REPORT_EMAIL}", tr("menu.reportTitle", lang)), false, None)?)?;
+        report.append(&sep(app)?)?;
+        report.append(&item(app, "report:mail", tr("menu.reportMail", lang), true, None)?)?;
+        report.append(&item(app, "report:copy", tr("menu.reportCopy", lang), true, None)?)?;
+        menu.append(&report)?;
+        menu.append(&sep(app)?)?;
+        menu.append(&item(app, "support", format!("☕ {}", tr("menu.support", lang)), true, None)?)?;
+        menu.append(&sep(app)?)?;
+    }
 
     menu.append(&item(app, "version", format!("UsageMeter {}", tf("update.version", lang, crate::update::current_version())), false, None)?)?;
     if !cfg!(feature = "store") {
@@ -211,6 +213,7 @@ fn change(app: &AppHandle, f: impl FnOnce(&mut AppState)) {
 
 /// 메뉴 클릭 처리.
 pub fn on_event(app: &AppHandle, id: &str) {
+    if cfg!(feature = "store") && (id.starts_with("update:") || id.starts_with("report:") || id == "support") { return; }
     tracing::info!("메뉴 선택: {id}");
     match id {
         "refresh" => {
@@ -316,6 +319,7 @@ fn fit_all(app: &AppHandle) {
 
 /// 업데이트 확인(별도 스레드). 끝나면 메뉴를 다시 만든다.
 pub fn check_update(app: &AppHandle) {
+    if cfg!(feature = "store") { return; }
     crate::shared(app).lock().unwrap().update = UpdateState::Checking;
     rebuild(app);
     let app = app.clone();
@@ -328,6 +332,7 @@ pub fn check_update(app: &AppHandle) {
 }
 
 fn download(app: &AppHandle) {
+    if cfg!(feature = "store") { return; }
     let (dl, upd) = {
         let st = crate::shared(app);
         let st = st.lock().unwrap();

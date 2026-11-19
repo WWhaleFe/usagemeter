@@ -1,4 +1,7 @@
 {
+  "part.menuWindows": ["Windows에는 macOS 메뉴바가 없어 메뉴바 아래 선을 지원하지 않습니다.", "Windows has no macOS menu bar, so the line below it is unavailable.", "Windows には macOS のメニューバーがないため、その下の線は使用できません。"],
+  "part.taskbarLine": ["작업 표시줄 선", "Taskbar line", "タスクバーの線"],
+  "part.taskbarDesc": ["작업 표시줄의 실제 위치와 두께를 자동으로 따릅니다. 자동 숨김으로 작업 영역이 확장되면 구역을 접습니다. 배치 설정과 그림은 작업 표시줄이 아래인 기준이며 다른 변과 시작점도 함께 회전·반사됩니다.", "Follows the taskbar position and thickness automatically. The zone collapses when auto-hide expands the work area. Layout settings and diagrams assume a bottom taskbar; other edges and start points rotate or reflect together.", "タスクバーの位置と太さに自動追従します。自動非表示で作業領域が広がると区画を畳みます。配置設定と図は下側のタスクバーが基準で、他の辺と開始点も一緒に回転・反転します。"],
   "platform.windowsUnsupported": [
     "Windows에서는 지원하지 않습니다.",
     "Not supported on Windows.",

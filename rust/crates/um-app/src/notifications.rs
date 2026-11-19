@@ -19,6 +19,7 @@ pub fn usage(app: &AppHandle, id: &str, snap: &UsageSnapshot) {
 }
 
 pub fn update(app: &AppHandle, version: &str) {
+    if cfg!(feature = "store") { return; }
     let st = crate::shared(app);
     let mut st = st.lock().unwrap();
     let key = format!("update|{version}");

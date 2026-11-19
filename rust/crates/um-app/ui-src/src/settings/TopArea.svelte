@@ -30,8 +30,8 @@
       <span class="grow"></span>
       <button class="analytics" onclick={() => act('openAnalytics')}><Icon name="chart.bar.xaxis" size={14} />{t('menu.analytics')}</button>
     </div>
-    <hr />
     {#if !s.store}
+      <hr />
       <div class="row update">
         <strong>UsageMeter {tf('update.version', s.version)}</strong>
         {#if status}<span class="caption">{status}</span>{/if}

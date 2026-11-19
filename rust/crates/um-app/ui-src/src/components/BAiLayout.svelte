@@ -56,16 +56,16 @@
     mutate({ hCaps: { ...caps, [capKey(h, right)]: on ? dir : 'none' } });
   }
 
-  // 모양 프리셋: 영역 둘레 + 끝 캡 묶음(Swift presetButton). Windows의 메뉴바·Dock 프리셋은 비활성.
+  // 모양 프리셋: 영역 둘레 + 끝 캡 묶음(Swift presetButton). Windows의 메뉴바 프리셋은 비활성.
   const PRESETS = $derived<{ key: 'all' | 'menuBar' | 'main' | 'dock'; label: string; off: boolean; caps: Record<string, SegCap> }[]>([
     { key: 'all', label: t('lay.zoneAll'), off: false, caps: {} },
     { key: 'menuBar', label: t('zone.menuBar'), off: win || !menuOn, caps: { 'hMenu.L': 'down', 'hMenu.R': 'down' } },
     { key: 'main', label: t('zone.main'), off: false, caps: {} },
-    { key: 'dock', label: t('zone.dock'), off: win || !dockOn, caps: { 'hDock.L': 'up', 'hDock.R': 'up' } },
+    { key: 'dock', label: t(win ? 'part.taskbarLine' : 'zone.dock'), off: !dockOn, caps: { 'hDock.L': 'up', 'hDock.R': 'up' } },
   ]);
   function applyPreset(key: 'all' | 'menuBar' | 'main' | 'dock', hCaps: Record<string, SegCap>) {
     const sp = p.shapePresets[key];
-    if (!sp?.allowed || ((key === 'menuBar' || key === 'dock') && (win || (key === 'menuBar' ? !menuOn : !dockOn)))) return;
+    if (!sp?.allowed || (key === 'menuBar' && (win || !menuOn)) || (key === 'dock' && !dockOn)) return;
     mutate({ zones: sp.zones, segments: sp.segments, hCaps });
   }
 
@@ -126,10 +126,10 @@
   <div class="right">
     <div class="presets">
       {#each PRESETS as pr (pr.key)}
-        <button class="small" title={win && (pr.key === 'menuBar' || pr.key === 'dock') ? t('platform.windowsUnsupported') : undefined} disabled={pr.off} onclick={() => applyPreset(pr.key, pr.caps)}>{pr.label}</button>
+        <button class="small" title={win && pr.key === 'menuBar' ? t('platform.windowsUnsupported') : undefined} disabled={pr.off} onclick={() => applyPreset(pr.key, pr.caps)}>{pr.label}</button>
       {/each}
     </div>
-    {#if win}<span class="caption">{t('platform.windowsUnsupported')}</span>{/if}
+    {#if win}<span class="caption">{t('part.menuWindows')}</span>{/if}
     <BSegDiagram options={p.segOptions} color={p.color} {menuOn} {dockOn} {warning} ontoggle={toggle} onexclusive={exclusive} />
   </div>
 </section>

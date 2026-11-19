@@ -148,7 +148,7 @@ fn 왕복_안정() {
 }
 
 #[test]
-fn 윈도우_규칙은_메뉴_dock_세그먼트를_없앤다() {
+fn 윈도우_규칙은_메뉴를_지우고_작업_표시줄을_유지한다() {
     let imp = load();
     let mut s = Settings::from_snapshot(imp.current.as_ref().unwrap());
     s.menu_line_enabled = true;
@@ -158,13 +158,13 @@ fn 윈도우_규칙은_메뉴_dock_세그먼트를_없앤다() {
         Some([SegPart::LMenuBar, SegPart::HMenu, SegPart::RMenuBar, SegPart::HTop].into());
     s.provider_layouts.get_mut("codex").unwrap().segments = Some([SegPart::LDock].into());
     s.apply_platform_rules(true);
-    assert!(!s.menu_line_enabled && !s.dock_line_enabled && !s.notch_enabled);
+    assert!(!s.menu_line_enabled && s.dock_line_enabled && !s.notch_enabled);
     assert_eq!(s.segs_for("claude"), [SegPart::HTop].into());
-    // codex는 세 번째 AI이므로 기본 lMain으로 복귀
-    assert_eq!(s.segs_for("codex"), [SegPart::LMain].into());
-    // gemini는 이미 4개 둘레라 그대로
-    assert_eq!(s.segs_for("gemini").len(), 4);
-    let allowed = [SegPart::HTop, SegPart::HBottom, SegPart::LMain, SegPart::RMain];
+    // 작업 표시줄 세로선은 그대로 유지한다.
+    assert_eq!(s.segs_for("codex"), [SegPart::LDock].into());
+    // 분할 경계로 끊어진 기존 둘레는 기본 선으로 복귀한다.
+    assert_eq!(s.segs_for("gemini"), [SegPart::HBottom].into());
+    let allowed = [SegPart::HTop, SegPart::HBottom, SegPart::LMain, SegPart::RMain, SegPart::HDock, SegPart::LDock, SegPart::RDock];
     for l in s.provider_layouts.values() {
         assert!(l.segments.as_ref().unwrap().iter().all(|p| allowed.contains(p)));
     }

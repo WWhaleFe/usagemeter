@@ -10,6 +10,43 @@ pub struct Notch {
     pub height: f64,
 }
 
+/// Windows 작업 표시줄이 차지한 화면 변과 논리 두께.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TaskbarSide { Bottom, Top, Left, Right }
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Taskbar {
+    pub side: TaskbarSide,
+    pub thickness: f64,
+}
+
+impl Taskbar {
+    /// 자동 숨김 시에도 셸 창의 방향을 유지하고 화면 안에 보이는 두께만 사용한다.
+    pub fn from_window_rect(monitor: [i32; 4], window: [i32; 4], scale: f64) -> Self {
+        let [l, t, r, b] = monitor;
+        let [wl, wt, wr, wb] = window;
+        let side = if wr - wl > wb - wt {
+            if (wt + wb - 2 * t).abs() < (2 * b - wt - wb).abs() { TaskbarSide::Top } else { TaskbarSide::Bottom }
+        } else if (wl + wr - 2 * l).abs() < (2 * r - wl - wr).abs() { TaskbarSide::Left } else { TaskbarSide::Right };
+        let pixels = match side {
+            TaskbarSide::Top | TaskbarSide::Bottom => (wb.min(b) - wt.max(t)).max(0),
+            TaskbarSide::Left | TaskbarSide::Right => (wr.min(r) - wl.max(l)).max(0),
+        };
+        Self { side, thickness: f64::from(pixels) / scale }
+    }
+
+    /// 모니터별 작업 영역 차이 중 가장 두꺼운 예약 영역을 쓴다.
+    /// 자동 숨김으로 예약 영역이 사라지면 None으로 바뀐다.
+    pub fn from_work_area(monitor: [i32; 4], work: [i32; 4], scale: f64) -> Option<Self> {
+        let [l, t, r, b] = monitor;
+        let [wl, wt, wr, wb] = work;
+        [(TaskbarSide::Bottom, b - wb), (TaskbarSide::Top, wt - t),
+         (TaskbarSide::Left, wl - l), (TaskbarSide::Right, r - wr)]
+            .into_iter().filter(|(_, n)| *n > 0).max_by_key(|(_, n)| *n)
+            .map(|(side, n)| Self { side, thickness: f64::from(n) / scale })
+    }
+}
+
 /// 화면 하나.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DisplayInfo {
@@ -25,11 +62,17 @@ pub struct DisplayInfo {
     pub is_builtin: bool,
     pub is_primary: bool,
     pub notch: Option<Notch>,
+    pub taskbar: Option<Taskbar>,
     /// OS 좌표의 화면 원점. macOS = 전역 AppKit pt(왼쪽 아래), Windows = 가상 화면 물리 px(왼쪽 위).
     origin: (f64, f64),
 }
 
 impl DisplayInfo {
+    /// 화면 배치·작업 영역의 변경을 감시하는 서명.
+    pub fn configuration_signature(&self) -> String {
+        format!("{}:{:?}:{}x{}@{}:{:?}", self.id, self.origin, self.width_pt, self.height_pt, self.scale, self.taskbar)
+    }
+
     /// 화면 안 띠(왼쪽 위 원점, pt)를 띠 창 프레임(OS 좌표)으로 바꾼다.
     pub fn strip_frame(&self, x: f64, y: f64, w: f64, h: f64) -> StripFrame {
         #[cfg(target_os = "macos")]
@@ -65,7 +108,7 @@ impl DisplayInfo {
 
     #[cfg(test)]
     pub(crate) fn for_test(origin: (f64, f64), w: f64, h: f64, scale: f64) -> Self {
-        Self { id: "t".into(), name: "t".into(), width_pt: w, height_pt: h, scale, is_builtin: false, is_primary: true, notch: None, origin }
+        Self { id: "t".into(), name: "t".into(), width_pt: w, height_pt: h, scale, is_builtin: false, is_primary: true, notch: None, taskbar: None, origin }
     }
 }
 
@@ -133,6 +176,7 @@ mod imp {
                 is_builtin: num.is_some_and(|n| objc2_core_graphics::CGDisplayIsBuiltin(n)),
                 is_primary: i == 0,
                 notch,
+                taskbar: None,
                 origin: (f.origin.x, f.origin.y),
             });
         }
@@ -142,9 +186,11 @@ mod imp {
 
 #[cfg(windows)]
 mod imp {
-    use super::{DisplayInfo, file_id};
+    use super::{DisplayInfo, Taskbar, file_id};
     use windows::Win32::Foundation::{LPARAM, RECT};
-    use windows::Win32::Graphics::Gdi::{EnumDisplayMonitors, GetMonitorInfoW, HDC, HMONITOR, MONITORINFOEXW};
+    use windows::Win32::Graphics::Gdi::{EnumDisplayMonitors, GetMonitorInfoW, HDC, HMONITOR, MONITORINFOEXW, MonitorFromWindow, MONITOR_DEFAULTTONEAREST};
+    use windows::Win32::UI::WindowsAndMessaging::{FindWindowExW, GetWindowRect};
+    use windows::core::{w, PCWSTR};
     use windows::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
     use windows::core::BOOL;
 
@@ -154,6 +200,23 @@ mod imp {
         let v = unsafe { &mut *(data.0 as *mut Vec<HMONITOR>) };
         v.push(m);
         true.into()
+    }
+
+    fn hidden_taskbar(monitor: HMONITOR, r: RECT, scale: f64) -> Option<Taskbar> {
+        // 주 화면과 보조 화면의 셸 작업 표시줄을 각각 찾는다.
+        for class in [w!("Shell_TrayWnd"), w!("Shell_SecondaryTrayWnd")] {
+            let mut after = None;
+            while let Ok(hwnd) = unsafe { FindWindowExW(None, after, class, PCWSTR::null()) } {
+                after = Some(hwnd);
+                if unsafe { MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST) } != monitor { continue; }
+                let mut rect = RECT::default();
+                if unsafe { GetWindowRect(hwnd, &mut rect) }.is_ok() {
+                    return Some(Taskbar::from_window_rect([r.left, r.top, r.right, r.bottom],
+                        [rect.left, rect.top, rect.right, rect.bottom], scale));
+                }
+            }
+        }
+        None
     }
 
     pub fn displays() -> Vec<DisplayInfo> {
@@ -172,6 +235,14 @@ mod imp {
             let _ = unsafe { GetDpiForMonitor(m, MDT_EFFECTIVE_DPI, &mut dx, &mut dy) };
             let scale = dx as f64 / 96.0;
             let r = mi.monitorInfo.rcMonitor;
+            let work = mi.monitorInfo.rcWork;
+            let reserved = Taskbar::from_work_area([r.left, r.top, r.right, r.bottom],
+                [work.left, work.top, work.right, work.bottom], scale);
+            // 자동 숨김의 얇은 예약 띠만 남으면 셸 창을 봐서 펼침·숨김도 따라간다.
+            let taskbar = match reserved {
+                Some(t) if t.thickness * scale > 2.0 => Some(t),
+                _ => hidden_taskbar(m, r, scale).or(reserved),
+            };
             let name = String::from_utf16_lossy(&mi.szDevice).trim_end_matches('\0').to_string();
             out.push(DisplayInfo {
                 id: file_id(&name),
@@ -182,6 +253,7 @@ mod imp {
                 is_builtin: false,
                 is_primary: mi.monitorInfo.dwFlags & MONITORINFOF_PRIMARY != 0,
                 notch: None,
+                taskbar,
                 origin: (r.left as f64, r.top as f64),
             });
         }
@@ -194,6 +266,43 @@ mod imp {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn 작업_표시줄_네_방향과_자동_숨김() {
+        for (work, side) in [([0, 0, 1200, 750], TaskbarSide::Bottom),
+            ([0, 50, 1200, 800], TaskbarSide::Top),
+            ([50, 0, 1200, 800], TaskbarSide::Left),
+            ([0, 0, 1150, 800], TaskbarSide::Right)] {
+            assert_eq!(Taskbar::from_work_area([0, 0, 1200, 800], work, 1.25), Some(Taskbar { side, thickness: 40.0 }));
+        }
+        assert_eq!(Taskbar::from_work_area([-1200, 0, 0, 800], [-1200, 0, 0, 750], 1.0), Some(Taskbar { side: TaskbarSide::Bottom, thickness: 50.0 }));
+        assert_eq!(Taskbar::from_work_area([0, 0, 1200, 800], [0, 0, 1200, 800], 1.0), None);
+    }
+
+    #[test]
+    fn 자동_숨김_작업_표시줄은_방향을_유지() {
+        for (window, side) in [([0, 798, 1200, 838], TaskbarSide::Bottom),
+            ([0, -38, 1200, 2], TaskbarSide::Top), ([-38, 0, 2, 800], TaskbarSide::Left),
+            ([1198, 0, 1238, 800], TaskbarSide::Right)] {
+            assert_eq!(Taskbar::from_window_rect([0, 0, 1200, 800], window, 1.0), Taskbar { side, thickness: 2.0 });
+        }
+    }
+
+    #[test]
+    fn 화면_서명은_위치_두께_숨김_변화를_포함() {
+        let mut d = DisplayInfo::for_test((0.0, 0.0), 1200.0, 800.0, 1.0);
+        let mut signatures = std::collections::BTreeSet::new();
+        signatures.insert(d.configuration_signature());
+        for side in [TaskbarSide::Bottom, TaskbarSide::Top, TaskbarSide::Left, TaskbarSide::Right] {
+            for thickness in [1.0, 40.0, 60.0] {
+                d.taskbar = Some(Taskbar { side, thickness });
+                assert!(signatures.insert(d.configuration_signature()));
+            }
+        }
+        let old = d.configuration_signature();
+        d.origin.0 = -1200.0;
+        assert_ne!(old, d.configuration_signature());
+    }
 
     #[test]
     fn 화면_id는_안전한_파일_이름() {
