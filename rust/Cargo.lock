@@ -5332,7 +5332,7 @@ dependencies = [
 
 [[package]]
 name = "um-app"
-version = "2.0.0-beta.3"
+version = "2.0.0-beta.4"
 dependencies = [
  "arboard",
  "block2",
@@ -5365,7 +5365,7 @@ dependencies = [
 
 [[package]]
 name = "um-core"
-version = "2.0.0-beta.3"
+version = "2.0.0-beta.4"
 dependencies = [
  "chrono",
  "plist",
@@ -5377,7 +5377,7 @@ dependencies = [
 
 [[package]]
 name = "um-locallogs"
-version = "2.0.0-beta.3"
+version = "2.0.0-beta.4"
 dependencies = [
  "chrono",
  "directories",
@@ -5391,7 +5391,7 @@ dependencies = [
 
 [[package]]
 name = "um-platform"
-version = "2.0.0-beta.3"
+version = "2.0.0-beta.4"
 dependencies = [
  "block2",
  "objc2",
@@ -5406,7 +5406,7 @@ dependencies = [
 
 [[package]]
 name = "um-providers"
-version = "2.0.0-beta.3"
+version = "2.0.0-beta.4"
 dependencies = [
  "chrono",
  "serde",
@@ -5416,7 +5416,7 @@ dependencies = [
 
 [[package]]
 name = "um-render"
-version = "2.0.0-beta.3"
+version = "2.0.0-beta.4"
 dependencies = [
  "chrono",
  "cosmic-text",

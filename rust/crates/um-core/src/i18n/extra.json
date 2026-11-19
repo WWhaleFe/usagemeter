@@ -218,5 +218,25 @@
     "테두리 선",
     "Border lines",
     "枠線"
+  ],
+  "line.barFillMode": [
+    "바 표시 방식",
+    "Bar fill mode",
+    "バーの表示方式"
+  ],
+  "line.barFill.remaining": [
+    "남은 양(쓸수록 줄어듦)",
+    "Remaining (shrinks as used)",
+    "残量（使うほど減る）"
+  ],
+  "line.barFill.used": [
+    "쓴 양(쓸수록 차오름)",
+    "Used (fills as used)",
+    "使用量（使うほど増える）"
+  ],
+  "overlap.shortestDesc": [
+    "겹치는 띠는 실제로 그려지는 길이가 짧은 띠가 맨 위에 표시됩니다. 겹침 분할을 켜면 공유 구간의 굵기를 나눠 나란히 표시합니다.",
+    "Overlapping bands stack with the shortest drawn band on top. Enable thickness splitting to show shared spans side by side.",
+    "重なるバンドは実際に描画される長さが短いものが最前面に表示されます。重なりの分割を有効にすると、共有区間の太さを分けて並べて表示します。"
   ]
 }

@@ -1,6 +1,6 @@
 <script lang="ts">
   // 선 탭(Swift SettingsView.swift:462-510): 두께·투명도·트랙(편집 중인 화면), 시작 시 숨김(전역),
-  // 페이드(화면), 겹침 분할(화면), AI 색(전역, 프리셋 7색).
+  // 바 표시 방식(전역), 페이드(화면), 겹침 분할(화면), AI 색(전역, 프리셋 7색).
   import { ui, settingsProviders, t, tf, set, act, fromHex } from '../../lib/api.svelte';
   import Section from '../../components/Section.svelte';
   import Toggle from '../../components/Toggle.svelte';
@@ -23,6 +23,12 @@
 <Section title={t('sec.line')}>
   <Slider label={t('line.thickness')} value={b.thickness ?? 2} min={1} max={15} step={0.5} unit="pt" onchange={(v) => set('border', { thickness: v })} />
   <Slider label={t('line.opacity')} value={(s.platform === 'win' ? Math.round((1 - (b.lineOpacity ?? 1)) * 100) : (1 - (b.lineOpacity ?? 1)) * 100)} min={0} max={100} unit="%" onchange={(v) => set('border', { lineOpacity: 1 - v / 100 })} />
+  <div class="row">
+    <label class="grow" for="bar-fill-mode">{t('line.barFillMode')}</label>
+    <select id="bar-fill-mode" value={s.main.barFillMode ?? 'remaining'} onchange={(e) => set('main', { barFillMode: e.currentTarget.value })}>
+      {#each ['remaining', 'used'] as mode (mode)}<option value={mode}>{t('line.barFill.' + mode)}</option>{/each}
+    </select>
+  </div>
   <Toggle label={t('line.track')} checked={b.showTrack ?? true} onchange={(v) => set('border', { showTrack: v })} />
   <Toggle label={t('line.hideOnLaunch')} checked={!!s.main.hideOverlayOnLaunch} onchange={(v) => set('main', { hideOverlayOnLaunch: v })} />
   <Toggle label={t('line.fade')} checked={b.fadeEnabled ?? true} onchange={(v) => set('border', { fadeEnabled: v })} />
@@ -30,9 +36,9 @@
 </Section>
 
 <Section title={t('sec.overlap')}>
-  {#if s.platform === 'mac'}<span class="caption">{t('overlap.layerDesc')}</span>{/if}
+  {#if s.platform === 'mac'}<span class="caption">{t('overlap.shortestDesc')}</span>{/if}
   <Toggle label={t('lay.splitOverlap')} checked={!!b.splitOverlapLines} onchange={(v) => set('border', { splitOverlapLines: v })} />
-  <span class="caption">{s.platform === 'mac' || b.splitOverlapLines ? t('overlap.splitDesc') : t('overlap.layerDesc')}</span>
+  <span class="caption">{s.platform === 'mac' || b.splitOverlapLines ? t('overlap.splitDesc') : t('overlap.shortestDesc')}</span>
 </Section>
 
 <Section title={t('sec.aiColor')}>

@@ -74,6 +74,24 @@ mod tests {
     }
 
     #[test]
+    fn 바_표시_방식_저장과_기본값() {
+        use crate::settings::BarFillMode;
+        for mode in [BarFillMode::Remaining, BarFillMode::Used] {
+            let s = Settings { bar_fill_mode: mode, ..Settings::default() };
+            let text = s.to_json().unwrap();
+            let v: Value = serde_json::from_str(&text).unwrap();
+            assert_eq!(v["barFillMode"], if mode == BarFillMode::Used { "used" } else { "remaining" });
+            assert_eq!(Settings::from_json(&text).unwrap(), s);
+            assert_eq!(Settings::from_snapshot(&s.to_snapshot()), s);
+        }
+        let mut v = serde_json::to_value(Settings::default().to_snapshot()).unwrap();
+        v.as_object_mut().unwrap().remove("barFillMode");
+        assert_eq!(Settings::from_json(&v.to_string()).unwrap().bar_fill_mode, BarFillMode::Remaining);
+        v["barFillMode"] = Value::from("unknown");
+        assert_eq!(Settings::from_json(&v.to_string()).unwrap().bar_fill_mode, BarFillMode::Remaining);
+    }
+
+    #[test]
     fn 스키마_버전_포함_왕복() {
         let s = Settings::default();
         let text = s.to_json().unwrap();

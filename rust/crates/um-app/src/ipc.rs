@@ -32,8 +32,14 @@ fn rgba_hex(c: [f64; 4]) -> String {
 }
 
 /// 편집 대상 화면 id가 주 화면이면 None.
+/// 고른 화면이 없거나 연결이 끊겼으면 주 화면, 주 화면도 연결돼 있지 않으면(원격 접속 등) 첫 연결 화면을 고친다(Swift DisplayRegistry.refresh).
 fn editing_id(app: &AppHandle, st: &AppState) -> Option<String> {
-    let e = app.state::<Editing>().0.lock().unwrap().clone();
+    let connected = |id: &str| st.connected_displays.is_empty() || st.connected_displays.iter().any(|c| c == id);
+    let e = app.state::<Editing>().0.lock().unwrap().clone().filter(|id| connected(id));
+    let e = e.or_else(|| {
+        let main_on = st.main_display_id.as_deref().is_some_and(connected);
+        if main_on { None } else { st.connected_displays.first().cloned() }
+    });
     e.filter(|id| st.main_display_id.as_deref() != Some(id.as_str()))
 }
 

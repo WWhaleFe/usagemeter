@@ -141,7 +141,7 @@ impl Painter<'_> {
         }
     }
 
-    /// 경로 시작부터 잔여율만큼 채운다. 끝부분 min(fadeFraction, r)는 12조각으로 불투명도를 낮춘다.
+    /// 경로 시작부터 표시 비율만큼 채운다. 끝부분 min(fadeFraction, r)는 12조각으로 불투명도를 낮춘다.
     fn fill(&mut self, idx: usize, ratio: f64, color: Rgba, notch_layer: bool) {
         let r = ratio.clamp(0.0, 1.0);
         let fade = if self.scene.fade_enabled { self.scene.fade_fraction.min(r) } else { 0.0 };

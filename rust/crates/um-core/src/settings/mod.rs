@@ -24,7 +24,7 @@ pub use import_swift::{
     ImportError, KnownItem, SwiftImport, default_swift_plist_path, import_from_plist, keys,
 };
 pub use json::{SCHEMA_VERSION, snapshot_from_json, snapshot_to_json};
-pub use live::{AppAppearance, REFRESH_PRESETS, Settings, TrayClickMode};
+pub use live::{AppAppearance, BarFillMode, REFRESH_PRESETS, Settings, TrayClickMode};
 pub use presets::{
     BRAND_COLORS, BrandColor, MAX_PRESETS, PRESET_CORNER_RADII, PRESET_NOTCH_WIDTHS,
     PRESET_THICKNESSES, SavedPreset, add_preset,

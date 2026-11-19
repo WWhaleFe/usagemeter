@@ -136,6 +136,10 @@ const SWIFT_SUB_ITEM_PALETTE: [[f64; 4]; 5] = [
     [0.52, 0.80, 0.20, 1.0],
 ];
 
+/// Swift와 일부러 다르게 그리는 케이스. Swift는 잔여율 높은 띠부터 그렸고, 지금은 실제 길이가 짧은 띠를 맨 위에 그린다.
+/// subitems_two_ais: Claude 20% 띠(약 391pt)보다 Gemini 60% 띠(약 358pt)가 짧아 겹친 곳의 위아래가 바뀐다.
+const INTENTIONAL_DIFF: [&str; 1] = ["subitems_two_ais"];
+
 fn render_case(case: &Value) -> Pixmap {
     let snap: SettingsSnapshot = serde_json::from_value(case["settings"].clone()).expect("settings 디코딩");
     let mut settings = Settings::from_snapshot(&snap);
@@ -188,7 +192,7 @@ fn border_matches_swift_reference() {
         if !ok || always {
             dump(name, &rust, &diff);
         }
-        if !ok {
+        if !ok && !INTENTIONAL_DIFF.contains(&name) {
             failures.push(name.to_string());
         }
     }

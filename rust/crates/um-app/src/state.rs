@@ -23,6 +23,8 @@ pub struct AppState {
     pub displays: BTreeMap<String, Settings>,
     pub main_display_id: Option<String>,
     display_widths: BTreeMap<String, f64>,
+    /// 지금 연결된 화면 id(화면 순서). `sync_displays`가 채운다.
+    pub connected_displays: Vec<String>,
     pub disabled_displays: Vec<String>,
     /// 테두리·트레이에 그릴 스냅샷(`rebuild_snapshots`가 만든다).
     pub snapshots: BTreeMap<String, UsageSnapshot>,
@@ -48,6 +50,7 @@ impl AppState {
             displays: BTreeMap::new(),
             main_display_id: None,
             display_widths: BTreeMap::new(),
+            connected_displays: Vec::new(),
             disabled_displays: vec![],
             snapshots: BTreeMap::new(),
             providers: BTreeMap::new(),
@@ -217,6 +220,7 @@ impl AppState {
         if self.main_display_id.is_none() {
             self.main_display_id = ds.iter().find(|d| d.is_builtin).or_else(|| ds.first()).map(|d| d.id.clone());
         }
+        self.connected_displays = ds.iter().map(|d| d.id.clone()).collect();
         for d in ds {
             let notch = d.notch.map(|n| NotchInfo { width: n.width, height: n.height });
             let old = self.display_widths.get(&d.id).copied();

@@ -9,7 +9,7 @@ mod items;
 mod shape;
 mod spans;
 
-use kurbo::BezPath;
+use kurbo::{BezPath, ParamCurveArclen};
 use um_core::settings::Settings;
 use um_core::types::{BorderCorner, Rgba, ScreenZone, SegPart};
 
@@ -57,7 +57,7 @@ pub struct SceneItem {
     pub color: Rgba,
 }
 
-/// 그릴 띠 하나: 어느 경로(`items` 인덱스)에 어떤 잔여율·색으로.
+/// 그릴 띠 하나: 어느 경로(`items` 인덱스)에 어떤 길이 비율·색으로.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SceneBand {
     pub item: usize,
@@ -69,9 +69,9 @@ pub struct SceneBand {
 #[derive(Debug, Clone)]
 pub struct BorderScene {
     pub screen: (f64, f64),
-    /// 뒤 -> 앞(잔여율 높은 AI부터)
+    /// 경로·트랙 순서(잔여율 높은 AI부터)
     pub items: Vec<SceneItem>,
-    /// 세부 항목까지 펼쳐 잔여율 높은 순(뒤 -> 앞). 낮은 것이 위에 그려진다.
+    /// 세부 항목까지 펼쳐 실제 길이가 긴 순(뒤 -> 앞). 짧은 띠가 위에 그려진다.
     pub bands: Vec<SceneBand>,
     pub thickness: f64,
     pub line_opacity: f64,
@@ -103,19 +103,26 @@ pub fn build_paths(input: &BorderInput) -> BorderScene {
         scene_items.push(SceneItem { id: it.id.clone(), path: built.path, spans, color: it.color });
         parts_of.push((it.parts.clone(), it.ratio, it.color));
     }
-    // 세부 항목까지 펼쳐 잔여율 높은 띠부터(뒤) 그린다(안정 정렬).
+    // 대표·세부 항목 모두 길이 비율만 바꾼다. 경로·색·트랙은 그대로 둔다.
     let mut bands: Vec<SceneBand> = parts_of
         .iter()
         .enumerate()
         .flat_map(|(i, (parts, ratio, color))| {
             if parts.is_empty() {
-                vec![SceneBand { item: i, ratio: *ratio, color: *color }]
+                vec![SceneBand { item: i, ratio: s.bar_fill_mode.fill_ratio(*ratio), color: *color }]
             } else {
-                parts.iter().map(|p| SceneBand { item: i, ratio: p.ratio, color: p.color }).collect()
+                parts.iter().map(|p| SceneBand { item: i, ratio: s.bar_fill_mode.fill_ratio(p.ratio), color: p.color }).collect()
             }
         })
         .collect();
-    bands.sort_by(|a, b| b.ratio.partial_cmp(&a.ratio).unwrap_or(std::cmp::Ordering::Equal));
+    // 비율이 같아도 경로 길이가 다를 수 있다. 실제 길이가 짧은 띠를 나중에 그린다(안정 정렬).
+    let lengths: Vec<f64> = scene_items.iter().map(|it| {
+        it.path.segments().map(|seg| seg.arclen(1e-4)).filter(|len| *len > 0.0).sum()
+    }).collect();
+    bands.sort_by(|a, b| {
+        let (a_len, b_len) = (lengths[a.item] * a.ratio, lengths[b.item] * b.ratio);
+        b_len.partial_cmp(&a_len).unwrap_or(std::cmp::Ordering::Equal)
+    });
     BorderScene {
         screen: (w, h),
         items: scene_items,
@@ -182,6 +189,108 @@ pub fn strip_extent(s: &Settings, side: StripSide) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use um_core::settings::BarFillMode;
+    use um_core::types::AnchorSide;
+
+    const RED: Rgba = [1.0, 0.0, 0.0, 1.0];
+    const BLUE: Rgba = [0.0, 0.0, 1.0, 1.0];
+
+    fn 겹침_설정(mode: BarFillMode) -> Settings {
+        let mut s = Settings {
+            bar_fill_mode: mode, thickness: 4.0, show_track: false, fade_enabled: false,
+            notch_enabled: false, corner_radii: Default::default(), ..Settings::default()
+        };
+        for id in ["claude", "codex"] {
+            let l = s.provider_layouts.get_mut(id).unwrap();
+            l.segments = Some([SegPart::HTop].into());
+            l.anchor_corner = BorderCorner::TopLeft;
+            l.anchor_side = AnchorSide::Center;
+            l.clockwise = true;
+        }
+        s
+    }
+
+    fn 짧은_띠_픽셀_확인(scene: &BorderScene, short_color: Rgba) {
+        assert_eq!(scene.bands.last().unwrap().color, short_color);
+        let mut short_scene = scene.clone();
+        short_scene.bands = vec![scene.bands[1].clone()];
+        let mut long_scene = scene.clone();
+        long_scene.bands = vec![scene.bands[0].clone()];
+        let short = render(&short_scene, (0.0, 0.0), scene.screen, 1.0);
+        let long = render(&long_scene, (0.0, 0.0), scene.screen, 1.0);
+        let both = render(scene, (0.0, 0.0), scene.screen, 1.0);
+        let mut overlap = 0;
+        let mut long_only = 0;
+        for ((a, b), actual) in short.pixels().iter().zip(long.pixels()).zip(both.pixels()) {
+            if a.alpha() == 255 && b.alpha() == 255 {
+                assert_eq!(actual, a);
+                overlap += 1;
+            }
+            if a.alpha() == 0 && b.alpha() == 255 {
+                assert_eq!(actual, b);
+                long_only += 1;
+            }
+        }
+        assert!(overlap > 100 && long_only > 100);
+    }
+
+    #[test]
+    fn 세부_항목은_표시_방식별_짧은_색이_위() {
+        for mode in [BarFillMode::Remaining, BarFillMode::Used] {
+            let s = 겹침_설정(mode);
+            let input = BorderInput {
+                settings: &s, screen_w: 200.0, screen_h: 200.0,
+                bands: vec![ProviderBand {
+                    id: "claude".into(), ratio: 0.5, color: RED,
+                    parts: vec![BandPart { ratio: 0.2, color: RED }, BandPart { ratio: 0.8, color: BLUE }],
+                }],
+            };
+            let original = input.bands.clone();
+            let scene = build_paths(&input);
+            짧은_띠_픽셀_확인(&scene, if mode == BarFillMode::Remaining { RED } else { BLUE });
+            assert_eq!(input.bands, original); // 메뉴·호버 등에 쓰는 잔여율은 유지한다.
+        }
+    }
+
+    #[test]
+    fn 다른_ai는_비율보다_실제_길이로_정렬() {
+        for mode in [BarFillMode::Remaining, BarFillMode::Used] {
+            let mut s = 겹침_설정(mode);
+            s.provider_layouts.get_mut("codex").unwrap().segments = Some([SegPart::HTop, SegPart::RMain].into());
+            let scene = build_paths(&BorderInput {
+                settings: &s, screen_w: 200.0, screen_h: 200.0,
+                bands: vec![
+                    ProviderBand { id: "claude".into(), ratio: if mode == BarFillMode::Remaining { 0.8 } else { 0.2 }, color: RED, parts: vec![] },
+                    ProviderBand { id: "codex".into(), ratio: 0.5, color: BLUE, parts: vec![] },
+                ],
+            });
+            assert!(scene.bands[1].ratio > scene.bands[0].ratio);
+            짧은_띠_픽셀_확인(&scene, RED);
+        }
+    }
+
+    #[test]
+    fn 대표_띠의_표시_비율과_경로_유지() {
+        for remaining in [0.0, 0.25, 1.0] {
+            let mut s = 겹침_설정(BarFillMode::Remaining);
+            s.show_track = true;
+            s.fade_enabled = true;
+            let bands = vec![ProviderBand { id: "claude".into(), ratio: remaining, color: RED, parts: vec![] }];
+            let before = build_paths(&BorderInput { settings: &s, screen_w: 200.0, screen_h: 200.0, bands: bands.clone() });
+            s.bar_fill_mode = BarFillMode::Used;
+            let after = build_paths(&BorderInput { settings: &s, screen_w: 200.0, screen_h: 200.0, bands });
+            assert_eq!(before.bands[0].ratio, remaining);
+            assert_eq!(after.bands[0].ratio, 1.0 - remaining);
+            assert_eq!(before.items[0].path, after.items[0].path);
+            assert_eq!(before.items[0].spans, after.items[0].spans);
+            assert_eq!(before.items[0].color, after.items[0].color);
+            assert_eq!(before.bands[0].color, after.bands[0].color);
+            assert_eq!(before.show_track, after.show_track);
+            assert_eq!(before.fade_enabled, after.fade_enabled);
+            assert_eq!(before.fade_fraction, after.fade_fraction);
+        }
+    }
 
     #[test]
     fn strip_extent_default_settings() {

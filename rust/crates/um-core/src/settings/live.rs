@@ -28,6 +28,26 @@ pub enum AppAppearance {
     Dark,
 }
 
+/// 테두리 띠의 길이 표시 방식. 모든 화면에 적용한다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum BarFillMode {
+    #[default]
+    Remaining,
+    Used,
+}
+
+impl BarFillMode {
+    /// 잔여율을 실제로 그릴 길이 비율로 바꾼다. 사용량 수치는 바꾸지 않는다.
+    pub fn fill_ratio(self, remaining: f64) -> f64 {
+        let remaining = remaining.clamp(0.0, 1.0);
+        match self {
+            Self::Remaining => remaining,
+            Self::Used => 1.0 - remaining,
+        }
+    }
+}
+
 /// macOS 메뉴바 클릭 동작.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -103,6 +123,7 @@ pub struct Settings {
     pub refresh_preset_minutes: u32,
     pub refresh_use_custom: bool,
     pub refresh_custom_minutes: u32,
+    pub bar_fill_mode: BarFillMode,
     pub tray_click_mode: TrayClickMode,
     pub border_hidden_ids: BTreeSet<String>,
     pub menu_bar_icon_id: String,
@@ -250,6 +271,7 @@ impl Settings {
         self.fade_enabled = s.fade_enabled.unwrap_or(true);
         self.fade_fraction = s.fade_fraction.unwrap_or(0.012);
         self.keep_logged_in = s.keep_logged_in.unwrap_or(true);
+        self.bar_fill_mode = s.bar_fill_mode.as_deref().and_then(parse).unwrap_or_default();
         self.tray_click_mode = s.tray_click_mode.as_deref().and_then(parse).unwrap_or_default();
         self.border_hidden_ids = s.border_hidden_ids.iter().flatten().cloned().collect();
         if let Some(pc) = &s.provider_colors {
@@ -385,6 +407,7 @@ impl Settings {
             fade_enabled: Some(self.fade_enabled),
             fade_fraction: Some(self.fade_fraction),
             keep_logged_in: Some(self.keep_logged_in),
+            bar_fill_mode: Some(raw(&self.bar_fill_mode)),
             tray_click_mode: Some(raw(&self.tray_click_mode)),
             border_hidden_ids: Some(ids(&self.border_hidden_ids)),
             provider_colors: Some(self.provider_colors.iter().map(|(k, c)| (k.clone(), c.to_vec())).collect()),
@@ -663,6 +686,7 @@ mod tests {
         let mut b = Settings::default();
         b.thickness = 7.0;
         b.language = AppLanguage::Korean;
+        b.bar_fill_mode = BarFillMode::Used;
         b.notify_enabled = true;
         b.menu_line_enabled = true;
         b.seg_cap_start = SegCap::Up;
@@ -671,6 +695,7 @@ mod tests {
         assert!(a.menu_line_enabled);
         assert_eq!(a.seg_cap_start, SegCap::Up);
         assert_eq!(a.language, AppLanguage::English);
+        assert_eq!(a.bar_fill_mode, BarFillMode::Remaining);
         assert!(!a.notify_enabled);
     }
 
