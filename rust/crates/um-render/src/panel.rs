@@ -541,3 +541,15 @@ fn draw_tooltip(pm: &mut Pixmap, spec: &ChartSpec, theme: Theme, scale: f32, t: 
 
 #[cfg(test)]
 mod tests;
+
+/// Windows의 레이어드 패널 배경. 가장자리의 얕은 음영과 둥근 반투명 바탕 위에 내용을 얹는다.
+#[cfg(windows)]
+pub fn with_background(mut r: Rendered, theme: Theme, scale: f32, corner: f32) -> Rendered {
+    let mut pm = canvas(r.width, r.height, scale);
+    fill_rrect(&mut pm, scale, 0.0, 0.0, r.width, r.height, corner, [0.0, 0.0, 0.0, 0.18]);
+    let bg = if theme.dark { [0.12, 0.12, 0.14, 0.96] } else { [0.97, 0.97, 0.98, 0.96] };
+    fill_rrect(&mut pm, scale, 1.0, 1.0, r.width - 2.0, r.height - 3.0, corner, bg);
+    pm.draw_pixmap(0, 0, r.pixmap.as_ref(), &tiny_skia::PixmapPaint::default(), Transform::identity(), None);
+    r.pixmap = pm;
+    r
+}

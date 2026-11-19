@@ -1,7 +1,6 @@
 <script lang="ts">
   // 표시 탭: 언어, 모양, AI 순서, 테두리 호버, 알림, 로컬 기록. 모두 전역(main).
   import { ui, t, tn, act, set } from '../../lib/api.svelte';
-  import PlatformFeature from '../../components/PlatformFeature.svelte';
   import Section from '../../components/Section.svelte';
   import Toggle from '../../components/Toggle.svelte';
   import Slider from '../../components/Slider.svelte';
@@ -53,7 +52,6 @@
   <span class="caption">{t('order.desc')}</span>
 </Section>
 
-<PlatformFeature>
 <Section title={t('sec.hover')}>
   <Toggle label={t('hover.enable')} checked={hoverOn} onchange={(v) => set('main', { hoverInfoEnabled: v })} />
   <span class="caption">{t('hover.enableDesc')}</span>
@@ -65,7 +63,9 @@
       {#each edgeKeys as e (e)}
         <label class="chk"><input type="checkbox" checked={edges.includes(e)} onchange={(ev) => set('main', { hoverEdges: member(edges, e, ev.currentTarget.checked) })} />{t('edge.' + e)}</label>
       {/each}
+      {#if s.platform === 'mac'}
       <label class="chk"><input type="checkbox" checked={m.hoverMenuLine ?? false} onchange={(ev) => set('main', { hoverMenuLine: ev.currentTarget.checked })} />{t('hoverArea.menuLine')}</label>
+      {/if}
       <label class="chk"><input type="checkbox" checked={m.hoverDockLine ?? false} onchange={(ev) => set('main', { hoverDockLine: ev.currentTarget.checked })} />{t('hoverArea.dockLine')}</label>
     </div>
     <legend>{t('hoverArea.corners')}</legend>
@@ -79,7 +79,6 @@
   </fieldset>
 
 </Section>
-</PlatformFeature>
 
 <Section title={t('sec.notify')}>
   <Toggle label={t('notify.enable')} checked={notifyOn} onchange={(v) => set('main', { notifyEnabled: v })} />

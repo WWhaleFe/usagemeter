@@ -17,6 +17,8 @@ pub use mac::overlay::OverlayStrip;
 pub use mac::panel::InfoPanel;
 #[cfg(windows)]
 pub use win::overlay::OverlayStrip;
+#[cfg(windows)]
+pub use win::panel::InfoPanel;
 
 /// 시스템이 어두운 모드인지(앱 외관이 "시스템"일 때 패널 글자색을 정한다).
 pub fn system_dark() -> bool {
