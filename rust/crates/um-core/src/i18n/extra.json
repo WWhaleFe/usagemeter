@@ -503,5 +503,15 @@
     "작업 표시줄 바깥",
     "Taskbar outer edge",
     "タスクバー外側"
+  ],
+  "part.dragCancel": [
+    "취소",
+    "Cancel",
+    "キャンセル"
+  ],
+  "part.dragKeysHint": [
+    "Enter 완료 · Esc 취소(처음 위치로 되돌림) · 화살표 키로 1pt, Shift+화살표로 10pt씩",
+    "Enter to finish · Esc to cancel (restores the original position) · Arrow keys move 1 pt, Shift+Arrow 10 pt",
+    "Enterで完了 · Escでキャンセル(元の位置に戻す) · 矢印キーで1pt、Shift+矢印で10pt"
   ]
 }

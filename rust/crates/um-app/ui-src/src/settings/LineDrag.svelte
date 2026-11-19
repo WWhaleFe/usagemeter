@@ -1,8 +1,8 @@
 <script lang="ts">
   // 선 위치 끌기 화면(Swift LineDragOverlay.swift, macOS 전용). 편집 중인 화면 전체를 덮는 투명 창 위에
   // 0.22 검정 막 + 메뉴바선(주황)·Dock선(청록) 손잡이. 끌면 바로 설정에 반영되어 테두리가 따라 움직인다.
-  // 한계 5pt ~ 화면 높이 60%, 완료 버튼 또는 Esc로 닫는다(Esc는 Swift에 없던 작은 개선).
-  import { onMount } from 'svelte';
+  // 한계 5pt ~ 화면 높이 60%. 완료(Enter)는 그대로 두고 닫고, 취소(Esc)는 열 때 값으로 되돌리고 닫는다.
+  import { onMount, untrack } from 'svelte';
   import { ui, t, set, act } from '../lib/api.svelte';
 
   const b = $derived(ui.s!.border);
@@ -15,21 +15,42 @@
   const menuH = $derived(drag?.key === 'menu' ? drag.v : (b.menuLineHeight ?? 25));
   const dockH = $derived(drag?.key === 'dock' ? drag.v : (b.dockLineHeight ?? 70));
 
+  // 취소하면 되돌릴 값(화면을 열 때의 경계 위치).
+  const start = untrack(() => ({ menuLineHeight: b.menuLineHeight ?? 25, dockLineHeight: b.dockLineHeight ?? 70 }));
+
   onMount(() => {
     // 이 페이지만 배경을 투명하게(전역 body 배경을 덮어쓴다).
     document.documentElement.dataset.page = 'linedrag';
     const resize = () => { H = window.innerHeight; W = window.innerWidth; };
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && done();
+    const keys = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') { e.preventDefault(); done(); }
+      else if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+    };
     addEventListener('resize', resize);
-    addEventListener('keydown', esc);
+    addEventListener('keydown', keys);
     return () => {
       delete document.documentElement.dataset.page;
       removeEventListener('resize', resize);
-      removeEventListener('keydown', esc);
+      removeEventListener('keydown', keys);
     };
   });
 
-  const done = () => act('closeLineDrag');
+  let closing = false;
+  async function done() {
+    if (closing) return;
+    closing = true;
+    // 끌던 값이 아직 보내지는 중이면 다 보낸 뒤 닫는다.
+    while (sending) await new Promise((r) => setTimeout(r, 16));
+    act('closeLineDrag');
+  }
+  async function cancel() {
+    if (closing) return;
+    closing = true;
+    pending = null;
+    while (sending) await new Promise((r) => setTimeout(r, 16));
+    await set('border', start);
+    act('closeLineDrag');
+  }
   const clamp = (v: number, key: 'menu' | 'dock') => Math.round(Math.min(Math.max(5, v), (key === 'dock' && lateral ? W : H) * 0.6));
 
   let sending = false, pending: { key: 'menu' | 'dock'; v: number } | null = null;
@@ -78,7 +99,13 @@
       </div>
     {/if}
   {/each}
-  <button class="primary done" onclick={done}>{t('part.dragDone')}</button>
+  <div class="bar" role="group" aria-label={t('part.dragAdjust')}>
+    <div class="buttons">
+      <button class="cancel" onclick={cancel}>{t('part.dragCancel')}<kbd>Esc</kbd></button>
+      <button class="primary done" onclick={done}>{t('part.dragDone')}<kbd>Enter</kbd></button>
+    </div>
+    <span class="hint">{t('part.dragKeysHint')}</span>
+  </div>
 </div>
 
 <style>
@@ -97,5 +124,15 @@
   .handle.lateral .chip { left: 28px; top: 50%; transform: translateY(-50%); }
   .menu { --hc: #ff9500; }
   .dock { --hc: #32ade6; }
-  .done { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); font-size: var(--fs-title); font-weight: 600; padding: 8px 22px; }
+  /* 화면 가운데 큰 버튼 묶음: 완료(파랑, 크게)와 취소. 아래에 단축키 안내. */
+  .bar {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 12px;
+    padding: 20px 28px; border-radius: 16px; background: rgba(20, 20, 22, 0.78); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  }
+  .buttons { display: flex; gap: 14px; }
+  .bar button { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 30px; border-radius: 12px; font-size: 20px; font-weight: 700; line-height: 1; }
+  .bar .done { min-width: 180px; justify-content: center; }
+  .bar .cancel { background: rgba(255, 255, 255, 0.14); color: #fff; border: 1px solid rgba(255, 255, 255, 0.28); }
+  .bar kbd { font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 4px 6px; border-radius: 6px; background: rgba(0, 0, 0, 0.28); color: inherit; }
+  .hint { color: rgba(255, 255, 255, 0.85); font-size: 13px; }
 </style>
