@@ -10,9 +10,9 @@
     "タスクバーの線"
   ],
   "part.taskbarDesc": [
-    "작업 표시줄의 실제 위치와 두께를 자동으로 따릅니다. 자동 숨김으로 작업 영역이 확장되면 구역을 접습니다. 배치 설정과 그림은 작업 표시줄이 아래인 기준이며 다른 변과 시작점도 함께 회전·반사됩니다.",
-    "Follows the taskbar position and thickness automatically. The zone collapses when auto-hide expands the work area. Layout settings and diagrams assume a bottom taskbar; other edges and start points rotate or reflect together.",
-    "タスクバーの位置と太さに自動追従します。自動非表示で作業領域が広がると区画を畳みます。配置設定と図は下側のタスクバーが基準で、他の辺と開始点も一緒に回転・反転します。"
+    "작업 표시줄의 실제 위치(위·아래·왼쪽·오른쪽)와 두께를 자동으로 따릅니다. 자동 숨김으로 작업 영역이 넓어지면 구역을 접습니다. 배치 그림도 작업 표시줄 위치에 맞춰 바뀝니다.",
+    "Follows the taskbar position (top, bottom, left or right) and thickness automatically. The zone collapses when auto-hide widens the work area. The layout diagram follows the taskbar position too.",
+    "タスクバーの位置(上・下・左・右)と太さに自動追従します。自動非表示で作業領域が広がると区画を畳みます。配置図もタスクバーの位置に合わせて変わります。"
   ],
   "platform.windowsUnsupported": [
     "Windows에서는 지원하지 않습니다.",
@@ -350,9 +350,9 @@
     "タスクバー境界線"
   ],
   "win.preset.dockWrap": [
-    "작업 표시줄 감싸개",
-    "Taskbar wrap",
-    "タスクバー包み"
+    "작업 표시줄",
+    "Taskbar",
+    "タスクバー"
   ],
   "win.seg.hDock": [
     "작업 표시줄선 ─",
@@ -513,5 +513,10 @@
     "Enter 완료 · Esc 취소(처음 위치로 되돌림) · 화살표 키로 1pt, Shift+화살표로 10pt씩",
     "Enter to finish · Esc to cancel (restores the original position) · Arrow keys move 1 pt, Shift+Arrow 10 pt",
     "Enterで完了 · Escでキャンセル(元の位置に戻す) · 矢印キーで1pt、Shift+矢印で10pt"
+  ],
+  "win.login.autostart": [
+    "Windows 로그인 시 자동 실행",
+    "Launch at Windows sign-in",
+    "Windowsサインイン時に自動起動"
   ]
 }
