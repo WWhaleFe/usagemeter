@@ -1,20 +1,17 @@
 <script lang="ts">
-  // 표시 탭(Swift SettingsView.swift:297-398): 언어, 외관, AI 순서, 호버, 메뉴바 아이콘·%, 드롭다운 정보, 차트, 알림. 모두 전역(main).
-  import { ui, settingsProviders, t, tf, tn, act, set } from '../../lib/api.svelte';
+  // 표시 탭: 언어, 모양, AI 순서, 테두리 호버, 알림, 로컬 기록. 모두 전역(main).
+  import { ui, t, tn, act, set } from '../../lib/api.svelte';
   import Section from '../../components/Section.svelte';
   import Toggle from '../../components/Toggle.svelte';
   import Slider from '../../components/Slider.svelte';
   import Segmented from '../../components/Segmented.svelte';
   const s = $derived(ui.s!);
-  const providers = $derived(settingsProviders(s));
   const m = $derived(s.main);
   const order = $derived<string[]>(s.providers.map((p) => p.id));
   const hoverOn = $derived(m.hoverInfoEnabled ?? true);
   const edges = $derived<string[]>(m.hoverEdges ?? ['top', 'right', 'bottom', 'left']);
   const corners = $derived<string[]>(m.hoverCorners ?? []);
-  const percentIDs = $derived<string[]>(m.menuBarPercentIDs ?? []);
   const thresholds = $derived<number[]>(m.notifyThresholds ?? [75, 90, 95]);
-  const chartOn = $derived(m.menuShowChart ?? false);
   const notifyOn = $derived(m.notifyEnabled ?? false);
 
   // 배열 설정에서 원소 하나를 넣고 빼기(Swift memberBinding).
@@ -32,12 +29,6 @@
   const appearances = $derived(['system', 'light', 'dark'].map((v) => ({ value: v, label: t('appearance.' + v) })));
   const edgeKeys = ['top', 'right', 'bottom', 'left'];
   const cornerKeys = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
-  const infoRows: [string, string][] = [
-    ['info.5h', 'menuShow5h'], ['info.weekly', 'menuShowWeekly'], ['info.opus', 'menuShowOpus'], ['info.reset', 'menuShowReset'],
-    ['info.countdown', 'menuShowCountdown'], ['info.pace', 'menuShowPace'], ['info.chart', 'menuShowChart'], ['info.updated', 'menuShowUpdated'],
-  ];
-  // 기본값(Swift :471-482): 5h·주간·Opus·리셋·카운트다운은 켜짐, 나머지는 꺼짐.
-  const infoDefault: Record<string, boolean> = { menuShow5h: true, menuShowWeekly: true, menuShowOpus: true, menuShowReset: true, menuShowCountdown: true };
   import LocalLogsSection from '../LocalLogsSection.svelte';
   import Icon from '../../analytics/Icon.svelte';
 </script>
@@ -61,9 +52,11 @@
   <span class="caption">{t('order.desc')}</span>
 </Section>
 
+{#if s.platform === 'mac'}
 <Section title={t('sec.hover')}>
   <Toggle label={t('hover.enable')} checked={hoverOn} onchange={(v) => set('main', { hoverInfoEnabled: v })} />
   <span class="caption">{t('hover.enableDesc')}</span>
+  <Toggle label={t('hover.emphasis')} checked={m.hoverEmphasisEnabled ?? true} disabled={!hoverOn} onchange={(v) => set('main', { hoverEmphasisEnabled: v })} />
   <fieldset class="grp" disabled={!hoverOn}>
     <legend>{t('hoverArea.edges')}</legend>
     <div class="checks">
@@ -80,49 +73,10 @@
     <Slider label={t('hoverArea.cornerSize')} value={m.hoverCornerSize ?? 80} min={20} max={300} step={5} disabled={!hoverOn || corners.length === 0} onchange={(v) => set('main', { hoverCornerSize: v })} />
     <span class="caption">{t('hoverArea.desc')}</span>
   </fieldset>
-  <Toggle label={t('menuHover.enable')} checked={m.menuBarHoverInfoEnabled ?? true} onchange={(v) => set('main', { menuBarHoverInfoEnabled: v })} />
-  <span class="caption">{t('menuHover.enableDesc')}</span>
+
 </Section>
 
-<Section title={t('sec.menuIcon')}>
-  <div class="row">
-    <label class="grow" for="icon-ai">{t('disp.iconBaseAI')}</label>
-    <select id="icon-ai" value={m.menuBarIconID ?? s.providers[0]?.id} onchange={(e) => set('main', { menuBarIconID: e.currentTarget.value })}>
-      {#each providers as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
-    </select>
-  </div>
-  <span class="caption">{t('disp.iconDesc')}</span>
-</Section>
-
-{#if s.platform === 'mac'}
-<Section title={t('tray.clickMode')}>
-  <select aria-label={t('tray.clickMode')} value={m.trayClickMode ?? 'split'} onchange={(e) => set('main', { trayClickMode: e.currentTarget.value })}>
-    {#each ['split', 'swapped', 'together'] as mode (mode)}<option value={mode}>{t('tray.' + mode)}</option>{/each}
-  </select>
-</Section>
 {/if}
-
-<Section title={t('sec.menuPercent')}>
-  {#each providers as p (p.id)}
-    <Toggle label={tf('disp.showPercent', p.name)} checked={percentIDs.includes(p.id)} onchange={(v) => set('main', { menuBarPercentIDs: member(percentIDs, p.id, v) })} />
-  {/each}
-  <span class="caption">{t('disp.percentDesc')}</span>
-</Section>
-
-<Section title={t('sec.dropdownInfo')}>
-  <div class="grid">
-    {#each infoRows as [key, field] (field)}
-      <Toggle label={t(key)} checked={m[field] ?? infoDefault[field] ?? false} onchange={(v) => set('main', { [field]: v })} />
-    {/each}
-  </div>
-  <div class="row" class:off={s.platform === 'mac' && !chartOn}>
-    <label class="grow" for="chart-hours">{t('chart.range')}</label>
-    <select id="chart-hours" value={m.chartHours ?? 24} disabled={!chartOn} onchange={(e) => set('main', { chartHours: +e.currentTarget.value })}>
-      {#each [6, 12, 24] as h (h)}<option value={h}>{tn('chart.hoursFmt', h)}</option>{/each}
-    </select>
-  </div>
-  <Toggle label={t('chartHover.enable')} checked={m.chartHoverEnabled ?? true} disabled={!chartOn} onchange={(v) => set('main', { chartHoverEnabled: v })} />
-</Section>
 
 <Section title={t('sec.notify')}>
   <Toggle label={t('notify.enable')} checked={notifyOn} onchange={(v) => set('main', { notifyEnabled: v })} />
@@ -145,13 +99,10 @@
   .checks.off { opacity: 0.45; }
   .chk { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; }
   .chk input { accent-color: var(--accent); margin: 0; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; }
   :global(:root[data-skin="macos"]) .order-row { margin-block: -2px; }
   :global(:root[data-skin="macos"]) legend { font-size: 12px; font-weight: 500; }
   :global(:root[data-skin="macos"]) .icon { display: flex; align-items: center; justify-content: center; width: 18px; height: 16px; min-height: 16px; background: transparent; border: 0; min-width: 16px; padding: 0 4px; box-shadow: none; color: var(--fg2); }
   :global(:root[data-skin="macos"]) .checks { gap: 6px 14px; }
   :global(:root[data-skin="macos"]) .chk { min-height: 16px; gap: 5px; }
-  :global(:root[data-skin="macos"]) .grid { gap: 6px 10px; }
   :global(:root[data-skin="macos"]) .grp { gap: 8px; }
-  :global(:root[data-skin="macos"]) .row.off { opacity: .45; }
 </style>

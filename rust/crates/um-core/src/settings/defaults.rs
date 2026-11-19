@@ -141,6 +141,7 @@ impl Default for Settings {
             chart_hours: 24,
             appearance: AppAppearance::System,
             hover_info_enabled: true,
+            hover_emphasis_enabled: true,
             chart_hover_enabled: true,
             menu_bar_hover_info_enabled: true,
             hover_edges: BorderEdge::ALL.into_iter().collect(),

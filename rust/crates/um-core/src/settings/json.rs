@@ -92,6 +92,18 @@ mod tests {
     }
 
     #[test]
+    fn 호버_강조는_이전_파일에서_켜짐과_끄기_왕복() {
+        let mut old = serde_json::to_value(Settings::default().to_snapshot()).unwrap();
+        old.as_object_mut().unwrap().remove("hoverEmphasisEnabled");
+        assert!(Settings::from_json(&old.to_string()).unwrap().hover_emphasis_enabled);
+        let s = Settings { hover_emphasis_enabled: false, ..Settings::default() };
+        let text = s.to_json().unwrap();
+        let v: Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(v["hoverEmphasisEnabled"], false);
+        assert_eq!(Settings::from_json(&text).unwrap(), s);
+    }
+
+    #[test]
     fn 스키마_버전_포함_왕복() {
         let s = Settings::default();
         let text = s.to_json().unwrap();

@@ -100,6 +100,8 @@ struct Painter<'a> {
     measures: Vec<Measure>,
     pm: Pixmap,
     transform: Transform,
+    emphasis: bool,
+    width_scale: f64,
 }
 
 impl Painter<'_> {
@@ -110,7 +112,7 @@ impl Painter<'_> {
             return;
         }
         let Ink { color, alpha_mul, round_all } = ink;
-        let alpha = color[3] * alpha_mul * self.scene.line_opacity;
+        let alpha = color[3] * alpha_mul * if self.emphasis { 1.0 } else { self.scene.line_opacity };
         if alpha <= 0.0 {
             return;
         }
@@ -132,7 +134,7 @@ impl Painter<'_> {
             }
             let Some(path) = self.measures[idx].trim(lo, hi) else { continue };
             let stroke = Stroke {
-                width: sp.width as f32,
+                width: (sp.width * self.width_scale) as f32,
                 line_cap: if round_all { LineCap::Round } else { LineCap::Butt },
                 line_join: LineJoin::Round,
                 ..Stroke::default()
@@ -161,6 +163,12 @@ impl Painter<'_> {
 /// 화면 전체 장면을 `origin`만큼 옮겨 `size_pt` 크기 픽셀 버퍼에 그린다(띠 창 하나의 내용).
 /// 결과는 premultiplied RGBA. `scale` = 화면 배율(Retina 2.0).
 pub fn render(scene: &BorderScene, origin: (f64, f64), size_pt: (f64, f64), scale: f64) -> Pixmap {
+    render_emphasized(scene, origin, size_pt, scale, None)
+}
+
+/// 강조 띠는 모든 레이어 뒤에 불투명하게 다시 그리고 같은 두께 안에 밝은 중심선을 얹는다.
+/// 굵기를 늘리지 않아 화면 가장자리와 띠 창 경계에서도 잘리지 않는다.
+pub fn render_emphasized(scene: &BorderScene, origin: (f64, f64), size_pt: (f64, f64), scale: f64, emphasis: Option<usize>) -> Pixmap {
     let pw = ((size_pt.0 * scale).ceil() as u32).max(1);
     let ph = ((size_pt.1 * scale).ceil() as u32).max(1);
     let pm = Pixmap::new(pw, ph).expect("pixmap size");
@@ -173,7 +181,7 @@ pub fn render(scene: &BorderScene, origin: (f64, f64), size_pt: (f64, f64), scal
         (-origin.1 * scale) as f32,
     );
     let measures = scene.items.iter().map(|it| Measure::new(&it.path)).collect();
-    let mut p = Painter { scene, measures, pm, transform };
+    let mut p = Painter { scene, measures, pm, transform, emphasis: false, width_scale: 1.0 };
     // 노치 우회(메뉴바선 등과 겹치면 뒤에 깔린다) -> 본체 순서. 트랙은 AI당 한 번, 모든 띠 아래.
     for notch_layer in [true, false] {
         if scene.show_track {
@@ -183,6 +191,17 @@ pub fn render(scene: &BorderScene, origin: (f64, f64), size_pt: (f64, f64), scal
         }
         for band in &scene.bands {
             p.fill(band.item, band.ratio, band.color, notch_layer);
+        }
+    }
+    if let Some(band) = emphasis.and_then(|i| scene.bands.get(i)) {
+        p.emphasis = true;
+        let color = [band.color[0], band.color[1], band.color[2], 1.0];
+        for notch in [true, false] {
+            p.stroke_range(band.item, 0.0, band.ratio, Ink { color, alpha_mul: 1.0, round_all: true }, notch);
+        }
+        p.width_scale = 0.4;
+        for notch in [true, false] {
+            p.stroke_range(band.item, 0.0, band.ratio, Ink { color: [1.0, 1.0, 1.0, 0.35], alpha_mul: 1.0, round_all: true }, notch);
         }
     }
     p.pm

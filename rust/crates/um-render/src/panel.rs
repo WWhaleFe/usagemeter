@@ -105,24 +105,29 @@ fn hline(pm: &mut Pixmap, s: f32, x0: f32, x1: f32, y: f32, c: Rgba) {
 pub struct HoverLine {
     pub text: String,
     pub dot: Option<Rgba>,
+    pub emphasized: bool,
 }
 
 /// 줄 -> 조각. 줄 사이는 "\n" 조각.
-fn hover_spans<'a>(lines: &'a [HoverLine], theme: Theme) -> Vec<Span<'a>> {
-    let mut v = vec![];
-    for (i, l) in lines.iter().enumerate() {
-        if i > 0 {
-            v.push(Span { text: "\n", color: theme.primary() });
-        }
-        match (l.dot, l.text.strip_prefix("● ")) {
-            (Some(dot), Some(rest)) => {
-                v.push(Span { text: "● ", color: dot });
-                v.push(Span { text: rest, color: theme.primary() });
-            }
-            _ => v.push(Span { text: &l.text, color: theme.primary() }),
-        }
+fn hover_spans(line: &HoverLine, theme: Theme) -> Vec<Span<'_>> {
+    match (line.dot, line.text.strip_prefix("● ")) {
+        (Some(dot), Some(rest)) => vec![Span { text: "● ", color: dot }, Span { text: rest, color: theme.primary() }],
+        _ => vec![Span { text: &line.text, color: theme.primary() }],
     }
-    v
+}
+
+// 강조를 끄면 기존의 한 번에 배치하는 방식과 줄바꿈·빈 줄 높이를 그대로 유지한다.
+fn plain_hover_spans(lines: &[HoverLine], theme: Theme) -> Vec<Span<'_>> {
+    let mut spans = vec![];
+    for (i, line) in lines.iter().enumerate() {
+        if i > 0 { spans.push(Span { text: "\n", color: theme.primary() }); }
+        spans.extend(hover_spans(line, theme));
+    }
+    spans
+}
+
+fn hover_style(line: &HoverLine) -> (f32, u16) {
+    if line.emphasized { (13.5, W_BOLD) } else { (12.0, W_MEDIUM) }
 }
 
 const HOVER_PAD_X: f32 = 10.0;
@@ -130,26 +135,38 @@ const HOVER_PAD_Y: f32 = 6.0;
 
 /// 호버 패널 크기(pt). `max_width`는 패널 전체 최대 폭(글자는 `max_width - 20`에서 줄바꿈).
 pub fn measure_hover(lines: &[HoverLine], max_width: f32, theme: Theme) -> (f32, f32) {
-    let spans = hover_spans(lines, theme);
-    let t = text::measure(&spans, 12.0, W_MEDIUM, Some((max_width - 2.0 * HOVER_PAD_X).max(1.0)));
-    (t.width.ceil() + 2.0 * HOVER_PAD_X, t.height + 2.0 * HOVER_PAD_Y)
+    if !lines.iter().any(|l| l.emphasized) {
+        let t = text::measure(&plain_hover_spans(lines, theme), 12.0, W_MEDIUM,
+            Some((max_width - 2.0 * HOVER_PAD_X).max(1.0)));
+        return (t.width.ceil() + 2.0 * HOVER_PAD_X, t.height + 2.0 * HOVER_PAD_Y);
+    }
+    let mut width = 0.0_f32;
+    let mut height = 0.0;
+    for line in lines {
+        let (size, weight) = hover_style(line);
+        let t = text::measure(&hover_spans(line, theme), size, weight, Some((max_width - 2.0 * HOVER_PAD_X).max(1.0)));
+        width = width.max(t.width);
+        height += t.height.max(text::line_height(size));
+    }
+    (width.ceil() + 2.0 * HOVER_PAD_X, height + 2.0 * HOVER_PAD_Y)
 }
 
-/// 호버 패널 그리기: 12pt medium, 좌우 10·상하 6 여백, 폭 넘으면 줄바꿈.
+/// 호버 패널: 기본 12pt medium, 강조 줄은 13.5pt bold. 좌우 10·상하 6 여백.
 pub fn render_hover(lines: &[HoverLine], max_width: f32, theme: Theme, scale: f32) -> Rendered {
     let (w, h) = measure_hover(lines, max_width, theme);
     let mut pm = canvas(w, h, scale);
-    let spans = hover_spans(lines, theme);
-    text::draw(
-        &mut pm,
-        HOVER_PAD_X,
-        HOVER_PAD_Y,
-        &spans,
-        12.0,
-        W_MEDIUM,
-        scale,
-        Some((max_width - 2.0 * HOVER_PAD_X).max(1.0)),
-    );
+    if !lines.iter().any(|l| l.emphasized) {
+        text::draw(&mut pm, HOVER_PAD_X, HOVER_PAD_Y, &plain_hover_spans(lines, theme), 12.0, W_MEDIUM, scale,
+            Some((max_width - 2.0 * HOVER_PAD_X).max(1.0)));
+        return Rendered { pixmap: pm, width: w, height: h };
+    }
+    let mut y = HOVER_PAD_Y;
+    for line in lines {
+        let (size, weight) = hover_style(line);
+        let t = text::draw(&mut pm, HOVER_PAD_X, y, &hover_spans(line, theme), size, weight, scale,
+            Some((max_width - 2.0 * HOVER_PAD_X).max(1.0)));
+        y += t.height.max(text::line_height(size));
+    }
     Rendered { pixmap: pm, width: w, height: h }
 }
 

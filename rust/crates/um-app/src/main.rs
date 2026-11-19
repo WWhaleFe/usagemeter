@@ -179,8 +179,15 @@ fn redraw(app: &AppHandle) {
     let h = app.clone();
     let _ = app.run_on_main_thread(move || {
         let st = st.lock().unwrap();
+        #[cfg(target_os = "macos")]
+        let hovered = panels::reset_hover();
         OVERLAY.with(|o| o.borrow_mut().redraw(&st));
         update_tray(&h, &st);
+        #[cfg(target_os = "macos")]
+        {
+            drop(st);
+            if hovered { panels::refresh_hover(&h); }
+        }
     });
 }
 

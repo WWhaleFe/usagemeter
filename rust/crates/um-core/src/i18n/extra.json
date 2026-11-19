@@ -1,4 +1,14 @@
 {
+  "tab.menuBar": [
+    "메뉴바",
+    "Menu Bar",
+    "メニューバー"
+  ],
+  "hover.emphasis": [
+    "호버한 선과 해당 글 강조",
+    "Emphasize hovered lines and text",
+    "ホバー中の線とテキストを強調"
+  ],
   "window.settings": [
     "UsageMeter 설정",
     "UsageMeter Settings",

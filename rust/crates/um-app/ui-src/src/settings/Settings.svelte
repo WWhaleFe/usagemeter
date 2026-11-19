@@ -1,5 +1,5 @@
 <script lang="ts">
-  // 설정 창 틀(계획서 5-5, 6-1). macOS = 위쪽 탭 11개(Swift SettingsView.swift:62-72),
+  // 설정 창 틀(계획서 5-5, 6-1). macOS = 위쪽 탭 12개(Swift SettingsView.swift:62-72),
   // Windows = Windows 11 설정 앱처럼 왼쪽 탐색 창 + 오른쪽 내용, 구분선·노치 탭은 없다(Windows는 테두리만).
   import { ui, t } from '../lib/api.svelte';
   import TopArea from './TopArea.svelte';
@@ -47,11 +47,11 @@
 <style>
   .mac { display: flex; flex-direction: column; height: 100vh; padding: 14px 10px 10px; gap: 20px; }
   .tab-panel { flex: 1; min-height: 0; position: relative; border: 1px solid var(--panel-stroke); border-radius: 5px; background: var(--panel-bg); display: flex; flex-direction: column; }
-  .mac .tabs { display: flex; justify-content: center; align-self: center; border: 1px solid var(--panel-stroke); border-radius: 7px; padding: 2px; background: var(--segment-bg); position: relative; margin-top: -13px; z-index: 1; flex: none; }
-  .mac .tabs button { border: none; border-radius: 0; background: transparent; padding: 1px 12px; min-height: 20px; line-height: 16px; font-size: 12px; font-weight: 500; white-space: nowrap; position: relative; }
+  .mac .tabs { display: flex; justify-content: center; align-self: center; border: 1px solid var(--panel-stroke); border-radius: 7px; padding: 2px; background: var(--segment-bg); position: relative; margin-top: -13px; z-index: 1; flex: none; max-width: calc(100% - 12px); }
+  .mac .tabs button { border: none; border-radius: 0; background: transparent; padding: 1px clamp(3px, 1vw, 10px); min-height: 20px; line-height: 16px; font-size: 12px; font-weight: 500; white-space: nowrap; position: relative; }
   .mac .tabs button + button::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 1px; background: var(--surface-stroke); }
   .mac .tabs button.on { background: var(--segment-selected); color: var(--fg); border-radius: 5px; }
-  :global(html[lang="en"]) .mac .tabs button { padding-inline: 8px; }
+  :global(html[lang="en"]) .mac .tabs button { padding-inline: 4px; }
   .mac main { flex: 1; overflow: auto; padding: 20px 16px 14px; min-height: 0; }
 
   .win { display: flex; height: 100vh; }

@@ -4,6 +4,7 @@ import type { Component } from 'svelte';
 import Login from './tabs/Login.svelte';
 import Presets from './tabs/Presets.svelte';
 import Display from './tabs/Display.svelte';
+import MenuBar from './tabs/MenuBar.svelte';
 import Interval from './tabs/Interval.svelte';
 import Line from './tabs/Line.svelte';
 import SubItems from './tabs/SubItems.svelte';
@@ -19,6 +20,7 @@ export const TABS: TabDef[] = [
   { id: 'login', component: Login, glyph: '' },
   { id: 'presets', component: Presets, glyph: '' },
   { id: 'display', component: Display, glyph: '' },
+  { id: 'menuBar', component: MenuBar, glyph: '\uE700' },
   { id: 'interval', component: Interval, glyph: '' },
   { id: 'line', component: Line, glyph: '' },
   { id: 'subItems', component: SubItems, glyph: '' },

@@ -141,6 +141,7 @@ pub struct Settings {
     pub chart_hours: u32,
     pub appearance: AppAppearance,
     pub hover_info_enabled: bool,
+    pub hover_emphasis_enabled: bool,
     pub chart_hover_enabled: bool,
     pub menu_bar_hover_info_enabled: bool,
     pub hover_edges: BTreeSet<BorderEdge>,
@@ -351,6 +352,7 @@ impl Settings {
         self.link_main_dock_radii = s.link_main_dock_radii.unwrap_or(true);
         self.appearance = s.appearance.as_deref().and_then(parse).unwrap_or_default();
         self.hover_info_enabled = s.hover_info_enabled.unwrap_or(true);
+        self.hover_emphasis_enabled = s.hover_emphasis_enabled.unwrap_or(true);
         self.chart_hover_enabled = s.chart_hover_enabled.unwrap_or(true);
         self.hide_overlay_on_launch = s.hide_overlay_on_launch.unwrap_or(false);
         self.menu_bar_hover_info_enabled = s.menu_bar_hover_info_enabled.unwrap_or(true);
@@ -450,6 +452,7 @@ impl Settings {
             appearance: Some(raw(&self.appearance)),
             provider_order: Some(self.provider_order.clone()),
             hover_info_enabled: Some(self.hover_info_enabled),
+            hover_emphasis_enabled: Some(self.hover_emphasis_enabled),
             chart_hover_enabled: Some(self.chart_hover_enabled),
             hide_overlay_on_launch: Some(self.hide_overlay_on_launch),
             menu_bar_hover_info_enabled: Some(self.menu_bar_hover_info_enabled),

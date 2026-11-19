@@ -207,6 +207,6 @@ pub fn sub_item_bar_parts(s: &Settings, provider_id: &str, snap: &UsageSnapshot)
         .filter(|(_, it)| {
             !s.sub_item_bar_hidden.contains(&um_core::model::UsageSubItem::settings_key(provider_id, &it.id))
         })
-        .map(|(_, it)| BandPart { ratio: it.remaining_ratio, color: sub_item_color(s, provider_id, &it.id, &items) })
+        .map(|(_, it)| BandPart { id: it.id.clone(), ratio: it.remaining_ratio, color: sub_item_color(s, provider_id, &it.id, &items) })
         .collect()
 }

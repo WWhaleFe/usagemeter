@@ -34,9 +34,9 @@ fn assert_corners_clear(pm: &Pixmap) {
 
 fn hover_lines() -> Vec<HoverLine> {
     vec![
-        HoverLine { text: "● Claude 5시간 잔여 58% · 리셋 15:30".into(), dot: Some(CLAUDE) },
-        HoverLine { text: "● Gemini 週間残量 97% · Weekly remaining".into(), dot: Some(GEMINI) },
-        HoverLine { text: "분석 보기 使用量の分析 Usage Analytics".into(), dot: None },
+        HoverLine { emphasized: false, text: "● Claude 5시간 잔여 58% · 리셋 15:30".into(), dot: Some(CLAUDE) },
+        HoverLine { emphasized: false, text: "● Gemini 週間残量 97% · Weekly remaining".into(), dot: Some(GEMINI) },
+        HoverLine { emphasized: false, text: "분석 보기 使用量の分析 Usage Analytics".into(), dot: None },
     ]
 }
 
@@ -68,7 +68,7 @@ fn 호버_크기와_잉크() {
 
 #[test]
 fn 호버_줄바꿈() {
-    let long = vec![HoverLine { text: "가나다라마바사 ".repeat(20), dot: None }];
+    let long = vec![HoverLine { emphasized: false, text: "가나다라마바사 ".repeat(20), dot: None }];
     let narrow = render_hover(&long, 200.0, LIGHT, 1.0);
     let wide = render_hover(&long, 2000.0, LIGHT, 1.0);
     assert!(narrow.width <= 200.0 + 0.5);
@@ -267,4 +267,17 @@ fn 세부_항목_기본_색은_서로_겹치지_않는다() {
     all.sort();
     all.dedup();
     assert_eq!(all.len(), n, "AI 색과 세부 항목 기본 색 15개가 모두 달라야 한다");
+}
+
+#[test]
+fn 강조_호버_줄은_더_넓고_높게_그림() {
+    let mut lines = hover_lines();
+    let theme = Theme { dark: false };
+    let normal = render_hover(&lines, 2000.0, theme, 1.0);
+    for line in &mut lines { line.emphasized = true; }
+    let bold = render_hover(&lines, 2000.0, theme, 1.0);
+    assert!(bold.width > normal.width);
+    assert!(bold.height > normal.height);
+    assert!(bold.pixmap.pixels().iter().filter(|p| p.alpha() > 0).count()
+        > normal.pixmap.pixels().iter().filter(|p| p.alpha() > 0).count());
 }

@@ -5,7 +5,7 @@ set -u
 cd "$(dirname "$0")/.."
 OUT=${1:?출력 폴더}; shift
 mkdir -p "$OUT"
-TABS=${*:-"login presets display interval line subItems partition layout corner notch support"}
+TABS=${*:-"login presets display menuBar interval line subItems partition layout corner notch support"}
 [ -x tools/winid ] || swiftc -O tools/winid.swift -o tools/winid
 for tab in $TABS; do
   UM_HEADLESS=1 UM_OPEN_WINDOW="settings#$tab" ./target/release/usagemeter >/dev/null 2>&1 & P=$!

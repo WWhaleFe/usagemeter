@@ -5,6 +5,7 @@
 //! 모양·규칙은 Swift를 그대로 따른다(계획서 5-2, 부록 B). 세그먼트 그래프·끝 보정은 `um_core::segments`.
 
 mod draw;
+mod hover;
 mod items;
 mod shape;
 mod spans;
@@ -13,7 +14,8 @@ use kurbo::{BezPath, ParamCurveArclen};
 use um_core::settings::Settings;
 use um_core::types::{BorderCorner, Rgba, ScreenZone, SegPart};
 
-pub use draw::render;
+pub use draw::{render, render_emphasized};
+pub use hover::HoverGeometry;
 pub use items::{provider_color, sub_item_bar_parts, sub_item_color};
 pub use shape::{Built, ChainShape, Rec};
 pub use spans::{Span, merge_spans, tapered};
@@ -21,6 +23,7 @@ pub use spans::{Span, merge_spans, tapered};
 /// 세부 항목 하나의 띠(잔여율 + 색). (Swift `subItemBarParts`의 원소)
 #[derive(Debug, Clone, PartialEq)]
 pub struct BandPart {
+    pub id: String,
     pub ratio: f64,
     pub color: Rgba,
 }
@@ -60,6 +63,8 @@ pub struct SceneItem {
 /// 그릴 띠 하나: 어느 경로(`items` 인덱스)에 어떤 길이 비율·색으로.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SceneBand {
+    /// 세부 항목 id. 대표 띠는 None.
+    pub part: Option<String>,
     pub item: usize,
     pub ratio: f64,
     pub color: Rgba,
@@ -109,9 +114,9 @@ pub fn build_paths(input: &BorderInput) -> BorderScene {
         .enumerate()
         .flat_map(|(i, (parts, ratio, color))| {
             if parts.is_empty() {
-                vec![SceneBand { item: i, ratio: s.bar_fill_mode.fill_ratio(*ratio), color: *color }]
+                vec![SceneBand { part: None, item: i, ratio: s.bar_fill_mode.fill_ratio(*ratio), color: *color }]
             } else {
-                parts.iter().map(|p| SceneBand { item: i, ratio: s.bar_fill_mode.fill_ratio(p.ratio), color: p.color }).collect()
+                parts.iter().map(|p| SceneBand { part: Some(p.id.clone()), item: i, ratio: s.bar_fill_mode.fill_ratio(p.ratio), color: p.color }).collect()
             }
         })
         .collect();
@@ -243,7 +248,7 @@ mod tests {
                 settings: &s, screen_w: 200.0, screen_h: 200.0,
                 bands: vec![ProviderBand {
                     id: "claude".into(), ratio: 0.5, color: RED,
-                    parts: vec![BandPart { ratio: 0.2, color: RED }, BandPart { ratio: 0.8, color: BLUE }],
+                    parts: vec![BandPart { id: "5h".into(), ratio: 0.2, color: RED }, BandPart { id: "weekly".into(), ratio: 0.8, color: BLUE }],
                 }],
             };
             let original = input.bands.clone();
@@ -290,6 +295,30 @@ mod tests {
             assert_eq!(before.fade_enabled, after.fade_enabled);
             assert_eq!(before.fade_fraction, after.fade_fraction);
         }
+    }
+
+    #[test]
+    fn 강조한_띠는_가린_전체_길이까지_불투명하게_맨_위() {
+        let mut s = 겹침_설정(BarFillMode::Remaining);
+        s.line_opacity = 0.2;
+        s.fade_enabled = true;
+        let scene = build_paths(&BorderInput { settings: &s, screen_w: 200.0, screen_h: 200.0,
+            bands: vec![ProviderBand { id: "claude".into(), ratio: 0.8, color: RED, parts: vec![] },
+                ProviderBand { id: "codex".into(), ratio: 0.2, color: BLUE, parts: vec![] }] });
+        let normal = render(&scene, (0.0, 0.0), scene.screen, 1.0);
+        assert_eq!(normal.data(), render_emphasized(&scene, (0.0, 0.0), scene.screen, 1.0, None).data());
+        let highlighted = render_emphasized(&scene, (0.0, 0.0), scene.screen, 1.0, Some(0));
+        for x in [20, 100, 150] {
+            let p = highlighted.pixel(x, 2).unwrap();
+            assert_eq!(p.alpha(), 255);
+            assert!(p.red() > p.blue());
+        }
+        assert_eq!(highlighted.pixel(190, 2).unwrap().alpha(), 0);
+        let mut solid = scene.clone();
+        solid.fade_enabled = false;
+        solid.line_opacity = 1.0;
+        let footprint = render(&solid, (0.0, 0.0), solid.screen, 1.0);
+        assert!(highlighted.pixels().iter().enumerate().all(|(i, p)| p.alpha() == 0 || footprint.pixels()[i].alpha() > 0));
     }
 
     #[test]

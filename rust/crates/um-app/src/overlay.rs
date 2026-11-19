@@ -15,6 +15,10 @@ pub struct Overlay {
     strips: BTreeMap<String, Vec<(OverlayStrip, [f64; 4])>>,
     /// 마지막으로 본 화면 구성(바뀌면 띠 창을 다시 만든다).
     signature: String,
+    #[cfg(target_os = "macos")]
+    scenes: BTreeMap<String, (border::BorderScene, border::HoverGeometry, f64)>,
+    #[cfg(target_os = "macos")]
+    hover: Option<(String, Vec<usize>, usize)>,
 }
 
 fn signature(ds: &[DisplayInfo]) -> String {
@@ -59,6 +63,8 @@ impl Overlay {
     }
 
     pub fn redraw(&mut self, st: &AppState) {
+        #[cfg(target_os = "macos")]
+        { self.scenes.clear(); self.hover = None; }
         let ds = display::displays();
         if self.signature.is_empty() {
             self.signature = signature(&ds);
@@ -94,6 +100,8 @@ impl Overlay {
                 screen_h: d.height_pt,
                 bands,
             });
+            #[cfg(target_os = "macos")]
+            self.scenes.insert(d.id.clone(), (scene.clone(), border::HoverGeometry::new(&scene), d.scale));
             // 띠 개수·위치가 바뀌었으면 새로 만든다.
             if entry.len() != rects.len() || entry.iter().zip(&rects).any(|((_, a), b)| a != b) {
                 tracing::info!("띠 창 재생성: {}개, AI 띠 {}개", rects.len(), st.snapshots.len());
@@ -114,5 +122,57 @@ impl Overlay {
             }
         }
         self.strips.retain(|id, _| seen.contains(id));
+    }
+}
+
+#[cfg(target_os = "macos")]
+impl Overlay {
+    /// 후보가 달라질 때만 띠를 다시 그린다. 좌표만 바뀌면 기존 그림을 유지한다.
+    pub fn hover_at(&mut self, display: Option<(&str, f64, f64)>) -> Vec<(String, Option<String>)> {
+        let next = display.and_then(|(id, x, y)| {
+            let (scene, geometry, _) = self.scenes.get(id)?;
+            let hits = geometry.candidates(scene, x, y);
+            (!hits.is_empty()).then(|| (id.to_string(), hits))
+        });
+        let same = match (&self.hover, &next) {
+            (Some((a, hits, _)), Some((b, next))) => a == b && hits == next,
+            (None, None) => true,
+            _ => false,
+        };
+        if !same {
+            let old = self.hover.take().map(|h| h.0);
+            self.hover = next.map(|(id, hits)| (id, hits, 0));
+            if let Some(id) = &old { self.present_hover(id); }
+            if let Some((id, _, _)) = &self.hover
+                && old.as_ref() != Some(id)
+            { self.present_hover(id); }
+        }
+        self.hover.as_ref().and_then(|(id, hits, _)| self.scenes.get(id).map(|(scene, _, _)| {
+            hits.iter().map(|&i| {
+                let band = &scene.bands[i];
+                (scene.items[band.item].id.clone(), band.part.clone())
+            }).collect()
+        })).unwrap_or_default()
+    }
+
+    pub fn cycle_hover(&mut self) {
+        let Some((id, hits, index)) = &mut self.hover else { return };
+        if hits.len() < 2 { return; }
+        *index = (*index + 1) % hits.len();
+        let id = id.clone();
+        self.present_hover(&id);
+    }
+
+    fn present_hover(&self, id: &str) {
+        let Some((scene, _, scale)) = self.scenes.get(id) else { return };
+        let selected = self.hover.as_ref().filter(|h| h.0 == id).map(|h| h.1[h.2]);
+        if let Some(strips) = self.strips.get(id) {
+            for (w, r) in strips {
+                let pm = border::render_emphasized(scene, (r[0], r[1]), (r[2], r[3]), *scale, selected);
+                if let Err(e) = w.present(pm.data(), pm.width(), pm.height(), *scale) {
+                    tracing::warn!("강조 띠 그리기 실패: {e}");
+                }
+            }
+        }
     }
 }
