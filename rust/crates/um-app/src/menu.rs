@@ -1,6 +1,6 @@
 //! 트레이 전체 메뉴(Swift StatusBarController.swift:87-207 `populateMenu`, 계획서 부록 A-3).
 //! 상태(언어·로그인·프리셋·업데이트)가 바뀌면 메뉴를 통째로 다시 만든다(`rebuild`).
-//! macOS는 오른쪽 클릭, 그 밖은 클릭으로 연다(결정 D1). 정보 카드·차트는 왼쪽 클릭 패널에 있다.
+//! macOS는 클릭 설정에 따라 열며 함께 표시 모드에서는 카드·차트를 메뉴 위에 넣는다.
 
 use tauri::menu::{CheckMenuItem, IsMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Wry};
@@ -61,6 +61,11 @@ pub fn build(app: &AppHandle, st: &AppState) -> R<Menu<Wry>> {
     let lang = s.language;
     let menu = Menu::new(app)?;
 
+    #[cfg(target_os = "macos")]
+    if s.tray_click_mode == um_core::settings::TrayClickMode::Together {
+        menu.append(&item(app, "card", crate::panels::MENU_CARD_TITLE, false, None)?)?;
+        menu.append(&sep(app)?)?;
+    }
     menu.append(&item(app, "analytics", tr("menu.analytics", lang), true, None)?)?;
 
     // 표시 정보(체크해도 메뉴가 닫히는 것은 네이티브 메뉴의 한계, Swift는 열린 채 유지).
@@ -120,6 +125,13 @@ pub fn build(app: &AppHandle, st: &AppState) -> R<Menu<Wry>> {
     presets.append(&item(app, "preset:save", tr("menu.saveCurrent", lang), st.presets.len() < MAX_PRESETS, None)?)?;
     menu.append(&presets)?;
 
+    let borders = Submenu::with_id(app, "borders", tr("menu.borderLines", lang), true)?;
+    for id in &s.provider_order {
+        if let Some(sp) = spec::spec(id) {
+            borders.append(&check(app, &format!("border:{id}"), sp.name, !s.border_hidden_ids.contains(id))?)?;
+        }
+    }
+    menu.append(&borders)?;
     menu.append(&check(app, "hide", tr("menu.hideBorder", lang), st.hide_overlay)?)?;
     menu.append(&item(app, "fit", tr("menu.deviceFit", lang), true, None)?)?;
     menu.append(&sep(app)?)?;
@@ -236,7 +248,11 @@ pub fn on_event(app: &AppHandle, id: &str) {
         }
         "preset:save" => crate::windows::open(app, "settings#presets"),
         _ => {
-            if let Some(rest) = id.strip_prefix("acct:") {
+            if let Some(pid) = id.strip_prefix("border:").filter(|id| spec::spec(id).is_some()) {
+                change(app, |st| {
+                    if !st.main.border_hidden_ids.remove(pid) { st.main.border_hidden_ids.insert(pid.to_string()); }
+                });
+            } else if let Some(rest) = id.strip_prefix("acct:") {
                 crate::toggle_account(app, rest.to_string());
             } else if let Some(m) = id.strip_prefix("interval:").and_then(|m| m.parse::<u32>().ok()) {
                 change(app, |st| {

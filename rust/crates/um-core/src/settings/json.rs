@@ -41,6 +41,39 @@ mod tests {
     use super::*;
 
     #[test]
+    fn 클릭과_테두리_설정_저장_왕복() {
+        use crate::settings::TrayClickMode;
+        for mode in [TrayClickMode::Split, TrayClickMode::Swapped, TrayClickMode::Together] {
+            let s = Settings { tray_click_mode: mode, border_hidden_ids: ["claude".into(), "codex".into()].into(), ..Settings::default() };
+            let text = s.to_json().unwrap();
+            let v: Value = serde_json::from_str(&text).unwrap();
+            assert!(v["trayClickMode"].is_string());
+            assert_eq!(v["borderHiddenIDs"], serde_json::json!(["claude", "codex"]));
+            assert_eq!(Settings::from_json(&text).unwrap(), s);
+            assert_eq!(Settings::from_snapshot(&s.to_snapshot()), s);
+        }
+    }
+
+    #[test]
+    fn 기존_파일과_잘못된_클릭값은_기본값() {
+        use crate::settings::TrayClickMode;
+        let mut v = serde_json::to_value(Settings::default().to_snapshot()).unwrap();
+        v.as_object_mut().unwrap().remove("trayClickMode");
+        v.as_object_mut().unwrap().remove("borderHiddenIDs");
+        let s = Settings::from_json(&v.to_string()).unwrap();
+        assert_eq!(s.tray_click_mode, TrayClickMode::Split);
+        assert!(s.border_hidden_ids.is_empty());
+        v["trayClickMode"] = Value::from("unknown");
+        assert_eq!(Settings::from_json(&v.to_string()).unwrap().tray_click_mode, TrayClickMode::Split);
+        assert!(TrayClickMode::Split.opens_card(true));
+        assert!(!TrayClickMode::Split.opens_card(false));
+        assert!(!TrayClickMode::Swapped.opens_card(true));
+        assert!(TrayClickMode::Swapped.opens_card(false));
+        assert!(!TrayClickMode::Together.opens_card(true));
+        assert!(!TrayClickMode::Together.opens_card(false));
+    }
+
+    #[test]
     fn 스키마_버전_포함_왕복() {
         let s = Settings::default();
         let text = s.to_json().unwrap();

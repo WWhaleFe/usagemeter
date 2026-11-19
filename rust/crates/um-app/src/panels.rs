@@ -1,7 +1,7 @@
 //! 호버 패널과 메뉴바 정보 패널(계획서 5-3, 5-4, 결정 D1).
 //! - 테두리 호버: 커서가 선이 있는 변 근처면 커서 옆에 사용량 글을 띄운다(Swift HoverInfoController).
 //! - 메뉴바 아이콘 호버: 같은 글을 아이콘 아래에.
-//! - 메뉴바 아이콘 왼쪽 클릭: 정보 카드(+ 미니 차트) 패널을 열고 닫는다. 오른쪽 클릭은 전체 메뉴.
+//! - 메뉴바 클릭 설정에 따라 정보 카드 패널 또는 카드가 포함된 전체 메뉴를 연다.
 //!
 //! macOS 전용(메인 스레드). Windows 플라이아웃은 0단계 S9 확인 뒤 붙인다.
 
@@ -71,10 +71,21 @@ pub fn init(app: &AppHandle) {
     let center = objc2_foundation::NSNotificationCenter::defaultCenter();
     let mut observers = vec![];
     for (name, tracking) in unsafe { [(objc2_app_kit::NSMenuDidBeginTrackingNotification, true), (objc2_app_kit::NSMenuDidEndTrackingNotification, false)] } {
-        let block = block2::RcBlock::new(move |_: std::ptr::NonNull<objc2_foundation::NSNotification>| {
+        let h = app.clone();
+        let block = block2::RcBlock::new(move |note: std::ptr::NonNull<objc2_foundation::NSNotification>| {
             if tracking { MENU_TRACKING.fetch_add(1, Ordering::Relaxed); }
             else if MENU_TRACKING.load(Ordering::Relaxed) > 0 { MENU_TRACKING.fetch_sub(1, Ordering::Relaxed); }
-            if tracking { menu_opening(); }
+            if tracking {
+                menu_opening();
+                let note = unsafe { note.as_ref() };
+                if let Some(object) = note.object()
+                    && let Some(menu) = object.downcast_ref::<objc2_app_kit::NSMenu>()
+                {
+                    install_menu_card(&h, menu);
+                }
+            } else if MENU_TRACKING.load(Ordering::Relaxed) == 0 {
+                MENU_CARD.with(|c| c.borrow_mut().take());
+            }
         });
         observers.push(unsafe { center.addObserverForName_object_queue_usingBlock(Some(name), None, None, &block) });
     }
@@ -120,8 +131,8 @@ fn dot_color(st: &AppState, provider: &str, item: &Option<String>) -> Option<um_
 }
 
 /// 호버 글(Swift 호버 문자열과 같은 구성: AI 이름 줄, 정보 줄, AI 사이 빈 줄).
-fn hover_lines(st: &AppState) -> Vec<HoverLine> {
-    let secs = sections(st);
+fn hover_lines(st: &AppState, border: bool) -> Vec<HoverLine> {
+    let secs: Vec<_> = sections(st).into_iter().filter(|s| !border || !st.main.border_hidden_ids.contains(&s.id)).collect();
     if secs.is_empty() {
         return vec![HoverLine { text: menu_text::no_ai_text(st.main.language), dot: None }];
     }
@@ -236,8 +247,8 @@ fn near_cursor(d: &DisplayInfo, cx: f64, cy: f64, w: f64, h: f64) -> (f64, f64) 
     (x, y)
 }
 
-fn show_hover_at(p: &mut Panels, st: &AppState, scale: f32, place: impl Fn(f64, f64) -> (f64, f64)) {
-    let lines = hover_lines(st);
+fn show_hover_at(p: &mut Panels, st: &AppState, scale: f32, border: bool, place: impl Fn(f64, f64) -> (f64, f64)) {
+    let lines = hover_lines(st, border);
     let key = format!("{scale}:{}", lines.iter().map(|l| l.text.as_str()).collect::<Vec<_>>().join("\n"));
     if key != p.hover_key || !p.hover.is_visible() {
         let r = panel::render_hover(&lines, HOVER_MAX_W, theme(&st.main), scale);
@@ -295,16 +306,18 @@ fn on_mouse(app: &AppHandle, x: f64, y: f64, kind: MouseKind) {
             let zone = Rect { x: r.x - pad, y: r.y - below, w: r.w + pad * 2.0, h: bar_h + below + 1.0 };
             if zone.contains(x, y) {
                 let d = d.clone();
-                return show_hover_at(p, &st, d.scale as f32, |w, h| clamp_to_screen(&d, x - w / 2.0, r.y - h - BAR_GAP, w, h));
+                return show_hover_at(p, &st, d.scale as f32, false, |w, h| clamp_to_screen(&d, x - w / 2.0, r.y - h - BAR_GAP, w, h));
             }
         }
 
         let Some((d, lx, ly)) = screen_of(&p.displays, x, y) else { return hide_hover(p) };
         let enabled = !st.disabled_displays.contains(&d.id);
-        let ds = st.settings_for_display(&d.id);
-        if enabled && um_core::hover::border_hover_hit(&ds, &st.main, d.width_pt, d.height_pt, lx, ly) {
+        let mut ds = st.settings_for_display(&d.id);
+        // 실제 띠가 없는 AI는 로그아웃·숨김 모두 호버 영역에서 제외한다.
+        ds.border_hidden_ids.extend(um_core::settings::PROVIDER_IDS.iter().filter(|id| !st.snapshots.contains_key(**id)).map(|id| id.to_string()));
+        if enabled && um_core::hover::border_hover_hit(&ds, &ds, d.width_pt, d.height_pt, lx, ly) {
             let d = d.clone();
-            show_hover_at(p, &st, d.scale as f32, |w, h| near_cursor(&d, x, y, w, h));
+            show_hover_at(p, &st, d.scale as f32, true, |w, h| near_cursor(&d, x, y, w, h));
         } else {
             hide_hover(p);
         }
@@ -340,7 +353,7 @@ pub fn tray_hover(app: &AppHandle, rect: Rect, inside: bool) {
         }
         let ds = p.displays.clone();
         let cx = rect.x + rect.w / 2.0;
-        show_hover_at(p, &st, screen_of(&ds, cx, rect.y + rect.h / 2.0).map(|(d, _, _)| d.scale).unwrap_or(2.0) as f32, |w, h| {
+        show_hover_at(p, &st, screen_of(&ds, cx, rect.y + rect.h / 2.0).map(|(d, _, _)| d.scale).unwrap_or(2.0) as f32, false, |w, h| {
             let y = rect.y - h - BAR_GAP;
             match screen_of(&ds, cx, rect.y + rect.h / 2.0) {
                 Some((d, _, _)) => clamp_to_screen(d, cx - w / 2.0, y, w, h),
@@ -350,7 +363,7 @@ pub fn tray_hover(app: &AppHandle, rect: Rect, inside: bool) {
     });
 }
 
-/// 오른쪽 클릭으로 메뉴가 열릴 때: 호버·정보 패널을 숨긴다(Swift는 드롭다운이 열려 있는 동안 호버를 막음).
+/// 클릭으로 메뉴가 열릴 때: 호버·정보 패널을 숨긴다(Swift는 드롭다운이 열려 있는 동안 호버를 막음).
 pub fn menu_opening() {
     with(|p| {
         hide_hover(p);
@@ -361,7 +374,7 @@ pub fn menu_opening() {
     });
 }
 
-/// 메뉴바 아이콘 왼쪽 클릭: 정보 패널 열기/닫기.
+/// 메뉴바 클릭 설정의 카드 버튼: 정보 패널 열기/닫기.
 pub fn toggle_card(app: &AppHandle, rect: Rect) {
     let st = crate::shared(app);
     let Ok(st) = st.lock() else { return };
@@ -386,5 +399,51 @@ pub fn toggle_card(app: &AppHandle, rect: Rect) {
         if p.card.show(r.pixmap.data(), r.pixmap.width(), r.pixmap.height(), scale as f64, x, y).is_ok() {
             p.card_open = true;
         }
+    });
+}
+
+
+/// 네이티브 메뉴의 카드 자리 식별자. 표시 전 사용자 뷰로 바꾼다.
+pub const MENU_CARD_TITLE: &str = "UsageMeter";
+
+thread_local! {
+    static MENU_CARD: RefCell<Option<objc2::rc::Retained<objc2_app_kit::NSImageView>>> = const { RefCell::new(None) };
+}
+
+/// Swift의 NSMenuItem.view와 같이 카드·차트를 메뉴 안에 넣는다.
+fn install_menu_card(app: &AppHandle, menu: &objc2_app_kit::NSMenu) {
+    use objc2::{MainThreadMarker, MainThreadOnly};
+    use objc2_app_kit::NSImageView;
+    let st = crate::shared(app);
+    let Ok(st) = st.try_lock() else { return };
+    if st.main.tray_click_mode != um_core::settings::TrayClickMode::Together { return; }
+    let Some(item) = menu.itemAtIndex(0) else { return };
+    if item.title().to_string() != MENU_CARD_TITLE { return; }
+    let Some(mtm) = MainThreadMarker::new() else { return };
+    let view = NSImageView::initWithFrame(NSImageView::alloc(mtm), objc2_foundation::NSRect::ZERO);
+    paint_menu_card(&view, &st);
+    item.setView(Some(&view));
+    MENU_CARD.with(|c| *c.borrow_mut() = Some(view));
+}
+
+fn paint_menu_card(view: &objc2_app_kit::NSImageView, st: &AppState) {
+    use objc2::AllocAnyThread;
+    use objc2_app_kit::NSImage;
+    use objc2_foundation::{NSData, NSPoint, NSRect, NSSize};
+    let scale = view.window().map(|w| w.backingScaleFactor() as f32).unwrap_or(2.0);
+    let (r, _) = card_image(st, scale, None);
+    let Ok(png) = r.pixmap.encode_png() else { return };
+    let data = NSData::with_bytes(&png);
+    let Some(image) = NSImage::initWithData(NSImage::alloc(), &data) else { return };
+    let size = NSSize::new(r.width as f64, r.height as f64);
+    image.setSize(size);
+    view.setFrame(NSRect::new(NSPoint::ZERO, size));
+    view.setImage(Some(&image));
+}
+
+/// 데이터·설정 갱신은 열린 메뉴의 사용자 뷰에도 바로 반영한다.
+pub fn refresh_menu_card(st: &AppState) {
+    MENU_CARD.with(|c| {
+        if let Some(view) = c.borrow().as_ref() { paint_menu_card(view, st); }
     });
 }

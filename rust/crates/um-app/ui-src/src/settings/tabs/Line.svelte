@@ -8,6 +8,7 @@
   const s = $derived(ui.s!);
   const providers = $derived(settingsProviders(s));
   const b = $derived(s.border);
+  const hiddenIDs = $derived<string[]>(s.main.borderHiddenIDs ?? []);
   const colors = $derived((s.main.providerColors ?? {}) as Record<string, number[]>);
   function setColor(id: string, hex: string) {
     set('main', { providerColors: { ...colors, [id]: fromHex(hex) } });
@@ -49,6 +50,7 @@
         {/each}
       </span>
     </div>
+    <Toggle label={t('line.showBorder')} checked={!hiddenIDs.includes(p.id)} onchange={(v) => set('main', { borderHiddenIDs: v ? hiddenIDs.filter((id) => id !== p.id) : [...hiddenIDs, p.id] })} />
     {#if s.platform === 'mac' && i < providers.length - 1}<hr />{/if}
   {/each}
 </Section>

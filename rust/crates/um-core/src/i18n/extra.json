@@ -188,5 +188,35 @@
     "기타",
     "Other",
     "その他"
+  ],
+  "tray.clickMode": [
+    "메뉴바 클릭 동작",
+    "Menu bar click behavior",
+    "メニューバーのクリック動作"
+  ],
+  "tray.split": [
+    "왼쪽: 정보 카드 / 오른쪽: 메뉴",
+    "Left: info card / Right: menu",
+    "左: 情報カード / 右: メニュー"
+  ],
+  "tray.swapped": [
+    "왼쪽: 메뉴 / 오른쪽: 정보 카드",
+    "Left: menu / Right: info card",
+    "左: メニュー / 右: 情報カード"
+  ],
+  "tray.together": [
+    "양쪽: 정보 카드와 메뉴 함께",
+    "Both: info card and menu together",
+    "両方: 情報カードとメニューを一緒に表示"
+  ],
+  "line.showBorder": [
+    "테두리에 선 표시",
+    "Show border line",
+    "枠線を表示"
+  ],
+  "menu.borderLines": [
+    "테두리 선",
+    "Border lines",
+    "枠線"
   ]
 }

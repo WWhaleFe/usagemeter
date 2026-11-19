@@ -190,6 +190,16 @@ fn update_tray(app: &AppHandle, st: &AppState) {
     let Some(tray) = app.tray_by_id(TRAY_ID) else {
         return;
     };
+    #[cfg(target_os = "macos")]
+    {
+        let mode = st.main.tray_click_mode;
+        let _ = tray.with_inner_tray_icon(move |t| {
+            t.set_show_menu_on_left_click(!mode.opens_card(true));
+            t.set_show_menu_on_right_click(!mode.opens_card(false));
+        });
+        panels::refresh_menu_card(st);
+    }
+
     let pick = st
         .snapshots
         .get(&st.main.menu_bar_icon_id)
@@ -546,7 +556,7 @@ fn main() {
                 TrayIconBuilder::with_id(TRAY_ID)
                     .icon(Image::new_owned(um_render::icon::to_straight_rgba(&pm), pm.width(), pm.height()))
                     .menu(&menu)
-                    // macOS: 왼쪽 클릭 = 정보 패널, 오른쪽 클릭 = 메뉴(결정 D1). 그 밖은 아직 왼쪽 클릭 메뉴.
+                    // macOS 클릭 설정은 첫 redraw에서 적용한다. Windows는 기존 메뉴 동작.
                     .show_menu_on_left_click(cfg!(not(target_os = "macos")))
                     .on_tray_icon_event(|tray, e| {
                         #[cfg(target_os = "macos")]
@@ -555,10 +565,15 @@ fn main() {
                             match e {
                                 TrayIconEvent::Enter { rect, .. } => panels::tray_hover(app, tray_rect(app, &rect), true),
                                 TrayIconEvent::Leave { rect, .. } => panels::tray_hover(app, tray_rect(app, &rect), false),
-                                TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, rect, .. } => {
-                                    panels::toggle_card(app, tray_rect(app, &rect))
+                                TrayIconEvent::Click { button, button_state, rect, .. } if matches!(button, MouseButton::Left | MouseButton::Right) => {
+                                    let mode = shared(app).lock().unwrap().main.tray_click_mode;
+                                    let card = mode.opens_card(button == MouseButton::Left);
+                                    if card && button_state == MouseButtonState::Up {
+                                        panels::toggle_card(app, tray_rect(app, &rect));
+                                    } else if !card && button_state == MouseButtonState::Down {
+                                        panels::menu_opening();
+                                    }
                                 }
-                                TrayIconEvent::Click { button: MouseButton::Right, button_state: MouseButtonState::Down, .. } => panels::menu_opening(),
                                 _ => {}
                             }
                         }

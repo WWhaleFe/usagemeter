@@ -80,6 +80,7 @@ impl Overlay {
             let bands: Vec<ProviderBand> = st
                 .snapshots
                 .iter()
+                .filter(|(id, _)| !st.main.border_hidden_ids.contains(*id))
                 .map(|(id, snap)| ProviderBand {
                     id: id.clone(),
                     ratio: snap.remaining_ratio,

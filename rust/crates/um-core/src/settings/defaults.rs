@@ -125,6 +125,8 @@ impl Default for Settings {
             refresh_use_custom: false,
             refresh_custom_minutes: 5,
             menu_bar_icon_id: first.clone(),
+            tray_click_mode: super::live::TrayClickMode::default(),
+            border_hidden_ids: BTreeSet::new(),
             menu_bar_percent_ids: BTreeSet::new(),
             menu_bar_percent_first_id: first,
             menu_show_5h: true,

@@ -94,6 +94,14 @@
   <span class="caption">{t('disp.iconDesc')}</span>
 </Section>
 
+{#if s.platform === 'mac'}
+<Section title={t('tray.clickMode')}>
+  <select aria-label={t('tray.clickMode')} value={m.trayClickMode ?? 'split'} onchange={(e) => set('main', { trayClickMode: e.currentTarget.value })}>
+    {#each ['split', 'swapped', 'together'] as mode (mode)}<option value={mode}>{t('tray.' + mode)}</option>{/each}
+  </select>
+</Section>
+{/if}
+
 <Section title={t('sec.menuPercent')}>
   {#each providers as p (p.id)}
     <Toggle label={tf('disp.showPercent', p.name)} checked={percentIDs.includes(p.id)} onchange={(v) => set('main', { menuBarPercentIDs: member(percentIDs, p.id, v) })} />

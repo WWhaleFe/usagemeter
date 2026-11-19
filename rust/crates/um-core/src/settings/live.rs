@@ -28,6 +28,22 @@ pub enum AppAppearance {
     Dark,
 }
 
+/// macOS 메뉴바 클릭 동작.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum TrayClickMode {
+    #[default]
+    Split,
+    Swapped,
+    Together,
+}
+
+impl TrayClickMode {
+    pub fn opens_card(self, left: bool) -> bool {
+        matches!((self, left), (Self::Split, true) | (Self::Swapped, false))
+    }
+}
+
 /// 앱 전체 설정. 디스플레이별 설정은 같은 구조체를 화면 수만큼 갖는다.
 ///
 /// 필드 구분(Swift `copyBorder` :230 기준):
@@ -87,6 +103,8 @@ pub struct Settings {
     pub refresh_preset_minutes: u32,
     pub refresh_use_custom: bool,
     pub refresh_custom_minutes: u32,
+    pub tray_click_mode: TrayClickMode,
+    pub border_hidden_ids: BTreeSet<String>,
     pub menu_bar_icon_id: String,
     pub menu_bar_percent_ids: BTreeSet<String>,
     pub menu_bar_percent_first_id: String,
@@ -232,6 +250,8 @@ impl Settings {
         self.fade_enabled = s.fade_enabled.unwrap_or(true);
         self.fade_fraction = s.fade_fraction.unwrap_or(0.012);
         self.keep_logged_in = s.keep_logged_in.unwrap_or(true);
+        self.tray_click_mode = s.tray_click_mode.as_deref().and_then(parse).unwrap_or_default();
+        self.border_hidden_ids = s.border_hidden_ids.iter().flatten().cloned().collect();
         if let Some(pc) = &s.provider_colors {
             for (id, a) in pc {
                 if let Some(c) = rgba(a) {
@@ -365,6 +385,8 @@ impl Settings {
             fade_enabled: Some(self.fade_enabled),
             fade_fraction: Some(self.fade_fraction),
             keep_logged_in: Some(self.keep_logged_in),
+            tray_click_mode: Some(raw(&self.tray_click_mode)),
+            border_hidden_ids: Some(ids(&self.border_hidden_ids)),
             provider_colors: Some(self.provider_colors.iter().map(|(k, c)| (k.clone(), c.to_vec())).collect()),
             separate_by_ai: Some(self.separate_by_ai),
             provider_layouts: Some(self.provider_layouts.clone()),

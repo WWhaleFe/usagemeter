@@ -45,6 +45,10 @@ pub struct SettingsSnapshot {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub keep_logged_in: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tray_click_mode: Option<String>,
+    #[serde(default, rename = "borderHiddenIDs", skip_serializing_if = "Option::is_none")]
+    pub border_hidden_ids: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub provider_colors: Option<BTreeMap<String, Vec<f64>>>,
     #[serde(default, rename = "separateByAI", skip_serializing_if = "Option::is_none")]
     pub separate_by_ai: Option<bool>,

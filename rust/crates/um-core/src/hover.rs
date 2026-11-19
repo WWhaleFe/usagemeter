@@ -37,7 +37,9 @@ pub fn border_hover_hit(display: &Settings, main: &Settings, w: f64, h: f64, x: 
         (BorderEdge::Left, x.abs() <= th && inside_y, BorderCorner::BottomLeft, BorderCorner::TopLeft, h - y, y),
         (BorderEdge::Right, (x - w).abs() <= th && inside_y, BorderCorner::BottomRight, BorderCorner::TopRight, h - y, y),
     ];
-    let ctx = seg_ctx(display);
+    let ids: Vec<&str> = PROVIDER_IDS.iter().copied().filter(|id| !main.border_hidden_ids.contains(*id)).collect();
+    let mut ctx = seg_ctx(display);
+    ctx.provider_ids = &ids;
     checks.iter().any(|&(edge, on, c1, c2, d1, d2)| {
         if !on || !edge_active(&ctx, edge) {
             return false;
@@ -51,6 +53,17 @@ pub fn border_hover_hit(display: &Settings, main: &Settings, w: f64, h: f64, x: 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn 숨긴_ai만_있는_변은_호버하지_않음() {
+        let mut s = Settings::default();
+        s.border_hidden_ids.insert("claude".into());
+        assert!(!border_hover_hit(&s, &s, 1000.0, 800.0, 500.0, 3.0));
+        assert!(border_hover_hit(&s, &s, 1000.0, 800.0, 500.0, 797.0));
+        s.border_hidden_ids = PROVIDER_IDS.iter().map(|id| id.to_string()).collect();
+        assert!(!border_hover_hit(&s, &s, 1000.0, 800.0, 500.0, 797.0));
+        assert!(!border_hover_hit(&s, &s, 1000.0, 800.0, 2.0, 400.0));
+    }
 
     #[test]
     fn 기본값은_선이_있는_변_전체() {
