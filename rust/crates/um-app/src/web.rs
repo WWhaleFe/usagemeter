@@ -112,6 +112,9 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
     let attempt = Arc::new(AtomicU64::new(0));
     let fired = Arc::new(AtomicBool::new(false));
     let fired_watch = fired.clone();
+    // 페이지 로드가 한 번이라도 시작됐는지. 시작 전에 웹뷰를 건드리지 않는다(Windows 진단).
+    let started = Arc::new(AtomicBool::new(false));
+    let started_load = started.clone();
     let (token_load, attempt_load) = (token.clone(), attempt.clone());
     let delay = if spec.needs_rendered_dom {
         Duration::from_millis(1500)
@@ -134,6 +137,7 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
         .initialization_script_for_all_frames(PASSKEY_OFF);
     let built = builder
         .on_page_load(move |w, p| {
+            if p.event() == PageLoadEvent::Started { started_load.store(true, Ordering::SeqCst); }
             // 구글은 로그인된 상태에서도 accounts.google.com을 잠깐 거쳐 돌아올 수 있어, 그 페이지에 머물렀을 때만 판정한다.
             if p.event() == PageLoadEvent::Finished && login_redirect(p.url(), spec) {
                 let _ = auth_tx.send(json!({"ok": false, "reason": "not_logged_in"}).to_string());
@@ -167,12 +171,14 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
             return json!({"ok": false, "reason": "no_webview"});
         }
     };
-    // 먼저 같은 웹뷰에서 쿠키를 확인한다. 미로그인이면 바로 닫는다(macOS는 네트워크 탐색도 시작하지 않는다).
-    let failure = match cookies_for(&win, spec) {
+    // 먼저 같은 웹뷰에서 쿠키를 확인한다. 미로그인이면 네트워크 탐색도 시작하지 않고 닫는다.
+    // Windows는 만든 직후(웹뷰 준비 전) 쿠키를 물으면 그 웹뷰가 빈 문서에서 멈춰 25초를 넘겼다(실기).
+    // 미로그인이면 구글 로그인 페이지로 넘어가 판정되므로 Windows에서는 사전 확인을 하지 않는다.
+    let failure = if cfg!(windows) { None } else { match cookies_for(&win, spec) {
         Ok(cookies) if cookies.is_empty() => Some(json!({"ok": false, "reason": "not_logged_in", "no_cookies": true})),
         Ok(_) => None,
         Err(()) => Some(json!({"ok": false, "reason": "cookie_read"})),
-    };
+    } };
     if let Some(failure) = failure {
         let _ = win.destroy();
         return failure;
@@ -193,8 +199,14 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
         std::thread::spawn(move || {
             let mut on_host = 0u32;
             let mut last = String::new();
+            let mut waited = 0u32;
             while !done.load(Ordering::SeqCst) {
                 std::thread::sleep(Duration::from_secs(1));
+                if !started.load(Ordering::SeqCst) {
+                    waited += 1;
+                    if waited == 10 { tracing::info!("조회 창 페이지 로드가 10초째 시작되지 않음"); }
+                    continue;
+                }
                 let Ok(url) = w.url() else { tracing::info!("조회 창 주소 읽기 실패"); break };
                 // 주소는 호스트와 경로만 남긴다(쿼리 없음).
                 let at = format!("{}{}", url.host_str().unwrap_or("-"), url.path());
