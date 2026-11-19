@@ -28,6 +28,8 @@ pub fn ring(ratio: Option<f64>, color: Rgba, scale: f64) -> Pixmap {
         p
     };
     let track_alpha = if ratio.is_some() { 0.28 } else { 0.25 };
+    #[cfg(windows)]
+    let track_alpha = if ratio.is_none() { 0.85 } else { track_alpha };
     let mut pb = PathBuilder::new();
     pb.push_circle(c as f32, c as f32, r as f32);
     if let Some(p) = pb.finish() {

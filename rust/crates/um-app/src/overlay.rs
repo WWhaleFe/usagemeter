@@ -62,6 +62,7 @@ impl Overlay {
         let ds = display::displays();
         if self.signature.is_empty() {
             self.signature = signature(&ds);
+            tracing::info!("화면 초기화: {}개", ds.len());
         }
         let mut seen = vec![];
         for d in &ds {
@@ -94,6 +95,7 @@ impl Overlay {
             });
             // 띠 개수·위치가 바뀌었으면 새로 만든다.
             if entry.len() != rects.len() || entry.iter().zip(&rects).any(|((_, a), b)| a != b) {
+                tracing::info!("띠 창 재생성: {}개, AI 띠 {}개", rects.len(), st.snapshots.len());
                 entry.clear();
                 for r in &rects {
                     match OverlayStrip::new(d.strip_frame(r[0], r[1], r[2], r[3])) {

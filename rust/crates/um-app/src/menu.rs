@@ -199,6 +199,7 @@ fn change(app: &AppHandle, f: impl FnOnce(&mut AppState)) {
 
 /// 메뉴 클릭 처리.
 pub fn on_event(app: &AppHandle, id: &str) {
+    tracing::info!("메뉴 선택: {id}");
     match id {
         "refresh" => {
             let app = app.clone();

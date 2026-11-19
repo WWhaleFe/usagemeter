@@ -526,6 +526,6 @@ fn provider_state_known_items() {
 fn start_retry_policy() {
     assert_eq!((state::START_RETRY_ATTEMPTS, state::START_RETRY_INTERVAL_SECS), (4, 2));
     assert!(!state::should_retry(&ok_snap(1.0)));
-    assert!(state::should_retry(&fail_snap(UsageStatus::AuthExpired)));
+    assert!(!state::should_retry(&fail_snap(UsageStatus::AuthExpired)));
     assert!(state::should_retry(&fail_snap(UsageStatus::Unavailable("x".into()))));
 }

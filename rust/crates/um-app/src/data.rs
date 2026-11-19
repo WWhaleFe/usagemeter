@@ -76,7 +76,8 @@ pub fn fetch_agy(parser: &std::sync::Mutex<AgyParser>) -> Option<UsageSnapshot> 
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::null());
-    if let Some(wd) = agy::work_dir(os, std::env::var("TEMP").ok().as_deref()) {
+    let temp = std::env::var_os("TEMP").map(std::path::PathBuf::from).unwrap_or_else(std::env::temp_dir);
+    if let Some(wd) = agy::work_dir(os, temp.to_str()) {
         cmd.current_dir(wd);
     }
     #[cfg(unix)]

@@ -6,6 +6,18 @@ use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
 /// `page` = "settings", "settings#interval", "analytics", "support" 등. 창은 종류마다 하나.
 pub fn open(app: &AppHandle, page: &str) {
+    #[cfg(windows)]
+    {
+        let app = app.clone();
+        let page = page.to_string();
+        // 메인 이벤트 루프를 막으면 WebView2 생성 콜백이 돌아오지 않는다.
+        std::thread::spawn(move || open_inner(&app, &page));
+    }
+    #[cfg(not(windows))]
+    open_inner(app, page);
+}
+
+fn open_inner(app: &AppHandle, page: &str) {
     let (kind, tab) = page.split_once('#').unwrap_or((page, ""));
     // 개발용: UM_OPEN_WINDOW=linedrag로 선 위치 끌기 화면을 바로 연다.
     if kind == "linedrag" {
@@ -36,13 +48,18 @@ pub fn open(app: &AppHandle, page: &str) {
         .visible(false)
         .resizable(false)
         .maximizable(false);
-    // Windows 11: Mica 배경이 비치도록 창을 투명하게(계획서 6-1). Windows 10은 Mica가 없어 단색으로 보인다.
+    // Mica가 지원되는 Windows 11에서만 투명 배경을 쓴다.
     #[cfg(windows)]
-    let builder = builder
-        .transparent(true)
-        .effects(tauri::window::EffectsBuilder::new().effect(tauri::window::Effect::Mica).build());
+    let builder = if um_platform::mica_supported() {
+        builder.transparent(true)
+            .effects(tauri::window::EffectsBuilder::new().effect(tauri::window::Effect::Mica).build())
+    } else {
+        builder.transparent(false)
+    };
+    tracing::info!("창 생성 시작({label})");
     match builder.build() {
         Ok(win) => {
+            tracing::info!("창 생성 완료({label})");
             #[cfg(target_os = "macos")]
             center_native_title(&win, w, h);
             dock_visible(app, true);

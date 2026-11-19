@@ -20,6 +20,8 @@ objc2-core-foundation = { version = "0.3.2", features = ["CFData", "CFString", "
 [target.'cfg(windows)'.dependencies]
 windows = { workspace = true, features = [
   "Win32_Foundation",
+  "Wdk_System_SystemServices",
+  "Win32_System_SystemInformation",
   "Win32_Graphics_Gdi",
   "Win32_System_LibraryLoader",
   "Win32_UI_WindowsAndMessaging",

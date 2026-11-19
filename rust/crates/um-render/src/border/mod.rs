@@ -211,6 +211,19 @@ mod tests {
     }
 
     #[test]
+    fn 배율별_버퍼_크기() {
+        let s = Settings::default();
+        let scene = build_paths(&BorderInput { settings: &s, screen_w: 600.0, screen_h: 400.0, bands: vec![] });
+        for scale in [1.0_f64, 1.25, 1.5, 2.0] {
+            let pm = render(&scene, (0.0, 0.0), (7.0, 29.0), scale);
+            assert_eq!((pm.width(), pm.height()), ((7.0 * scale).ceil() as u32, (29.0 * scale).ceil() as u32));
+            if scale == 1.0 || scale == 2.0 {
+                assert_eq!((pm.width(), pm.height()), ((7.0 * scale).round() as u32, (29.0 * scale).round() as u32));
+            }
+        }
+    }
+
+    #[test]
     fn empty_input_gives_empty_scene() {
         let s = Settings::default();
         let scene = build_paths(&BorderInput { settings: &s, screen_w: 600.0, screen_h: 400.0, bands: vec![] });

@@ -71,6 +71,14 @@ impl AppState {
         } else {
             st.read_files();
         }
+        #[cfg(windows)]
+        {
+            // 이전 버전이 displays.json에 남긴 장치 경로도 새 ID에 맞춘다.
+            use um_platform::display::file_id;
+            st.main_display_id = st.main_display_id.map(|id| file_id(&id));
+            st.disabled_displays = st.disabled_displays.into_iter().map(|id| file_id(&id)).collect();
+            st.display_widths = st.display_widths.into_iter().map(|(id, w)| (file_id(&id), w)).collect();
+        }
         st.main.apply_platform_rules(cfg!(windows));
         for s in st.displays.values_mut() {
             s.apply_platform_rules(cfg!(windows));
@@ -188,7 +196,7 @@ impl AppState {
         }
         for (id, s) in &self.displays {
             if let Ok(t) = s.to_json() {
-                let _ = std::fs::write(self.dir.join("displays").join(format!("{id}.json")), t);
+                let _ = std::fs::write(self.dir.join("displays").join(format!("{}.json", um_platform::display::file_id(id))), t);
             }
         }
         // Swift는 UserDefaults JSON을 사용한다. 가져온 스냅샷 형식을 그대로 보존한다(OverlaySettings.swift:1348-1357).
@@ -266,7 +274,7 @@ fn read_json(p: &Path) -> Option<Settings> {
     Settings::from_json(&std::fs::read_to_string(p).ok()?).ok()
 }
 
-fn data_dir() -> PathBuf {
+pub fn data_dir() -> PathBuf {
     directories::BaseDirs::new()
         .map(|b| b.data_dir().join(DATA_DIR_NAME))
         .unwrap_or_else(|| PathBuf::from(DATA_DIR_NAME))

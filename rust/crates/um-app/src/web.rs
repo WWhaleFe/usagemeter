@@ -18,7 +18,12 @@ use tauri::{AppHandle, Manager, Url, WebviewUrl, WebviewWindow, WebviewWindowBui
 use um_providers::spec::ProviderSpec;
 
 /// Swift WebSession.swift:37-38과 같은 데스크톱 Safari UA.
+#[cfg(not(windows))]
 pub const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15";
+
+/// WebView2와 직접 HTTP 조회는 같은 Windows Edge UA를 쓴다.
+#[cfg(windows)]
+pub const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0";
 
 /// 패스키(WebAuthn) 끄기: 내장 웹뷰는 패스키를 못 써서 비밀번호 등으로 넘어가게 한다. (WebSession.swift:42-55)
 pub const PASSKEY_OFF: &str = r#"(function () {
@@ -53,6 +58,10 @@ fn wrap(usage_js: &str, token: &str) -> String {
 
 fn host_matches(url: &Url, spec: &ProviderSpec) -> bool {
     url.host_str().is_some_and(|h| h.contains(spec.match_host))
+}
+
+fn login_redirect(url: &Url, spec: &ProviderSpec) -> bool {
+    spec.id == "gemini" && url.host_str() == Some("accounts.google.com")
 }
 
 /// 조회용 첫 주소. 렌더된 화면이 필요한 서비스(Gemini)는 홈, 나머지는 빈 문서(macOS) 또는 robots.txt.
@@ -106,7 +115,9 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
     } else {
         Duration::ZERO
     };
-    let built = WebviewWindowBuilder::new(app, &label, WebviewUrl::External(probe_start_url(spec)))
+    tracing::info!("조회 창 생성 시작");
+    let auth_tx = tx.clone();
+    let built = WebviewWindowBuilder::new(app, &label, WebviewUrl::External("about:blank".parse().expect("blank")))
         .visible(false)
         .skip_taskbar(true)
         .focused(false)
@@ -114,6 +125,11 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
         .user_agent(USER_AGENT)
         .initialization_script_for_all_frames(PASSKEY_OFF)
         .on_page_load(move |w, p| {
+            // 구글은 로그인된 상태에서도 accounts.google.com을 잠깐 거쳐 돌아올 수 있어, 그 페이지에 머물렀을 때만 판정한다.
+            if p.event() == PageLoadEvent::Finished && login_redirect(p.url(), spec) {
+                let _ = auth_tx.send(json!({"ok": false, "reason": "not_logged_in"}).to_string());
+                return;
+            }
             if p.event() == PageLoadEvent::Finished
                 && host_matches(p.url(), spec)
                 && !fired.swap(true, Ordering::SeqCst)
@@ -132,11 +148,27 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
         })
         .build();
     let win = match built {
-        Ok(w) => w,
-        Err(e) => return json!({"ok": false, "reason": "no_webview", "message": e.to_string()}),
+        Ok(w) => { tracing::info!("조회 창 생성 완료"); w }
+        Err(_) => {
+            tracing::warn!("조회 창 생성 실패");
+            return json!({"ok": false, "reason": "no_webview"});
+        }
     };
-    if !spec.needs_rendered_dom {
+    // 먼저 같은 웹뷰에서 쿠키를 확인한다. 미로그인 때는 네트워크 탐색도 시작하지 않는다.
+    let failure = match cookies_for(&win, spec) {
+        Ok(cookies) if cookies.is_empty() => Some(json!({"ok": false, "reason": "not_logged_in", "no_cookies": true})),
+        Ok(_) => None,
+        Err(()) => Some(json!({"ok": false, "reason": "cookie_read"})),
+    };
+    if let Some(failure) = failure {
+        let _ = win.destroy();
+        return failure;
+    }
+    if cfg!(target_os = "macos") && !spec.needs_rendered_dom {
         load_stub(&win, spec);
+    } else if win.navigate(probe_start_url(spec)).is_err() {
+        let _ = win.destroy();
+        return json!({"ok": false, "reason": "navigation"});
     }
     let out = match rx.recv_timeout(timeout) {
         Ok(s) => serde_json::from_str(&s)
@@ -174,6 +206,7 @@ pub fn login(app: &AppHandle, spec: &'static ProviderSpec, title: &str) -> bool 
     let app2 = app.clone();
     let popups = Arc::new(LoginPopups::default());
     let children = popups.clone();
+    tracing::info!("로그인 창 생성 시작");
     let built = WebviewWindowBuilder::new(
         app,
         &label,
@@ -192,7 +225,8 @@ pub fn login(app: &AppHandle, spec: &'static ProviderSpec, title: &str) -> bool 
     // 중첩 팝업도 같은 로그인에 묶어 닫는다(Swift PopupWebView.swift:18-52).
     .on_new_window(move |url, features| popup(&app2, url, features, children.clone()))
     .build();
-    let Ok(win) = built else { return false };
+    let Ok(win) = built else { tracing::warn!("로그인 창 생성 실패"); return false };
+    tracing::info!("로그인 창 생성 완료");
     let h = app.clone();
     let children = popups.clone();
     win.on_window_event(move |event| {
@@ -262,6 +296,7 @@ fn activate(win: &WebviewWindow) {
     }
 }
 
+#[cfg(not(windows))]
 fn popup(
     app: &AppHandle,
     url: Url,
@@ -298,6 +333,18 @@ fn popup(
     }
 }
 
+// Windows: 콜백 안에서 창을 만들면 교착된다. WebView2 기본 팝업에 맡기면 같은 프로필·쿠키를 쓰고 window.opener도 유지된다.
+#[cfg(windows)]
+fn popup(
+    _: &AppHandle,
+    _: Url,
+    _: tauri::webview::NewWindowFeatures,
+    _: Arc<LoginPopups>,
+) -> tauri::webview::NewWindowResponse<tauri::Wry> {
+    tracing::info!("로그인 팝업은 WebView2 기본 창으로 연다");
+    tauri::webview::NewWindowResponse::Allow
+}
+
 fn has_auth_cookie(w: &WebviewWindow, spec: &ProviderSpec) -> bool {
     w.cookies()
         .map(|cs| {
@@ -313,16 +360,21 @@ fn has_auth_cookie(w: &WebviewWindow, spec: &ProviderSpec) -> bool {
 /// 로그아웃: 도메인 조각에 해당하는 쿠키를 지운다(Swift WebSession.swift:380). 쿠키 저장소에 닿으려고 임시 웹뷰를 만든다.
 pub fn logout(app: &AppHandle, spec: &'static ProviderSpec) {
     let label = format!("logout-{}-{}", spec.id, next_token().replace('x', "-"));
+    tracing::info!("쿠키 저장소 창 생성 시작");
     let Ok(w) = WebviewWindowBuilder::new(
         app,
         &label,
         WebviewUrl::External("about:blank".parse().expect("blank")),
     )
     .visible(false)
+    .focused(false)
+    .user_agent(USER_AGENT)
     .skip_taskbar(true)
     .build() else {
+        tracing::warn!("쿠키 저장소 창 생성 실패");
         return;
     };
+    tracing::info!("쿠키 저장소 창 생성 완료");
     if let Ok(cs) = w.cookies() {
         for c in cs {
             if c.domain()
@@ -335,24 +387,41 @@ pub fn logout(app: &AppHandle, spec: &'static ProviderSpec) {
     let _ = w.destroy();
 }
 
+pub type Cookies = Vec<(String, String, String, String)>;
+
 /// 서비스 도메인의 쿠키를 (이름, 값, 도메인, 경로)로 읽는다. 직접 호출 경로(`direct.rs`)용.
-/// 값은 메모리에서만 쓰고 기록하지 않는다.
+/// 값은 메모리에서만 쓰고 기록하지 않는다. 저장소 오류는 빈 쿠키와 구분한다.
 pub fn read_cookies(
     app: &AppHandle,
     spec: &'static ProviderSpec,
-) -> Vec<(String, String, String, String)> {
+) -> Result<Cookies, ()> {
     let label = format!("cookies-{}-{}", spec.id, next_token().replace('x', "-"));
+    tracing::info!("쿠키 저장소 창 생성 시작");
     let Ok(w) = WebviewWindowBuilder::new(
         app,
         &label,
         WebviewUrl::External("about:blank".parse().expect("blank")),
     )
     .visible(false)
+    .focused(false)
+    .user_agent(USER_AGENT)
     .skip_taskbar(true)
     .build() else {
-        return vec![];
+        tracing::warn!("쿠키 저장소 창 생성 실패");
+        return Err(());
     };
-    let out = w
+    tracing::info!("쿠키 저장소 창 생성 완료");
+    let out = cookies_for(&w, spec);
+    match &out {
+        Ok(cookies) => tracing::info!("쿠키 읽기 완료: {}개", cookies.len()),
+        Err(()) => tracing::warn!("쿠키 읽기 실패"),
+    }
+    let _ = w.destroy();
+    out
+}
+
+fn cookies_for(w: &WebviewWindow, spec: &ProviderSpec) -> Result<Cookies, ()> {
+    w
         .cookies()
         .map(|cs| {
             cs.into_iter()
@@ -370,14 +439,23 @@ pub fn read_cookies(
                 })
                 .collect()
         })
-        .unwrap_or_default();
-    let _ = w.destroy();
-    out
+        .map_err(|_| ())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn 구글_인증_리다이렉트는_로그인_필요() {
+        let gemini = um_providers::spec::spec("gemini").unwrap();
+        let codex = um_providers::spec::spec("codex").unwrap();
+        let auth = Url::parse("https://accounts.google.com/ServiceLogin").unwrap();
+        assert!(login_redirect(&auth, gemini));
+        assert!(!login_redirect(&auth, codex));
+        assert!(!login_redirect(&Url::parse("https://accounts.google.com.example.org/").unwrap(), gemini));
+        assert!(!login_redirect(&Url::parse(gemini.home_url).unwrap(), gemini));
+    }
 
     #[test]
     fn 이전_회차_성공과_실패를_무시한다() {

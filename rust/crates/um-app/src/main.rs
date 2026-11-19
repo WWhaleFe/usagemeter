@@ -1,3 +1,5 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 //! UsageMeter (Rust) 앱 진입점. 계획서 3장 `um-app`.
 //! 지금 단계: 트레이(전체 메뉴·정보 패널) + 화면별 테두리 + 호버 + 로그인·로그아웃 + 사용량 실시간 조회 + 업데이트 확인.
 
@@ -5,6 +7,7 @@ mod agy_activity;
 mod analytics_ui;
 mod data;
 mod direct;
+mod diagnostics;
 mod ipc;
 mod locallogs;
 mod menu;
@@ -73,6 +76,7 @@ struct DirectClients(Mutex<BTreeMap<String, DirectSession>>);
 struct DirectSession {
     generation: u64,
     client: Option<reqwest::blocking::Client>,
+    no_cookies: bool,
 }
 
 fn session_generation(app: &AppHandle, id: &str) -> u64 {
@@ -86,6 +90,7 @@ fn invalidate_session(app: &AppHandle, id: &str) {
     let session = cache.entry(id.to_string()).or_default();
     session.generation += 1;
     session.client = None;
+    session.no_cookies = false;
 }
 
 fn apply_current(app: &AppHandle, id: &str, generation: u64, snap: UsageSnapshot) {
@@ -113,7 +118,14 @@ fn fetch_direct(app: &AppHandle, sp: &'static spec::ProviderSpec) -> Option<serd
         let c = match cached {
             Some(c) if attempt == 0 => c,
             _ => {
-                let c = direct::client(app, sp)?;
+                let c = match direct::client(app, sp) {
+                    Ok(c) => c,
+                    Err(direct::ClientError::NoCookies) => {
+                        mark_no_cookies(app, sp.id, generation);
+                        return Some(serde_json::json!({"ok": false, "reason": "not_logged_in"}));
+                    }
+                    Err(direct::ClientError::Build) => return None,
+                };
                 let mut sessions = cache.0.lock().unwrap();
                 let session = sessions.entry(sp.id.to_string()).or_default();
                 if session.generation != generation { return None; }
@@ -131,6 +143,14 @@ fn fetch_direct(app: &AppHandle, sp: &'static spec::ProviderSpec) -> Option<serd
         session.client = None;
     }
     None
+}
+
+/// 로그인으로 세션이 바뀔 때까지 빈 쿠키 저장소를 다시 열지 않는다.
+fn mark_no_cookies(app: &AppHandle, id: &str, generation: u64) {
+    let cache = app.state::<DirectClients>();
+    let mut sessions = cache.0.lock().unwrap();
+    let session = sessions.entry(id.to_string()).or_default();
+    if session.generation == generation { session.no_cookies = true; }
 }
 
 thread_local! {
@@ -241,11 +261,15 @@ fn fetch_one(app: &AppHandle, id: &str) -> Option<UsageSnapshot> {
     {
         return Some(s);
     }
+    let no_cookies = app.state::<DirectClients>().0.lock().unwrap().get(id).is_some_and(|s| s.no_cookies);
+    if no_cookies {
+        return Some(um_providers::parse::snapshot_from_probe(id, &serde_json::json!({"ok": false, "reason": "not_logged_in"}), chrono::Utc::now()));
+    }
     if direct_enabled() && !sp.needs_rendered_dom && !std::env::var("UM_S3").is_ok_and(|v| v == "1")
     {
         let t = std::time::Instant::now();
         if let Some(raw) = fetch_direct(app, sp) {
-            tracing::info!("{id} 직접 조회 {:.1}초 ok=true", t.elapsed().as_secs_f64());
+            tracing::info!("{id} 직접 조회 {:.1}초 ok={}", t.elapsed().as_secs_f64(), raw["ok"] == true);
             return Some(um_providers::parse::snapshot_from_probe(
                 id,
                 &raw,
@@ -255,7 +279,9 @@ fn fetch_one(app: &AppHandle, id: &str) -> Option<UsageSnapshot> {
         tracing::info!("{id} 직접 조회 실패 → 웹뷰로");
     }
     let t0 = std::time::Instant::now();
+    let generation = session_generation(app, id);
     let raw = web::probe(app, sp, PROBE_TIMEOUT);
+    if raw["no_cookies"] == true { mark_no_cookies(app, id, generation); }
     tracing::info!(
         "{id} 웹 조회 {:.1}초 ok={}",
         t0.elapsed().as_secs_f64(),
@@ -282,7 +308,7 @@ fn fetch_one(app: &AppHandle, id: &str) -> Option<UsageSnapshot> {
         );
     }
     if raw["ok"] != true {
-        tracing::info!("{}", um_providers::parse::failure_log_line(id, &raw));
+        tracing::info!("조회 실패: 인증 만료={}", raw["reason"] == "not_logged_in");
     }
     Some(um_providers::parse::snapshot_from_probe(
         id,
@@ -398,7 +424,7 @@ fn toggle_account(app: &AppHandle, id: String) {
             let (tx, rx) = std::sync::mpsc::channel();
             let h = app.clone();
             std::thread::spawn(move || {
-                let cookies = web::read_cookies(&h, sp);
+                let cookies = web::read_cookies(&h, sp).unwrap_or_default();
                 let result = if !sp.auth_cookie_names.is_empty() {
                     cookies.iter().any(|(name, _, _, _)| sp.auth_cookie_names.contains(&name.as_str()))
                         .then_some(None)
@@ -413,6 +439,7 @@ fn toggle_account(app: &AppHandle, id: String) {
                 let _ = tx.send(result);
             });
             if let Ok(Some(raw)) = rx.recv_timeout(Duration::from_secs(2)) {
+                invalidate_session(&app, &id);
                 if let Some(raw) = raw {
                     apply(&app, &id, um_providers::parse::snapshot_from_probe(&id, &raw, chrono::Utc::now()));
                     ipc::changed(&app);
@@ -476,12 +503,8 @@ fn apply_text_locale(lang: um_core::types::AppLanguage) {
 }
 
 fn main() {
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
-        .with_target(false)
-        .with_writer(std::io::stderr)
-        .init();
-    tracing::info!("UsageMeter (Rust) 시작");
+    let log_path = diagnostics::init();
+    tracing::info!("UsageMeter {} 시작 (OS={}, 로그={})", update::current_version(), std::env::consts::OS, log_path.display());
     let shared_state: Shared = Arc::new(Mutex::new(AppState::load()));
     {
         let mut st = shared_state.lock().unwrap();
@@ -496,6 +519,9 @@ fn main() {
     }
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+            windows::open(app, "settings#login");
+        }))
         .manage(shared_state.clone())
         .manage(Agy::default())
         .manage(DirectClients(Mutex::new(BTreeMap::new())))
@@ -516,7 +542,9 @@ fn main() {
             if !headless() {
                 #[cfg(all(target_os = "macos", not(feature = "store")))]
                 update::watch_bundle_replacement(app.handle());
+                let pm = um_render::icon::ring(None, [0.55, 0.55, 0.58, 1.0], 2.0);
                 TrayIconBuilder::with_id(TRAY_ID)
+                    .icon(Image::new_owned(um_render::icon::to_straight_rgba(&pm), pm.width(), pm.height()))
                     .menu(&menu)
                     // macOS: 왼쪽 클릭 = 정보 패널, 오른쪽 클릭 = 메뉴(결정 D1). 그 밖은 아직 왼쪽 클릭 메뉴.
                     .show_menu_on_left_click(cfg!(not(target_os = "macos")))
@@ -566,6 +594,14 @@ fn main() {
                     ipc::changed(&h);
                 }
                 refresh_with_retry(&h);
+                #[cfg(windows)]
+                if !headless() {
+                    let st = shared(&h);
+                    let st = st.lock().unwrap();
+                    let needs_login = st.snapshots.is_empty() && !st.providers.values().any(|p| p.logged_in);
+                    drop(st);
+                    if needs_login { windows::open(&h, "settings#login"); }
+                }
                 // 개발용: UM_TEST_LOGIN=<id>면 로그인 창을 강제로 띄워 자동 판정·닫힘을 확인한다.
                 if let Some(sp) = std::env::var("UM_TEST_LOGIN")
                     .ok()

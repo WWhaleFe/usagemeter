@@ -71,3 +71,12 @@ pub enum PlatformError {
     #[error("픽셀 크기가 맞지 않음: {got} 바이트, 기대 {expected}")]
     BadPixels { got: usize, expected: usize },
 }
+
+/// Mica는 Windows 11(빌드 22000)부터 지원한다. 버전 조회 실패 시 일반 창을 쓴다.
+#[cfg(windows)]
+pub fn mica_supported() -> bool {
+    use windows::Wdk::System::SystemServices::RtlGetVersion;
+    use windows::Win32::System::SystemInformation::OSVERSIONINFOW;
+    let mut version = OSVERSIONINFOW { dwOSVersionInfoSize: size_of::<OSVERSIONINFOW>() as u32, ..Default::default() };
+    unsafe { RtlGetVersion(&mut version) }.is_ok() && version.dwBuildNumber >= 22000
+}

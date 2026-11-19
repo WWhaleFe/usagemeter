@@ -9,9 +9,9 @@ use um_core::model::{UsageSnapshot, UsageStatus, UsageSubItem};
 pub const START_RETRY_ATTEMPTS: u32 = 4;
 pub const START_RETRY_INTERVAL_SECS: u64 = 2;
 
-/// 시작 재시도를 계속해야 하는가(방금 결과가 Ok가 아니면 계속).
+/// 일시적인 실패만 재시도한다. 인증 만료는 로그인해야 해결된다.
 pub fn should_retry(latest: &UsageSnapshot) -> bool {
-    latest.status != UsageStatus::Ok
+    !matches!(latest.status, UsageStatus::Ok | UsageStatus::AuthExpired)
 }
 
 /// 마지막으로 읽은 세부 항목(id·잔여율). 로그아웃·실패 중에도 설정 탭에서 쓰려고 기억한다.

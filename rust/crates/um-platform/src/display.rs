@@ -39,7 +39,7 @@ impl DisplayInfo {
         #[cfg(not(target_os = "macos"))]
         {
             let s = self.scale;
-            StripFrame { x: (self.origin.0 + x * s).round(), y: (self.origin.1 + y * s).round(), w: (w * s).round(), h: (h * s).round() }
+            StripFrame { x: (self.origin.0 + x * s).round(), y: (self.origin.1 + y * s).round(), w: (w * s).ceil().max(1.0), h: (h * s).ceil().max(1.0) }
         }
     }
 
@@ -60,13 +60,23 @@ impl DisplayInfo {
 
     /// 띠의 픽셀 크기.
     pub fn pixel_size(&self, w: f64, h: f64) -> (u32, u32) {
-        ((w * self.scale).round().max(1.0) as u32, (h * self.scale).round().max(1.0) as u32)
+        ((w * self.scale).ceil().max(1.0) as u32, (h * self.scale).ceil().max(1.0) as u32)
     }
 
     #[cfg(test)]
     pub(crate) fn for_test(origin: (f64, f64), w: f64, h: f64, scale: f64) -> Self {
         Self { id: "t".into(), name: "t".into(), width_pt: w, height_pt: h, scale, is_builtin: false, is_primary: true, notch: None, origin }
     }
+}
+
+/// 화면 ID를 파일 이름으로 쓸 때 장치 경로와 금지 문자를 제거한다. macOS UUID는 그대로다.
+pub fn file_id(id: &str) -> String {
+    let id = id.strip_prefix(r"\\.\").unwrap_or(id);
+    let name: String = id.chars().map(|c| {
+        if c.is_control() || r#"\/:*?"<>|"#.contains(c) { '_' } else { c }
+    }).collect();
+    let name = name.trim_end_matches(['.', ' ']);
+    if name.is_empty() { "display".into() } else { name.to_string() }
 }
 
 /// 연결된 화면 목록(첫 항목 = 주 화면). macOS는 메인 스레드에서만.
@@ -132,7 +142,7 @@ mod imp {
 
 #[cfg(windows)]
 mod imp {
-    use super::DisplayInfo;
+    use super::{DisplayInfo, file_id};
     use windows::Win32::Foundation::{LPARAM, RECT};
     use windows::Win32::Graphics::Gdi::{EnumDisplayMonitors, GetMonitorInfoW, HDC, HMONITOR, MONITORINFOEXW};
     use windows::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
@@ -164,7 +174,7 @@ mod imp {
             let r = mi.monitorInfo.rcMonitor;
             let name = String::from_utf16_lossy(&mi.szDevice).trim_end_matches('\0').to_string();
             out.push(DisplayInfo {
-                id: name.clone(),
+                id: file_id(&name),
                 name,
                 width_pt: (r.right - r.left) as f64 / scale,
                 height_pt: (r.bottom - r.top) as f64 / scale,
@@ -184,6 +194,30 @@ mod imp {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn 화면_id는_안전한_파일_이름() {
+        assert_eq!(file_id(r"\\.\DISPLAY1"), "DISPLAY1");
+        assert_eq!(file_id("a/b:c*?\"<>|"), "a_b_c______");
+        let uuid = "A1B2C3D4-1234-5678-90AB-CDEF12345678";
+        assert_eq!(file_id(uuid), uuid);
+    }
+
+    #[test]
+    fn 배율별_픽셀_크기는_올림() {
+        for scale in [1.0, 1.25, 1.5, 2.0] {
+            let d = DisplayInfo::for_test((0.0, 0.0), 1000.0, 800.0, scale);
+            assert_eq!(d.pixel_size(7.0, 29.0), ((7.0 * scale).ceil() as u32, (29.0 * scale).ceil() as u32));
+            #[cfg(not(target_os = "macos"))]
+            {
+                let f = d.strip_frame(0.0, 0.0, 7.0, 29.0);
+                assert_eq!((f.w as u32, f.h as u32), d.pixel_size(7.0, 29.0));
+            }
+            if scale == 1.0 || scale == 2.0 {
+                assert_eq!(d.pixel_size(7.0, 29.0), ((7.0 * scale).round() as u32, (29.0 * scale).round() as u32));
+            }
+        }
+    }
 
     #[test]
     fn 띠_좌표_변환() {

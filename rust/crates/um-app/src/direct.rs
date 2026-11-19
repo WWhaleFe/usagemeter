@@ -15,8 +15,15 @@ use um_providers::spec::ProviderSpec;
 use crate::web;
 
 /// 로그인 웹뷰 저장소의 쿠키로 클라이언트를 만든다(이때만 잠깐 숨은 웹뷰가 생긴다).
-pub fn client(app: &AppHandle, spec: &'static ProviderSpec) -> Option<Client> {
-    client_with_cookies(spec, web::read_cookies(app, spec), Duration::from_secs(15))
+pub enum ClientError {
+    NoCookies,
+    Build,
+}
+
+pub fn client(app: &AppHandle, spec: &'static ProviderSpec) -> Result<Client, ClientError> {
+    let cookies = web::read_cookies(app, spec).map_err(|()| ClientError::Build)?;
+    if cookies.is_empty() { return Err(ClientError::NoCookies); }
+    client_with_cookies(spec, cookies, Duration::from_secs(15)).ok_or(ClientError::Build)
 }
 
 pub fn client_with_cookies(
@@ -24,6 +31,7 @@ pub fn client_with_cookies(
     cookies: Vec<(String, String, String, String)>,
     timeout: Duration,
 ) -> Option<Client> {
+    if cookies.is_empty() { return None; }
     let jar = Arc::new(Jar::default());
     let home: Url = spec.home_url.parse().ok()?;
     for (name, value, domain, path) in cookies {
@@ -62,8 +70,9 @@ fn send(c: &Client, r: &HttpRequest) -> (u16, Option<Value>) {
 /// 웹뷰 없이 사용량을 읽는다(쿠키를 새로 읽음). S3 비교용.
 pub fn probe(app: &AppHandle, spec: &'static ProviderSpec) -> Value {
     match client(app, spec) {
-        Some(c) => probe_with(&c, spec),
-        None => json!({"ok": false, "reason": "no_client"}),
+        Ok(c) => probe_with(&c, spec),
+        Err(ClientError::NoCookies) => json!({"ok": false, "reason": "not_logged_in"}),
+        Err(ClientError::Build) => json!({"ok": false, "reason": "no_client"}),
     }
 }
 
@@ -100,5 +109,17 @@ pub fn probe_with(c: &Client, spec: &ProviderSpec) -> Value {
             d::codex_probe_from_usage(plan.as_deref(), st, body.as_ref(), chrono::Utc::now())
         }
         _ => json!({"ok": false, "reason": "unsupported"}),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn 빈_쿠키로는_클라이언트를_만들지_않는다() {
+        for spec in um_providers::spec::ALL {
+            assert!(client_with_cookies(spec, vec![], Duration::from_secs(1)).is_none());
+        }
     }
 }
