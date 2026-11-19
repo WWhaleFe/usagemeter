@@ -120,8 +120,10 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
     };
     tracing::info!("조회 창 생성 시작");
     let auth_tx = tx.clone();
+    // 진단: UM_SHOW_PROBE=1이면 조회 창을 보이게 띄운다.
+    let show = std::env::var("UM_SHOW_PROBE").is_ok_and(|v| v == "1");
     let builder = WebviewWindowBuilder::new(app, &label, WebviewUrl::External("about:blank".parse().expect("blank")))
-        .visible(false)
+        .visible(show)
         .skip_taskbar(true)
         .focused(false)
         .inner_size(460.0, 720.0)
@@ -146,7 +148,11 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
             }
         })
         .on_document_title_changed(move |_, t| {
-            if let Some((_, raw)) = t.strip_prefix(&prefix).and_then(|rest| rest.split_once(':')) {
+            if let Some((n, raw)) = t.strip_prefix(&prefix).and_then(|rest| rest.split_once(':')) {
+                if spec.needs_rendered_dom {
+                    let reason = serde_json::from_str::<Value>(raw).ok().and_then(|v| v["reason"].as_str().map(String::from)).unwrap_or_default();
+                    tracing::info!("조회 결과 {n}회차 받음 {reason}");
+                }
                 let _ = tx.send(raw.to_string());
             }
         })
@@ -181,9 +187,13 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
         let (w, done, token, attempt) = (win.clone(), done.clone(), token.clone(), attempt.clone());
         std::thread::spawn(move || {
             let mut on_host = 0u32;
+            let mut last = String::new();
             while !done.load(Ordering::SeqCst) {
                 std::thread::sleep(Duration::from_secs(1));
-                let Ok(url) = w.url() else { break };
+                let Ok(url) = w.url() else { tracing::info!("조회 창 주소 읽기 실패"); break };
+                // 주소는 호스트와 경로만 남긴다(쿼리 없음).
+                let at = format!("{}{}", url.host_str().unwrap_or("-"), url.path());
+                if at != last { tracing::info!("조회 창 주소: {at}"); last = at; }
                 on_host = if host_matches(&url, spec) { on_host + 1 } else { 0 };
                 if on_host >= 4 && (on_host - 4).is_multiple_of(8) && !done.load(Ordering::SeqCst) {
                     fired_watch.store(true, Ordering::SeqCst);
@@ -216,7 +226,8 @@ pub fn probe(app: &AppHandle, spec: &'static ProviderSpec, timeout: Duration) ->
 /// 사용량 JS를 새 회차 번호로 실행한다(결과 제목: `UMRESULT:<토큰>-<회차>:<JSON>`).
 fn eval_attempt(w: &WebviewWindow, spec: &ProviderSpec, token: &str, attempt: &AtomicU64) {
     let n = attempt.fetch_add(1, Ordering::SeqCst);
-    let _ = w.eval(wrap(spec.usage_js, &format!("{token}-{n}")));
+    let ok = w.eval(wrap(spec.usage_js, &format!("{token}-{n}"))).is_ok();
+    if spec.needs_rendered_dom { tracing::info!("조회 JS {n}회차 실행 ok={ok}"); }
 }
 
 #[derive(Default)]

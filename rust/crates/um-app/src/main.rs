@@ -268,7 +268,9 @@ fn fetch_one(app: &AppHandle, id: &str) -> Option<UsageSnapshot> {
     if app.get_webview_window(&format!("login-{id}")).is_some() {
         return None;
     }
+    // 진단: UM_NO_AGY=1이면 agy를 건너뛰고 웹 조회만 쓴다.
     if id == "gemini"
+        && !std::env::var("UM_NO_AGY").is_ok_and(|v| v == "1")
         && let Some(s) = app.state::<Agy>().fetch()
     {
         return Some(s);
