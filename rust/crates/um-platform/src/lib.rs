@@ -5,6 +5,7 @@
 
 pub mod display;
 pub mod mouse;
+pub mod toast;
 pub mod webview_proxy;
 
 #[cfg(target_os = "macos")]

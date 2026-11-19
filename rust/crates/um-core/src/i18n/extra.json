@@ -518,5 +518,50 @@
     "Windows 로그인 시 자동 실행",
     "Launch at Windows sign-in",
     "Windowsサインイン時に自動起動"
+  ],
+  "win.tab.menuBar": [
+    "트레이",
+    "Tray",
+    "トレイ"
+  ],
+  "win.sec.menuIcon": [
+    "트레이 아이콘",
+    "Tray Icon",
+    "トレイアイコン"
+  ],
+  "win.menuHover.enable": [
+    "트레이 아이콘에 마우스 올리면 정보 표시",
+    "Show info on tray icon hover",
+    "トレイアイコンにマウスを乗せると情報を表示"
+  ],
+  "win.menuHover.enableDesc": [
+    "작업 표시줄 알림 영역의 링 아이콘에 커서를 올리면 사용량 정보를 띄웁니다.",
+    "Shows usage info when you hover the ring icon in the taskbar notification area.",
+    "タスクバー通知領域のリングアイコンにカーソルを乗せると使用量情報を表示します。"
+  ],
+  "win.tray.clickMode": [
+    "트레이 아이콘 클릭 동작",
+    "Tray icon click behavior",
+    "トレイアイコンのクリック動作"
+  ],
+  "win.disp.iconDesc": [
+    "트레이 링 아이콘이 이 AI의 잔여율·색으로 표시됩니다 (로그인 안 됐으면 자동).",
+    "The tray ring shows this AI's remaining ratio and color (auto if not logged in).",
+    "トレイのリングはこのAIの残量・色で表示されます（未ログイン時は自動）。"
+  ],
+  "win.disp.iconUsedDesc": [
+    "트레이 링 아이콘이 이 AI의 사용률·색으로 표시됩니다 (로그인 안 됐으면 자동).",
+    "The tray ring shows this AI's used ratio and color (auto if not logged in).",
+    "トレイのリングにこのAIの使用率と色を表示します（未ログイン時は自動）。"
+  ],
+  "win.notify.desc": [
+    "선택한 사용률에 도달하면 Windows 알림을 보냅니다 (리셋 주기당 1회).",
+    "Sends a Windows notification when usage reaches the selected level (once per reset cycle).",
+    "選択した使用率に達するとWindows通知を送ります（リセット周期ごとに1回）。"
+  ],
+  "win.display.desc": [
+    "선·화면 분할·배치·모서리 탭은 선택한 화면에만 적용됩니다. 언어·트레이·AI 색 등은 모든 화면 공통입니다.",
+    "The Line, Partition, Layout and Corner tabs apply only to the selected display. Language, tray, AI colors and other options are shared.",
+    "線・画面分割・配置・角のタブは選択した画面にのみ適用されます。言語・トレイ・AIの色などは全画面共通です。"
   ]
 }

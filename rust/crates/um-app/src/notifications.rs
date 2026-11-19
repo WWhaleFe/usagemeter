@@ -13,7 +13,7 @@ pub fn usage(app: &AppHandle, id: &str, snap: &UsageSnapshot) {
         let name = um_providers::spec::spec(id).map(|s| s.name).unwrap_or(id);
         let title = tr("notify.title", st.main.language);
         let body = tf("notify.body", st.main.language, name).replace("%d", &threshold.to_string());
-        if fire(&key, &title, &body) { st.sent_notifications.insert(key); }
+        if fire(app, &key, &title, &body) { st.sent_notifications.insert(key); }
     }
     st.save();
 }
@@ -25,7 +25,7 @@ pub fn update(app: &AppHandle, version: &str) {
     let key = format!("update|{version}");
     if st.sent_notifications.contains(&key) { return; }
     let body = tf("update.available", st.main.language, &format!("v{version}"));
-    if fire(&key, "UsageMeter", &body) {
+    if fire(app, &key, "UsageMeter", &body) {
         st.sent_notifications.insert(key);
         st.save();
     }
@@ -41,7 +41,7 @@ pub fn init() {
 }
 
 #[cfg(target_os = "macos")]
-fn fire(key: &str, title: &str, body: &str) -> bool {
+fn fire(_app: &AppHandle, key: &str, title: &str, body: &str) -> bool {
     use objc2_foundation::{NSBundle, NSString};
     use objc2_user_notifications::{UNMutableNotificationContent, UNNotificationRequest, UNNotificationSound, UNUserNotificationCenter};
     if NSBundle::mainBundle().bundleIdentifier().is_none() { return false; }
@@ -54,5 +54,12 @@ fn fire(key: &str, title: &str, body: &str) -> bool {
     true
 }
 
-#[cfg(not(target_os = "macos"))]
-fn fire(_: &str, _: &str, _: &str) -> bool { false }
+#[cfg(windows)]
+fn fire(app: &AppHandle, _key: &str, title: &str, body: &str) -> bool {
+    um_platform::toast::show(&app.config().identifier, title, body)
+        .map_err(|e| tracing::warn!("알림 보내기 실패: {e}"))
+        .is_ok()
+}
+
+#[cfg(not(any(target_os = "macos", windows)))]
+fn fire(_: &AppHandle, _: &str, _: &str, _: &str) -> bool { false }
