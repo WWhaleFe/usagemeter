@@ -36,7 +36,7 @@ Universal binary (Apple Silicon + Intel), macOS 14+.
 
 > ⚠️ The app is not notarized yet, so when installed from the zip the first launch requires **right-click → Open** (not needed with Homebrew). If it still won't open, go to System Settings → Privacy & Security and click "Open Anyway".
 
-> 🪟 **A Windows version** is being prepared for the Microsoft Store. To try it early, get the Windows installer (`-setup.exe`) from [Releases](https://github.com/WWhaleFe/usagemeter/releases).
+> 🪟 **The Windows version** lives in [usagemeter-windows](https://github.com/WWhaleFe/usagemeter-windows) and is being prepared for the Microsoft Store. Test installers are in that repository's Releases.
 
 <br>
 

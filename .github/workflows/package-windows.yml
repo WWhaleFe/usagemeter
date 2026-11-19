@@ -1,18 +1,21 @@
-# Windows 실기 점검과 Store 제출을 위한 패키지. 태그는 공개 전 초안으로만 등록한다.
-name: rust-package
+# Windows 패키지(이 저장소 WWhaleFe/usagemeter-windows 전용). 이 저장소는 MS Store판이다: 설치 파일·포터블 zip도 store 기능으로 빌드해
+# Store 앱과 같은 화면(업데이트·개발자에게 없음)을 미리 시험한다. 서명 없는 MSIX는 Store 제출용 산출물로만 남긴다.
+# 태그 vX.Y.Z(-beta.N)를 push하면 공개 전 초안 릴리스에 설치 파일·포터블 zip을 붙인다. MSIX는 릴리스에 올리지 않는다.
+name: package-windows
 
 on:
   workflow_dispatch:
   push:
     # 시험용 빌드: rust-package 브랜치로 push하면 Actions 산출물만 만든다(릴리스 없음).
     branches: ["rust-package"]
-    tags: ["rust-v*"]
+    tags: ["v*"]
 
 permissions:
   contents: read
 
 jobs:
   version:
+    if: github.repository == 'WWhaleFe/usagemeter-windows'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -90,7 +93,7 @@ jobs:
       - name: NSIS 설치 파일 빌드
         working-directory: rust/crates/um-app
         run: |
-          npx -y @tauri-apps/cli@2.12.4 build --target $env:RUST_TARGET --bundles nsis --features production --config tauri.release.conf.json
+          npx -y @tauri-apps/cli@2.12.4 build --target $env:RUST_TARGET --bundles nsis --features production,store --config tauri.release.conf.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $installers = @(Get-ChildItem "../../target/$env:RUST_TARGET/release/bundle/nsis/*.exe")
           if ($installers.Count -ne 1) { throw "NSIS 설치 파일이 정확히 하나여야 합니다." }
@@ -172,49 +175,25 @@ jobs:
           path: dist/*.msixbundle
           if-no-files-found: error
 
-  macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: rust
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: rust/crates/um-app/ui-src/package-lock.json
-      - name: macOS 유니버설 zip 생성
-        run: bash rust/tools/release-mac.sh
-      - uses: actions/upload-artifact@v4
-        with:
-          name: macos
-          path: rust/dist/*.zip
-          if-no-files-found: error
-
   release:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/rust-v')
-    needs: [version, windows, msixbundle, macos]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [version, windows, msixbundle]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
+          pattern: windows-*
           merge-multiple: true
           path: dist
-      - name: 공개 전 초안 릴리스에 모든 산출물 첨부
+      - name: 공개 전 초안 릴리스에 설치 파일·포터블 zip 첨부(태그에 -가 있으면 시험판)
         uses: softprops/action-gh-release@v2
         with:
-          name: UsageMeter ${{ needs.version.outputs.version }}
+          name: UsageMeter for Windows ${{ needs.version.outputs.version }}
           draft: true
-          prerelease: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
           fail_on_unmatched_files: true
           files: |
-            dist/*.exe
-            dist/*.zip
-            dist/*.msix
-            dist/*.msixbundle
+            dist/*-setup.exe
+            dist/*-portable.zip

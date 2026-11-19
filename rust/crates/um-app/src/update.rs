@@ -7,8 +7,15 @@ use std::time::Duration;
 
 use serde_json::Value;
 
+// 저장소가 플랫폼별로 나뉘었다: macOS는 usagemeter, Windows(GitHub판)는 usagemeter-windows.
+#[cfg(not(windows))]
 const API: &str = "https://api.github.com/repos/WWhaleFe/usagemeter/releases/latest";
+#[cfg(not(windows))]
 pub const PAGE: &str = "https://github.com/WWhaleFe/usagemeter/releases/latest";
+#[cfg(windows)]
+const API: &str = "https://api.github.com/repos/WWhaleFe/usagemeter-windows/releases/latest";
+#[cfg(windows)]
+pub const PAGE: &str = "https://github.com/WWhaleFe/usagemeter-windows/releases/latest";
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub enum UpdateState {

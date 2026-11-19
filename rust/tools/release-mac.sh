@@ -30,7 +30,8 @@ version="$(sed -n '/^\[workspace.package\]/,/^\[/s/^version = "\([^"]*\)"/\1/p' 
 test -n "$version"
 test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")" = "$version"
 mkdir -p "$workspace/dist"
-archive="$workspace/dist/UsageMeter-v$version-macos.zip"
+# Homebrew 탭 자동 갱신(bump.sh)과 1.5.0의 업데이트가 이 이름을 기대한다.
+archive="$workspace/dist/UsageMeter-v$version.zip"
 # 재실행할 때 이전 zip의 항목이 남지 않게 새 파일로 만든다.
 rm -f "$archive"
 ditto -c -k --keepParent "$app" "$archive"
