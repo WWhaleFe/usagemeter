@@ -73,7 +73,7 @@ for (const side of ['bottom', 'left', 'right', 'top']) {
       assert(html.includes('세로선 캡'));
       const groups = html.split('<div class="caps');
       assert(!groups[1].includes('Dock선'));
-      assert(groups[2].includes('Dock선 │'));
+      assert(groups[2].includes('Dock 경계'));
       const lines = diagramLines(fixture(), true, true, side);
       assert.equal(lines.find((l) => l.seg === 'hTop').points[0][1], 12);
       assert.equal(lines.find((l) => l.seg === 'hMenu').points[0][1], 48);
@@ -125,4 +125,22 @@ after(async () => {
   const out = path.resolve(root, '../../../target/layout-preview.html');
   await mkdir(path.dirname(out), { recursive: true });
   await writeFile(out, `<!doctype html><meta charset="utf-8"><style>:root{--surface:#f8f8f8;--surface-stroke:#ccc;--fg:#222;--fg2:#555;--accent:#d80;--r-card:8px;--fs-small:11px;--fs-title:14px}body{font:13px sans-serif;max-width:760px;margin:24px auto}${styles.join('\n')}</style>${previews.join('\n')}`);
+});
+
+test('직선 모델: 렌더와 공통 좌표, 겹침 없음, 캡 곡선 없음', async () => {
+  const cases = JSON.parse(await readFile(path.join(root, '../../um-core/tests/fixtures/dock_lines.json'), 'utf8'));
+  for (const c of cases) {
+    const lines = diagramLines(fixture(c.menu), c.menu, true, c.side, false);
+    assert.equal(lines.length, Object.keys(c.lines).length);
+    for (const line of lines) {
+      assert.equal(line.points.length, 2, `${c.side} ${line.seg}`);
+      assert(line.points[0][0] === line.points[1][0] || line.points[0][1] === line.points[1][1]);
+      const normalized = line.points.map(([x,y]) => [(x-14)/181,(y-12)/109]);
+      normalized.flat().forEach((v,i) => assert(Math.abs(v-c.lines[line.seg].flat()[i]) < 1e-10, `${c.side} ${c.menu} ${line.seg}`));
+    }
+    state(c.side, c.menu ? 'mac' : 'win');
+    const html = render(Layout, { props: { p: provider(c.menu) } }).body;
+    assert(!html.includes('class="cap"'));
+    assert(!html.includes(' Q'));
+  }
 });

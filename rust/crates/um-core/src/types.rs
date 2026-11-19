@@ -205,6 +205,9 @@ pub type Rgba = [f64; 4];
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProviderLayout {
+    /// 옆 Dock 직선 모델 버전. 없으면 기존 접합부 선택을 읽을 때 변환한다.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub segment_geometry: Option<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub edges: Option<std::collections::BTreeSet<BorderEdge>>,
     pub anchor_corner: BorderCorner,

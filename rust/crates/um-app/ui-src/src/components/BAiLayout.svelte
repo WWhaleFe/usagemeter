@@ -24,7 +24,7 @@
     const all = { ...((b.providerLayouts ?? {}) as Record<string, Layout>), [p.id]: { ...l, ...patch } };
     return set('border', { providerLayouts: all });
   }
-  const setSegs = (next: string[]) => mutate({ segments: next });
+  const setSegs = (next: string[]) => mutate({ segments: next, ...(lateral && menuOn && dockOn ? { segmentGeometry: 1 } : {}) });
 
   // 다이어그램 클릭 = 토글(Rust가 유효하다고 한 경우만), 더블클릭 = 그 선만.
   function toggle(seg: string) {
@@ -51,7 +51,7 @@
 
   // 저장된 가로선 캡을 실제 축으로 나눠 표시한다. 같은 끝의 반대 방향은 자동 해제.
   const capGroups = $derived([false, true].map((vertical) => ({
-    vertical, segs: H_SEGS.filter((h) => segs.has(h) && (lateral && (!menuOn || h === 'hDock' || h === 'hBottom')) === vertical),
+    vertical, segs: [...H_SEGS, ...(lateral && menuOn ? ['lDock'] : [])].filter((h) => segs.has(h) && (lateral && (!menuOn || h === 'hDock' || h === 'hBottom')) === vertical),
   })).filter((g) => g.segs.length));
   function capLabel(h: string, up: boolean): string {
     const [x, y] = capVector(h, up, dockSide, menuOn);
@@ -73,7 +73,7 @@
   function applyPreset(key: 'all' | 'menuBar' | 'main' | 'dock', hCaps: Record<string, SegCap>) {
     const sp = p.shapePresets[key];
     if (!sp?.allowed || (key === 'menuBar' && (win || !menuOn)) || (key === 'dock' && (!dockOn || dockSide === null))) return;
-    mutate({ zones: sp.zones, segments: sp.segments, hCaps });
+    mutate({ zones: sp.zones, segments: sp.segments, hCaps, ...(lateral && menuOn && dockOn ? { segmentGeometry: 1 } : {}) });
   }
 
   const CORNERS = ['topLeft', 'topRight', 'bottomRight', 'bottomLeft'];

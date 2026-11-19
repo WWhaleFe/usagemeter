@@ -7,11 +7,12 @@
 
 use serde_json::{Map, Value, json};
 use tauri::{AppHandle, Emitter, Manager};
-use um_core::hover::seg_ctx;
+use um_core::types::BorderEdge;
+
 use um_core::i18n::tr;
 use um_core::segments::{
-    SegContext, bend_radius_estimate, can_use_segments, chain_ends, corner_used, enforce_no_overlap, h_cap, is_valid_segments, layout_for, seg_adjacency,
-    seg_available, seg_ends, segs_for, zone_perimeter,
+    SegContext, bend_radius_estimate, can_use_segments, chain_ends_on, corner_used, enforce_no_overlap, h_cap, is_valid_segments_on, layout_for, seg_adjacency_on,
+    seg_available, seg_ends_on, segs_for, zone_perimeter_on,
 };
 use um_core::settings::{BRAND_COLORS, MAX_PRESETS, REFRESH_PRESETS, ScreenInfo, Settings, SettingsSnapshot, add_preset, device_fit};
 use um_core::types::{AppLanguage, BorderCorner, ScreenZone, SegCap, SegNode, SegPart};
@@ -19,6 +20,11 @@ use um_providers::spec;
 use um_render::border::sub_item_color;
 
 use crate::state::AppState;
+
+fn seg_ctx(s: &Settings, side: BorderEdge) -> SegContext<'_> {
+    SegContext { side, ..um_core::hover::seg_ctx(s) }
+}
+
 
 /// 후원 탭 카카오페이 송금 링크(Swift SupportView.swift).
 const KAKAO_URL: &str = "https://qr.kakaopay.com/Fa89McYNg";
@@ -53,10 +59,10 @@ fn snapshot_value(s: &Settings) -> Value {
 }
 
 /// Windows에서 작업 표시줄 문구로 바꿔 보여 줄 Dock 관련 키(`win.<키>`가 i18n에 있어야 한다).
-const WIN_TERMS: [&str; 14] = [
+const WIN_TERMS: [&str; 15] = [
     "corner.linkMainDock", "part.dockHeight", "part.dockLine", "preset.dockWrap",
     "seg.hDock", "seg.lDock", "seg.rDock", "zone.dock", "hoverArea.dockLine",
-    "part.dockBoundaryHeight", "part.dockWidth", "seg.dockVertical", "seg.dockTop", "seg.dockBottom",
+    "part.dockBoundaryHeight", "part.dockWidth", "seg.dockVertical", "seg.dockTop", "seg.dockBottom", "seg.dockOuter",
 ];
 
 /// 화면이 그릴 값 전부.
@@ -79,6 +85,14 @@ pub fn ui_state(app: AppHandle) -> Value {
             })
         })
         .collect();
+    let taskbar = ds.iter().find(|d| edit.as_ref().or(st.main_display_id.as_ref()).map_or(d.is_primary, |id| id == &d.id))
+        .or_else(|| ds.first()).and_then(|d| d.taskbar);
+    let side = taskbar.map_or(BorderEdge::Bottom, |t| match t.side {
+        um_platform::display::TaskbarSide::Top => BorderEdge::Top,
+        um_platform::display::TaskbarSide::Bottom => BorderEdge::Bottom,
+        um_platform::display::TaskbarSide::Left => BorderEdge::Left,
+        um_platform::display::TaskbarSide::Right => BorderEdge::Right,
+    });
     let providers: Vec<Value> = st
         .main
         .provider_order
@@ -103,11 +117,11 @@ pub fn ui_state(app: AppHandle) -> Value {
                 "id": id, "name": sp.name, "loggedIn": ps.logged_in, "experimental": sp.id == "gemini",
                 "color": rgba_hex(um_render::border::provider_color(&st.main, id)),
                 "items": items_v, "itemsLive": live,
-                "segOptions": seg_options(border, id),
-                "layout": layout_value(border, id),
-                "chain": chain_ends(&segs_for(&seg_ctx(border), id), border.menu_line_enabled, border.dock_line_enabled).is_some(),
-                "anchorSideKind": anchor_side_kind(&seg_ctx(border), id),
-                "shapePresets": shape_presets(border, id),
+                "segOptions": seg_options(border, id, side),
+                "layout": layout_value(border, id, side),
+                "chain": chain_ends_on(&segs_for(&seg_ctx(border, side), id), border.menu_line_enabled, border.dock_line_enabled, side).is_some(),
+                "anchorSideKind": anchor_side_kind(&seg_ctx(border, side), id),
+                "shapePresets": shape_presets(border, id, side),
             }))
         })
         .collect();
@@ -130,7 +144,7 @@ pub fn ui_state(app: AppHandle) -> Value {
         "strings": strings,
         "main": snapshot_value(&st.main),
         "border": snapshot_value(border),
-        "cornerUsed": corner_used_value(border),
+        "cornerUsed": corner_used_value(border, side),
         "editing": edit,
         "displays": displays,
         "providers": providers,
@@ -171,8 +185,8 @@ fn autostart_value(app: &AppHandle) -> Value {
 }
 
 /// 레이아웃 탭 다이어그램용: 세그먼트마다 (쓸 수 있는지, 눌렀을 때 결과가 유효한지, 다른 AI가 쓰는지).
-fn seg_options(s: &Settings, id: &str) -> Value {
-    let ctx = seg_ctx(s);
+fn seg_options(s: &Settings, id: &str, side: BorderEdge) -> Value {
+    let ctx = seg_ctx(s, side);
     let cur = segs_for(&ctx, id);
     let mut out = Map::new();
     for seg in SegPart::ALL {
@@ -181,10 +195,10 @@ fn seg_options(s: &Settings, id: &str) -> Value {
         if !toggled.remove(&seg) {
             toggled.insert(seg);
         }
-        let valid = available && is_valid_segments(&toggled, s.menu_line_enabled, s.dock_line_enabled);
+        let valid = available && is_valid_segments_on(&toggled, s.menu_line_enabled, s.dock_line_enabled, side);
         let allowed = valid && can_use_segments(&ctx, id, &toggled);
         let used_by_other = um_core::segments::PROVIDER_IDS.iter().any(|o| *o != id && segs_for(&ctx, o).contains(&seg));
-        let (a, b) = seg_ends(seg, s.menu_line_enabled, s.dock_line_enabled);
+        let (a, b) = seg_ends_on(seg, s.menu_line_enabled, s.dock_line_enabled, side);
         let ends = json!([{"right": a.right, "level": a.level}, {"right": b.right, "level": b.level}]);
         out.insert(seg.raw().into(), json!({"on": cur.contains(&seg), "available": available, "toggleValid": valid, "toggleAllowed": allowed, "usedByOther": used_by_other, "ends": ends}));
     }
@@ -192,10 +206,9 @@ fn seg_options(s: &Settings, id: &str) -> Value {
 }
 
 /// 이 AI의 실제 배치(저장된 값이 없으면 기본값, segments는 구버전 변환 결과). 화면이 고쳐서 `providerLayouts`에 되돌려 쓴다.
-fn layout_value(s: &Settings, id: &str) -> Value {
-    let ctx = seg_ctx(s);
-    let mut l = layout_for(&ctx, id);
-    l.segments = Some(segs_for(&ctx, id));
+fn layout_value(s: &Settings, id: &str, side: BorderEdge) -> Value {
+    let ctx = seg_ctx(s, side);
+    let l = um_core::segments::positioned_layout(&ctx, id);
     serde_json::to_value(l).unwrap_or(Value::Null)
 }
 
@@ -203,10 +216,23 @@ fn layout_value(s: &Settings, id: &str) -> Value {
 fn anchor_side_kind(ctx: &SegContext, id: &str) -> &'static str {
     let (menu_on, dock_on) = (ctx.menu_on, ctx.dock_on);
     let segs = segs_for(ctx, id);
-    if !is_valid_segments(&segs, menu_on, dock_on) || chain_ends(&segs, menu_on, dock_on).is_some() {
+    if !is_valid_segments_on(&segs, menu_on, dock_on, ctx.side) || chain_ends_on(&segs, menu_on, dock_on, ctx.side).is_some() {
         return "hidden";
     }
-    let adj = seg_adjacency(&segs, menu_on, dock_on);
+    let adj = seg_adjacency_on(&segs, menu_on, dock_on, ctx.side);
+    if um_core::segments::lateral_menu(menu_on, dock_on, ctx.side) {
+        let l = layout_for(ctx, id);
+        let target = match l.anchor_corner {
+            BorderCorner::TopLeft => (0.0,0.0), BorderCorner::TopRight => (1.0,0.0),
+            BorderCorner::BottomLeft => (0.0,1.0), BorderCorner::BottomRight => (1.0,1.0),
+        };
+        let node = *adj.keys().min_by(|&&a,&&b| {
+            let distance = |n| { let p = um_core::segments::side_node_point(n,ctx.side); (p.0-target.0).hypot(p.1-target.1) };
+            distance(a).total_cmp(&distance(b))
+        }).unwrap();
+        let parts = &adj[&node];
+        return if bend_radius_estimate(ctx,id,parts[0],parts[1],node) > 0.01 { "round" } else { "hidden" };
+    }
     let (Some(tl), Some(bl)) = (adj.keys().map(|n| n.level).min(), adj.keys().map(|n| n.level).max()) else { return "hidden" };
     let l = layout_for(ctx, id);
     let node = match l.anchor_corner {
@@ -223,7 +249,7 @@ fn anchor_side_kind(ctx: &SegContext, id: &str) -> &'static str {
     // 스쿱 판정: 가로선 캡 방향이 세로선 진행 방향과 반대.
     let cap = h_cap(ctx, id, h, node.right);
     if cap == SegCap::Up || cap == SegCap::Down {
-        let (a, b) = seg_ends(v, menu_on, dock_on);
+        let (a, b) = seg_ends_on(v, menu_on, dock_on, ctx.side);
         let v_down = (if a == node { b.level } else { a.level }) > node.level;
         let matches = (cap == SegCap::Down && v_down) || (cap == SegCap::Up && !v_down);
         if !matches {
@@ -234,8 +260,8 @@ fn anchor_side_kind(ctx: &SegContext, id: &str) -> &'static str {
 }
 
 /// 모양 프리셋(전체·메뉴바·본문·Dock): 영역, 둘레 세그먼트, 지금 쓸 수 있는지. (Swift presetButton, SettingsView.swift:~770)
-fn shape_presets(s: &Settings, id: &str) -> Value {
-    let ctx = seg_ctx(s);
+fn shape_presets(s: &Settings, id: &str, side: BorderEdge) -> Value {
+    let ctx = seg_ctx(s, side);
     let mut out = Map::new();
     for (key, zones) in [
         ("all", vec![ScreenZone::MenuBar, ScreenZone::Main, ScreenZone::Dock]),
@@ -243,7 +269,7 @@ fn shape_presets(s: &Settings, id: &str) -> Value {
         ("main", vec![ScreenZone::Main]),
         ("dock", vec![ScreenZone::Dock]),
     ] {
-        let set = zone_perimeter(&zones.iter().copied().collect(), s.menu_line_enabled, s.dock_line_enabled);
+        let set = zone_perimeter_on(&zones.iter().copied().collect(), s.menu_line_enabled, s.dock_line_enabled, side);
         let allowed = can_use_segments(&ctx, id, &set);
         out.insert(key.into(), json!({"zones": zones, "segments": set, "allowed": allowed}));
     }
@@ -251,8 +277,8 @@ fn shape_presets(s: &Settings, id: &str) -> Value {
 }
 
 /// 영역 x 꼭짓점별 곡률 사용 여부(모서리 탭에서 안 쓰는 꼭짓점을 비활성화). (Swift cornerUsed)
-fn corner_used_value(s: &Settings) -> Value {
-    let ctx = seg_ctx(s);
+fn corner_used_value(s: &Settings, side: BorderEdge) -> Value {
+    let ctx = seg_ctx(s, side);
     let mut out = Map::new();
     for (name, z) in [("menuBar", ScreenZone::MenuBar), ("main", ScreenZone::Main), ("dock", ScreenZone::Dock)] {
         let mut m = Map::new();
@@ -418,6 +444,18 @@ pub fn ui_action(app: AppHandle, action: String, arg: Value) -> Result<Value, St
         }),
         // '겹치는 선 없음'을 켤 때 기존 겹침 정리(Swift :613-619). 편집 중인 화면의 테두리에 쓴다.
         "enforceNoOverlap" => {
+            let st = crate::shared(&app);
+            let st = st.lock().unwrap();
+            let target = editing_id(&app, &st).or(st.main_display_id.clone());
+            let ds = um_platform::display::displays();
+            let side = ds.iter().find(|d| target.as_ref().map_or(d.is_primary, |id| id == &d.id))
+                .or_else(|| ds.first()).and_then(|d| d.taskbar).map_or(BorderEdge::Bottom, |t| match t.side {
+                    um_platform::display::TaskbarSide::Top => BorderEdge::Top,
+                    um_platform::display::TaskbarSide::Bottom => BorderEdge::Bottom,
+                    um_platform::display::TaskbarSide::Left => BorderEdge::Left,
+                    um_platform::display::TaskbarSide::Right => BorderEdge::Right,
+                });
+            drop(st);
             let edit = editing_id(&app, &crate::shared(&app).lock().unwrap());
             with_state(&app, |st| {
                 let s = match &edit {
@@ -427,7 +465,7 @@ pub fn ui_action(app: AppHandle, action: String, arg: Value) -> Result<Value, St
                     }
                     None => &mut st.main,
                 };
-                let fixed = enforce_no_overlap(&seg_ctx(s));
+                let fixed = enforce_no_overlap(&seg_ctx(s, side));
                 s.provider_layouts.extend(fixed);
             });
         }

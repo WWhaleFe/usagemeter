@@ -132,6 +132,7 @@ fn layout_from(p: &Value) -> Option<ProviderLayout> {
     }
     let opt_set = |k: &str| (!p[k].is_null()).then(|| p[k].as_array().unwrap().clone());
     Some(ProviderLayout {
+        segment_geometry: None,
         edges: opt_set("edges").map(|a| a.iter().map(|x| edge_from(x.as_str().unwrap())).collect()),
         anchor_corner: BorderCorner::TopLeft,
         anchor_side: AnchorSide::Center,
@@ -169,6 +170,7 @@ fn multi_ai_scenarios_match_swift() {
         }
         let (main, menu, dock) = (radii_from(&r["main"]), radii_from(&r["menu"]), radii_from(&r["dock"]));
         let ctx = SegContext {
+            side: um_core::types::BorderEdge::Bottom,
             menu_on: r["menuOn"].as_bool().unwrap(),
             dock_on: r["dockOn"].as_bool().unwrap(),
             no_overlap: r["noOverlap"].as_bool().unwrap(),
@@ -253,6 +255,7 @@ fn h_cap_keys_and_lookup() {
         Some([("hTop.R".to_string(), SegCap::Down)].into_iter().collect());
     let radii = BTreeMap::new();
     let ctx = SegContext {
+        side: um_core::types::BorderEdge::Bottom,
         menu_on: false,
         dock_on: false,
         no_overlap: false,

@@ -1,7 +1,7 @@
 //! 세그먼트 그래프. Swift `OverlaySettings`의 세그먼트 구간(:560-880)과 `enforceNoOverlap`(:364)을
 //! Settings 구조체 없이 쓸 수 있게 옮긴 순수 함수 모음.
 //!
-//! 설정 값은 `SegContext`(평범한 데이터)로 받는다. 동작은 Swift와 같고,
+//! 설정 값과 화면 방향은 `SegContext`로 받는다. 아래 Dock 동작은 Swift와 같고,
 //! `tests/segments.rs`가 Swift 기준값(`tests/fixtures/segments_ref.jsonl`)과 전수 비교한다.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -17,6 +17,8 @@ pub type SegSet = BTreeSet<SegPart>;
 /// 세그먼트 판정에 필요한 설정 값 묶음. Settings 타입에 의존하지 않는다.
 #[derive(Debug, Clone, Copy)]
 pub struct SegContext<'a> {
+    /// 현재 화면의 Dock 방향. 저장 형식에는 포함하지 않는다.
+    pub side: BorderEdge,
     /// `menuLineEnabled`
     pub menu_on: bool,
     /// `dockLineEnabled`
@@ -52,8 +54,46 @@ pub struct ChainEnds {
 const LEFT_SEGS: [SegPart; 3] = [SegPart::LMenuBar, SegPart::LMain, SegPart::LDock];
 const RIGHT_SEGS: [SegPart; 3] = [SegPart::RMenuBar, SegPart::RMain, SegPart::RDock];
 
+/// 메뉴바가 화면 위에 고정되는 옆 Dock 모드.
+pub fn lateral_menu(menu: bool, dock: bool, side: BorderEdge) -> bool {
+    menu && dock && matches!(side, BorderEdge::Left | BorderEdge::Right)
+}
+
 fn node(right: bool, level: u8) -> SegNode {
     SegNode { right, level }
+}
+
+/// 옆 메뉴 모델 노드의 상대 좌표. 내부 접점도 독립 노드로 구분한다.
+pub fn side_node_point(n: SegNode, side: BorderEdge) -> (f64, f64) {
+    let (x, y) = match (n.right, n.level) {
+        (false, 0) => return (0.0, 0.0), (true, 0) => return (1.0, 0.0),
+        (false, 1) => (0.0, 0.25), (true, 1) => (1.0, 0.25),
+        (false, 2) => (0.25, 0.25), (true, 2) => (0.25, 1.0),
+        (false, _) => (0.0, 1.0), (true, _) => (1.0, 1.0),
+    };
+    (if side == BorderEdge::Right { 1.0 - x } else { x }, y)
+}
+
+fn side_capable(seg: SegPart) -> bool {
+    seg.is_horizontal() || seg == SegPart::LDock
+}
+
+fn side_cap_vector(ctx: &SegContext, seg: SegPart, cap: SegCap) -> (f64, f64) {
+    let sign = if cap == SegCap::Up { -1.0 } else { 1.0 };
+    if matches!(seg, SegPart::HDock | SegPart::HBottom) {
+        (if ctx.side == BorderEdge::Left { -sign } else { sign }, 0.0)
+    } else { (0.0, sign) }
+}
+
+fn side_corner_node(ctx: &SegContext, zone: ScreenZone, corner: BorderCorner) -> SegNode {
+    let perimeter = zone_perimeter_on(&[zone].into(), ctx.menu_on, ctx.dock_on, ctx.side);
+    let nodes: Vec<_> = seg_adjacency_on(&perimeter, ctx.menu_on, ctx.dock_on, ctx.side).keys().copied().collect();
+    let right = matches!(corner, BorderCorner::TopRight | BorderCorner::BottomRight);
+    let bottom = matches!(corner, BorderCorner::BottomLeft | BorderCorner::BottomRight);
+    *nodes.iter().max_by(|&&a, &&b| {
+        let score = |n| { let (x,y) = side_node_point(n, ctx.side); x * if right { 1.0 } else { -1.0 } + y * if bottom { 1.0 } else { -1.0 } };
+        score(a).total_cmp(&score(b))
+    }).unwrap()
 }
 
 // ---- 기본 레이아웃 (Swift :809-821) ----
@@ -67,6 +107,7 @@ pub fn default_layout(provider_index: usize) -> ProviderLayout {
         _ => (SegPart::RMain, BorderCorner::TopRight),
     };
     ProviderLayout {
+        segment_geometry: Some(1),
         edges: None,
         anchor_corner: anchor,
         anchor_side: AnchorSide::Center,
@@ -101,11 +142,46 @@ pub fn layout_for(ctx: &SegContext, id: &str) -> ProviderLayout {
 /// 이 AI의 세그먼트 조합. 없으면 구버전 변+영역 설정에서 변환. (Swift `segs(for:)`)
 pub fn segs_for(ctx: &SegContext, id: &str) -> SegSet {
     let l = layout_for(ctx, id);
-    if let Some(s) = l.segments {
+    if let Some(s) = l.segments.clone() {
+        if lateral_menu(ctx.menu_on, ctx.dock_on, ctx.side) && l.segment_geometry.is_none() {
+            return legacy_side_segments(&s);
+        }
         return s;
     }
     let edges = l.edges.clone().unwrap_or_else(|| BorderEdge::ALL.into_iter().collect());
-    migrate_to_segments(&edges, &l.zone_set(), ctx.menu_on, ctx.dock_on)
+    let set = migrate_to_segments(&edges, &l.zone_set(), ctx.menu_on, ctx.dock_on);
+    if lateral_menu(ctx.menu_on, ctx.dock_on, ctx.side) { legacy_side_segments(&set) } else { set }
+}
+
+/// 옛 접합부의 되짚는 선을 새 직선 선택으로 환산한다. 저장 원본은 건드리지 않는다.
+pub fn legacy_side_segments(set: &SegSet) -> SegSet {
+    use SegPart::*;
+    let mut out = SegSet::new();
+    for &part in set {
+        let parts: &[SegPart] = match part {
+            HMenu => &[HMenu, LDock], LMain | LDock => &[LDock],
+            RMain => &[LMain, RMain], _ => std::slice::from_ref(&part),
+        };
+        for &p in parts { if !out.insert(p) { out.remove(&p); } }
+    }
+    out
+}
+
+/// 화면 방향에 맞춘 편집·렌더용 배치. 옛 전체 메뉴선의 Dock 쪽 캡도 함께 옮긴다.
+pub fn positioned_layout(ctx: &SegContext, id: &str) -> ProviderLayout {
+    let mut layout = layout_for(ctx, id);
+    let legacy = lateral_menu(ctx.menu_on, ctx.dock_on, ctx.side) && layout.segment_geometry.is_none();
+    layout.segments = Some(segs_for(ctx, id));
+    if legacy {
+        if let Some(caps) = &mut layout.h_caps {
+            let end = ctx.side == BorderEdge::Right;
+            if let Some(cap) = caps.remove(&h_cap_key(SegPart::HMenu, end)) {
+                caps.insert(h_cap_key(SegPart::LDock, end), cap);
+            }
+        }
+        layout.segment_geometry = Some(1);
+    }
+    layout
 }
 
 // ---- 가로선 캡 (Swift :572-578) ----
@@ -117,7 +193,7 @@ pub fn h_cap_key(s: SegPart, right: bool) -> String {
 
 /// 이 AI의 특정 가로선 좌/우 끝 캡. 없으면 None. (Swift `hCap`)
 pub fn h_cap(ctx: &SegContext, id: &str, s: SegPart, right: bool) -> SegCap {
-    layout_for(ctx, id)
+    positioned_layout(ctx, id)
         .h_caps
         .and_then(|m| m.get(&h_cap_key(s, right)).copied())
         .unwrap_or(SegCap::None)
@@ -136,6 +212,26 @@ pub fn seg_available(s: SegPart, menu_on: bool, dock_on: bool) -> bool {
 
 /// 세그먼트의 양 끝 노드. 본문 세로선은 경계선 유무에 따라 늘어난다(menuOn ? 1 : 0 ~ dockOn ? 2 : 3).
 pub fn seg_ends(s: SegPart, menu_on: bool, dock_on: bool) -> (SegNode, SegNode) {
+    seg_ends_on(s, menu_on, dock_on, BorderEdge::Bottom)
+}
+
+/// 현재 Dock 방향의 그래프를 사용한다.
+pub fn seg_ends_on(s: SegPart, menu_on: bool, dock_on: bool, side: BorderEdge) -> (SegNode, SegNode) {
+    if lateral_menu(menu_on, dock_on, side) {
+        use SegPart::*;
+        return match s {
+            HTop => (node(false, 0), node(true, 0)),
+            LMenuBar => (node(false, 0), node(side == BorderEdge::Right, 1)),
+            RMenuBar => (node(true, 0), node(side == BorderEdge::Left, 1)),
+            HMenu => (node(false, 2), node(true, 1)),
+            LDock => (node(false, 1), node(false, 2)),
+            LMain => (node(true, 1), node(true, 3)),
+            HDock => (node(false, 2), node(true, 2)),
+            HBottom => (node(false, 1), node(false, 3)),
+            RMain => (node(true, 3), node(true, 2)),
+            RDock => (node(true, 2), node(false, 3)),
+        };
+    }
     let main_top = if menu_on { 1 } else { 0 };
     let main_bot = if dock_on { 2 } else { 3 };
     match s {
@@ -154,9 +250,14 @@ pub fn seg_ends(s: SegPart, menu_on: bool, dock_on: bool) -> (SegNode, SegNode) 
 
 /// 노드 -> 인접 세그먼트 목록.
 pub fn seg_adjacency(set: &SegSet, menu_on: bool, dock_on: bool) -> BTreeMap<SegNode, Vec<SegPart>> {
+    seg_adjacency_on(set, menu_on, dock_on, BorderEdge::Bottom)
+}
+
+/// 현재 Dock 방향의 그래프를 사용한다.
+pub fn seg_adjacency_on(set: &SegSet, menu_on: bool, dock_on: bool, side: BorderEdge) -> BTreeMap<SegNode, Vec<SegPart>> {
     let mut adj: BTreeMap<SegNode, Vec<SegPart>> = BTreeMap::new();
     for &s in set {
-        let (a, b) = seg_ends(s, menu_on, dock_on);
+        let (a, b) = seg_ends_on(s, menu_on, dock_on, side);
         adj.entry(a).or_default().push(s);
         adj.entry(b).or_default().push(s);
     }
@@ -166,10 +267,15 @@ pub fn seg_adjacency(set: &SegSet, menu_on: bool, dock_on: bool) -> BTreeMap<Seg
 /// 선택이 '한 줄로 이어진 선(체인 또는 고리)'인지.
 /// 조건: 비어 있지 않음, 전부 존재하는 세그먼트, 노드 차수 <= 2, 전체 연결, 끝점 0개(고리) 또는 2개(체인).
 pub fn is_valid_segments(set: &SegSet, menu_on: bool, dock_on: bool) -> bool {
+    is_valid_segments_on(set, menu_on, dock_on, BorderEdge::Bottom)
+}
+
+/// 현재 Dock 방향의 그래프를 사용한다.
+pub fn is_valid_segments_on(set: &SegSet, menu_on: bool, dock_on: bool, side: BorderEdge) -> bool {
     if set.is_empty() || !set.iter().all(|&s| seg_available(s, menu_on, dock_on)) {
         return false;
     }
-    let adj = seg_adjacency(set, menu_on, dock_on);
+    let adj = seg_adjacency_on(set, menu_on, dock_on, side);
     if !adj.values().all(|v| v.len() <= 2) {
         return false;
     }
@@ -184,7 +290,7 @@ pub fn is_valid_segments(set: &SegSet, menu_on: bool, dock_on: bool) -> bool {
         if !visited.insert(s) {
             continue;
         }
-        let (a, b) = seg_ends(s, menu_on, dock_on);
+        let (a, b) = seg_ends_on(s, menu_on, dock_on, side);
         for n in [a, b] {
             if let Some(v) = adj.get(&n) {
                 stack.extend(v.iter().copied().filter(|x| !visited.contains(x)));
@@ -196,13 +302,25 @@ pub fn is_valid_segments(set: &SegSet, menu_on: bool, dock_on: bool) -> bool {
 
 /// 열린 체인의 두 끝(정렬 순서 고정). 고리이거나 유효하지 않으면 None. (Swift :745)
 pub fn chain_ends(set: &SegSet, menu_on: bool, dock_on: bool) -> Option<ChainEnds> {
-    if !is_valid_segments(set, menu_on, dock_on) {
+    chain_ends_on(set, menu_on, dock_on, BorderEdge::Bottom)
+}
+
+/// 현재 Dock 방향의 그래프를 사용한다.
+pub fn chain_ends_on(set: &SegSet, menu_on: bool, dock_on: bool, side: BorderEdge) -> Option<ChainEnds> {
+    if !is_valid_segments_on(set, menu_on, dock_on, side) {
         return None;
     }
-    let adj = seg_adjacency(set, menu_on, dock_on);
+    let adj = seg_adjacency_on(set, menu_on, dock_on, side);
     // BTreeMap 순회 = SegNode 정렬 순서 (Swift `keys.sorted()`).
-    let eps: Vec<(SegNode, SegPart)> =
+    let mut eps: Vec<(SegNode, SegPart)> =
         adj.iter().filter(|(_, v)| v.len() == 1).map(|(n, v)| (*n, v[0])).collect();
+    if lateral_menu(menu_on, dock_on, side) {
+        eps.sort_by(|a,b| {
+            let (ax,ay) = side_node_point(a.0, side);
+            let (bx,by) = side_node_point(b.0, side);
+            ay.total_cmp(&by).then(ax.total_cmp(&bx))
+        });
+    }
     if eps.len() != 2 {
         return None;
     }
@@ -241,6 +359,11 @@ fn h_seg_of_level(level: u8) -> SegPart {
 
 /// 영역 조합의 둘레를 이루는 세그먼트. 꺼진 경계선의 영역은 본문으로 병합, 빈 집합은 본문.
 pub fn zone_perimeter(z: &BTreeSet<ScreenZone>, menu_on: bool, dock_on: bool) -> SegSet {
+    zone_perimeter_on(z, menu_on, dock_on, BorderEdge::Bottom)
+}
+
+/// 현재 Dock 방향의 그래프를 사용한다.
+pub fn zone_perimeter_on(z: &BTreeSet<ScreenZone>, menu_on: bool, dock_on: bool, side: BorderEdge) -> SegSet {
     let mut eff: BTreeSet<ScreenZone> = z
         .iter()
         .map(|&zone| match zone {
@@ -251,6 +374,21 @@ pub fn zone_perimeter(z: &BTreeSet<ScreenZone>, menu_on: bool, dock_on: bool) ->
         .collect();
     if eff.is_empty() {
         eff.insert(ScreenZone::Main);
+    }
+    if lateral_menu(menu_on, dock_on, side) {
+        use SegPart::*;
+        let mut out = SegSet::new();
+        for zone in eff {
+            let perimeter: &[SegPart] = match zone {
+                ScreenZone::MenuBar => &[HTop, LMenuBar, RMenuBar, HMenu, LDock],
+                ScreenZone::Main => &[HMenu, LMain, HDock, RMain],
+                ScreenZone::Dock => &[LDock, HDock, HBottom, RDock],
+            };
+            for &part in perimeter {
+                if !out.insert(part) { out.remove(&part); }
+            }
+        }
+        return out;
     }
     let order = ScreenZone::ALL;
     let top = order.iter().copied().find(|x| eff.contains(x)).unwrap_or(ScreenZone::Main);
@@ -320,7 +458,31 @@ pub fn migrate_to_segments(
 /// - 내 가로선 끝에 up/down 캡이 있고 다른 AI의 세로선이 그 방향으로 노드에 붙어 있으면 half.
 /// - 내 세로선 끝에서 다른 AI 가로선의 캡이 내 쪽을 향하면 (true, true).
 pub fn end_override(ctx: &SegContext, id: &str, node: SegNode, seg: SegPart) -> (bool, bool) {
+    let side = ctx.side;
     let (menu_on, dock_on) = (ctx.menu_on, ctx.dock_on);
+    if lateral_menu(menu_on, dock_on, side) {
+        let p = side_node_point(node, side);
+        for &other in ctx.provider_ids.iter().filter(|&&o| o != id) {
+            for part in segs_for(ctx, other) {
+                let (a,b) = seg_ends_on(part, menu_on, dock_on, side);
+                if a != node && b != node { continue; }
+                let cap_seg = if side_capable(seg) { seg } else { part };
+                if !side_capable(cap_seg) { continue; }
+                let owner = if side_capable(seg) { id } else { other };
+                let (ca,cb) = seg_ends_on(cap_seg, menu_on, dock_on, side);
+                let pa = side_node_point(ca, side);
+                let pb = side_node_point(cb, side);
+                let end = if pa.1 == pb.1 { p.0 > pa.0.min(pb.0) } else { p.1 > pa.1.min(pb.1) };
+                let cap = h_cap(ctx, owner, cap_seg, end);
+                if !matches!(cap, SegCap::Up | SegCap::Down) { continue; }
+                let v = side_cap_vector(ctx, cap_seg, cap);
+                let line = if side_capable(seg) { (a,b) } else { seg_ends_on(seg, menu_on, dock_on, side) };
+                let q = side_node_point(if line.0 == node { line.1 } else { line.0 }, side);
+                if (q.0-p.0)*v.0 + (q.1-p.1)*v.1 > 0.0 { return (true, !side_capable(seg)); }
+            }
+        }
+        return (false, false);
+    }
     if seg.is_horizontal() {
         let cap = h_cap(ctx, id, seg, node.right);
         if cap != SegCap::Up && cap != SegCap::Down {
@@ -328,7 +490,7 @@ pub fn end_override(ctx: &SegContext, id: &str, node: SegNode, seg: SegPart) -> 
         }
         for &other in ctx.provider_ids.iter().filter(|&&o| o != id) {
             for s in segs_for(ctx, other).into_iter().filter(|s| !s.is_horizontal()) {
-                let (a, b) = seg_ends(s, menu_on, dock_on);
+                let (a, b) = seg_ends_on(s, menu_on, dock_on, side);
                 if a != node && b != node {
                     continue;
                 }
@@ -342,7 +504,7 @@ pub fn end_override(ctx: &SegContext, id: &str, node: SegNode, seg: SegPart) -> 
         }
         (false, false)
     } else {
-        let (a, b) = seg_ends(seg, menu_on, dock_on);
+        let (a, b) = seg_ends_on(seg, menu_on, dock_on, side);
         if a != node && b != node {
             return (false, false);
         }
@@ -350,7 +512,7 @@ pub fn end_override(ctx: &SegContext, id: &str, node: SegNode, seg: SegPart) -> 
         let my_down = other_end.level > node.level; // 내 세로선이 이 노드에서 아래로 뻗는가
         for &other in ctx.provider_ids.iter().filter(|&&o| o != id) {
             for s in segs_for(ctx, other).into_iter().filter(|s| s.is_horizontal()) {
-                let (ha, hb) = seg_ends(s, menu_on, dock_on);
+                let (ha, hb) = seg_ends_on(s, menu_on, dock_on, side);
                 if ha != node && hb != node {
                     continue;
                 }
@@ -367,7 +529,7 @@ pub fn end_override(ctx: &SegContext, id: &str, node: SegNode, seg: SegPart) -> 
 /// 이 AI가 세그먼트 조합을 쓸 수 있는지: 한 줄로 이어져야 하고, '겹치는 선 없음'이 켜져 있으면
 /// 다른 AI가 쓰는 세그먼트와 겹칠 수 없다. (Swift `canUseSegments`)
 pub fn can_use_segments(ctx: &SegContext, id: &str, set: &SegSet) -> bool {
-    if !is_valid_segments(set, ctx.menu_on, ctx.dock_on) {
+    if !is_valid_segments_on(set, ctx.menu_on, ctx.dock_on, ctx.side) {
         return false;
     }
     if ctx.no_overlap {
@@ -384,19 +546,21 @@ pub fn can_use_segments(ctx: &SegContext, id: &str, set: &SegSet) -> bool {
 /// 비거나 한 줄이 아니게 되면 비어 있는 첫 세그먼트(`SegPart::ALL` 순서) 하나를 준다.
 /// 반환: `provider_ids`별 갱신된 레이아웃(호출 쪽이 `providerLayouts`에 덮어쓴다). (Swift :364-381)
 pub fn enforce_no_overlap(ctx: &SegContext) -> BTreeMap<String, ProviderLayout> {
+    let side = ctx.side;
     let (menu_on, dock_on) = (ctx.menu_on, ctx.dock_on);
     let mut used: SegSet = BTreeSet::new();
     let mut out = BTreeMap::new();
     for &id in ctx.provider_ids {
         let mut mine: SegSet = segs_for(ctx, id).difference(&used).copied().collect();
-        if mine.is_empty() || !is_valid_segments(&mine, menu_on, dock_on) {
+        if mine.is_empty() || !is_valid_segments_on(&mine, menu_on, dock_on, side) {
             let free = SegPart::ALL
                 .into_iter()
                 .find(|&s| seg_available(s, menu_on, dock_on) && !used.contains(&s));
             mine = free.into_iter().collect();
         }
-        let mut l = layout_for(ctx, id);
+        let mut l = positioned_layout(ctx, id);
         l.segments = Some(mine.clone());
+        if lateral_menu(menu_on, dock_on, side) { l.segment_geometry = Some(1); }
         out.insert(id.to_string(), l);
         used.extend(mine);
     }
@@ -407,6 +571,29 @@ pub fn enforce_no_overlap(ctx: &SegContext) -> BTreeMap<String, ProviderLayout> 
 /// 쓰임 = 그 꼭짓점에서 가로+세로 세그먼트가 꺾이거나, 체인 끝 캡이 그 꼭짓점을 향함.
 pub fn corner_used(ctx: &SegContext, zone: ScreenZone, corner: BorderCorner) -> bool {
     let (menu_on, dock_on) = (ctx.menu_on, ctx.dock_on);
+    if lateral_menu(menu_on, dock_on, ctx.side) {
+        let n = side_corner_node(ctx, zone, corner);
+        let perimeter = zone_perimeter_on(&[zone].into(), menu_on, dock_on, ctx.side);
+        let incident = seg_adjacency_on(&perimeter, menu_on, dock_on, ctx.side)[&n].clone();
+        return ctx.provider_ids.iter().any(|&id| {
+            let set = segs_for(ctx, id);
+            incident.iter().all(|p| set.contains(p)) || incident.iter().any(|&part| {
+                if !side_capable(part) || !set.contains(&part) { return false; }
+                let (a,b) = seg_ends_on(part, menu_on, dock_on, ctx.side);
+                let p = side_node_point(n, ctx.side);
+                let pa = side_node_point(a, ctx.side); let pb = side_node_point(b, ctx.side);
+                let end = if pa.1 == pb.1 { p.0 > pa.0.min(pb.0) } else { p.1 > pa.1.min(pb.1) };
+                let cap = h_cap(ctx, id, part, end);
+                matches!(cap, SegCap::Up | SegCap::Down) && {
+                    let v = side_cap_vector(ctx, part, cap);
+                    let other = incident.iter().copied().find(|&s| s != part).unwrap();
+                    let (a,b) = seg_ends_on(other, menu_on, dock_on, ctx.side);
+                    let q = side_node_point(if a == n { b } else { a }, ctx.side);
+                    (q.0-p.0)*v.0 + (q.1-p.1)*v.1 > 0.0
+                }
+            })
+        });
+    }
     // 병합돼 없는 영역(경계선 꺼짐)의 곡률은 안 쓰인다.
     if zone == ScreenZone::MenuBar && !menu_on {
         return false;
@@ -459,6 +646,18 @@ fn zone_radii<'a>(ctx: &SegContext<'a>, z: ScreenZone) -> &'a BTreeMap<BorderCor
 /// 캡이 있으면 캡이 향한 영역 꼭짓점, 없으면 세로선이 속한 영역 꼭짓점. 음수는 0. (Swift :831)
 pub fn bend_radius_estimate(ctx: &SegContext, id: &str, h: SegPart, v: SegPart, node: SegNode) -> f64 {
     let (menu_on, dock_on) = (ctx.menu_on, ctx.dock_on);
+    if lateral_menu(menu_on, dock_on, ctx.side) {
+        for zone in ScreenZone::ALL {
+            let perimeter = zone_perimeter_on(&[zone].into(), menu_on, dock_on, ctx.side);
+            if !perimeter.contains(&h) || !perimeter.contains(&v) { continue; }
+            for corner in BorderCorner::ALL {
+                if side_corner_node(ctx, zone, corner) == node {
+                    return zone_radii(ctx, zone).get(&corner).copied().unwrap_or(0.0).max(0.0);
+                }
+            }
+        }
+        return 0.0;
+    }
     let zone_of = |s: SegPart| match s {
         SegPart::LMenuBar | SegPart::RMenuBar => ScreenZone::MenuBar,
         SegPart::LDock | SegPart::RDock => ScreenZone::Dock,
@@ -505,6 +704,18 @@ pub fn bend_radius_estimate(ctx: &SegContext, id: &str, h: SegPart, v: SegPart, 
 pub fn edge_active(ctx: &SegContext, e: BorderEdge) -> bool {
     ctx.provider_ids.iter().any(|&id| {
         let s = segs_for(ctx, id);
+        if lateral_menu(ctx.menu_on, ctx.dock_on, ctx.side) {
+            return s.iter().any(|&part| {
+                let (a,b) = seg_ends_on(part, ctx.menu_on, ctx.dock_on, ctx.side);
+                let (a,b) = (side_node_point(a,ctx.side),side_node_point(b,ctx.side));
+                match e {
+                    BorderEdge::Top => a.1 == 0.0 && b.1 == 0.0,
+                    BorderEdge::Bottom => a.1 == 1.0 && b.1 == 1.0,
+                    BorderEdge::Left => a.0 == 0.0 && b.0 == 0.0,
+                    BorderEdge::Right => a.0 == 1.0 && b.0 == 1.0,
+                }
+            });
+        }
         match e {
             BorderEdge::Top => s.contains(&SegPart::HTop),
             BorderEdge::Bottom => s.contains(&SegPart::HBottom),

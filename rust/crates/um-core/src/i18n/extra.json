@@ -430,34 +430,34 @@
     "右へ"
   ],
   "seg.dockVertical": [
-    "Dock선 │",
-    "Dock line │",
-    "Dock線 │"
+    "Dock 경계",
+    "Dock boundary",
+    "Dock 境界"
   ],
   "seg.dockTop": [
-    "상·Dock ─",
-    "Top·dock ─",
-    "上・Dock ─"
+    "Dock 위",
+    "Dock top",
+    "Dock 上"
   ],
   "seg.dockBottom": [
-    "하·Dock ─",
-    "Bottom·dock ─",
-    "下・Dock ─"
+    "Dock 아래",
+    "Dock bottom",
+    "Dock 下"
   ],
   "win.seg.dockVertical": [
-    "작업 표시줄선 │",
-    "Taskbar line │",
-    "タスクバー線 │"
+    "작업 표시줄 경계",
+    "Taskbar boundary",
+    "タスクバー境界"
   ],
   "win.seg.dockTop": [
-    "상·작업 표시줄 ─",
-    "Top·taskbar ─",
-    "上・タスクバー ─"
+    "작업 표시줄 위",
+    "Taskbar top",
+    "タスクバー上"
   ],
   "win.seg.dockBottom": [
-    "하·작업 표시줄 ─",
-    "Bottom·taskbar ─",
-    "下・タスクバー ─"
+    "작업 표시줄 아래",
+    "Taskbar bottom",
+    "タスクバー下"
   ],
   "seg.edgeLeft": [
     "좌측 │",
@@ -470,14 +470,14 @@
     "右 │"
   ],
   "seg.mainTop": [
-    "상·본문 ─",
-    "Top·main ─",
-    "上・メイン ─"
+    "본문 위",
+    "Main top",
+    "本文上"
   ],
   "seg.mainBottom": [
-    "하·본문 ─",
-    "Bottom·main ─",
-    "下・メイン ─"
+    "본문 아래",
+    "Main bottom",
+    "本文下"
   ],
   "seg.mainRightBottom": [
     "우·하단 본문 ┘",
@@ -488,5 +488,20 @@
     "좌·하단 본문 └",
     "Left·bottom main └",
     "左・下メイン └"
+  ],
+  "seg.mainOuter": [
+    "본문 바깥",
+    "Main outer edge",
+    "本文外側"
+  ],
+  "seg.dockOuter": [
+    "Dock 바깥",
+    "Dock outer edge",
+    "Dock 外側"
+  ],
+  "win.seg.dockOuter": [
+    "작업 표시줄 바깥",
+    "Taskbar outer edge",
+    "タスクバー外側"
   ]
 }

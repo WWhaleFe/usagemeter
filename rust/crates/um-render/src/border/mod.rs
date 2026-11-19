@@ -97,7 +97,7 @@ pub fn build_positioned_paths(input: &BorderInput, side: StripSide) -> BorderSce
     let fixed_menu = s.menu_line_enabled && s.dock_line_enabled && matches!(side, StripSide::Left | StripSide::Right);
     let (w, h) = if fixed_menu { (input.screen_w, input.screen_h) }
         else { side.canonical_size(input.screen_w, input.screen_h) };
-    let draw_items = items::draw_items(s, &input.bands);
+    let draw_items = items::draw_items(s, &input.bands, side.edge());
     let mut scene_items = vec![];
     let mut parts_of: Vec<(Vec<BandPart>, f64, Rgba)> = vec![];
     // AI별 (경로, 굵기 구간) 준비. 노치 우회가 있으면 분할이 없어도 구간을 계산해 노치를 별도 레이어로 분리한다.
@@ -308,14 +308,14 @@ mod tests {
     #[test]
     fn 독_세_방향과_메뉴바의_실제_경로와_호버() {
         use kurbo::Shape;
-        use um_core::segments::zone_perimeter;
+        use um_core::segments::zone_perimeter_on;
         for menu_on in [false, true] {
             let mut s = Settings { thickness: 2.0, notch_enabled: false, menu_line_enabled: menu_on,
                 menu_line_height: 25.0, dock_line_enabled: true, dock_line_height: 70.0, ..Default::default() };
             for side in [StripSide::Bottom, StripSide::Left, StripSide::Right] {
                 for zone in [ScreenZone::MenuBar, ScreenZone::Dock, ScreenZone::Main] {
                     if !menu_on && zone == ScreenZone::MenuBar { continue; }
-                    s.provider_layouts.get_mut("claude").unwrap().segments = Some(zone_perimeter(&[zone].into(), menu_on, true));
+                    s.provider_layouts.get_mut("claude").unwrap().segments = Some(zone_perimeter_on(&[zone].into(), menu_on, true, side.edge()));
                     let scene = build_positioned_paths(&BorderInput { settings: &s, screen_w: 1200.0, screen_h: 800.0,
                         bands: vec![ProviderBand { id: "claude".into(), ratio: 1.0, color: RED, parts: vec![] }] }, side);
                     let b = scene.items[0].path.bounding_box();
@@ -338,6 +338,60 @@ mod tests {
                     let emphasized = render_emphasized(&scene, (0.0, 0.0), scene.screen, 1.0, Some(0));
                     assert!(image.pixels().iter().any(|p| p.alpha() > 0));
                     assert!(emphasized.pixels().iter().zip(image.pixels()).all(|(a, b)| a.alpha() == 0 || b.alpha() > 0));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn 새_직선_선택의_렌더와_호버와_고리_방향() {
+        use kurbo::{ParamCurve, PathSeg, Shape};
+        use um_core::segments::{seg_available, zone_perimeter_on};
+        use um_core::types::BorderCorner;
+        for menu in [false,true] {
+            for side in [StripSide::Left,StripSide::Right,StripSide::Top] {
+                if menu && side == StripSide::Top { continue; }
+                let mut s = Settings { thickness:2.0,menu_line_enabled:menu,menu_line_height:25.0,
+                    dock_line_enabled:true,dock_line_height:70.0,notch_enabled:false,..Default::default() };
+                s.menu_zone_radii.clear(); s.corner_radii.clear(); s.dock_zone_radii.clear();
+                for part in SegPart::ALL.into_iter().filter(|&p| seg_available(p,menu,true)) {
+                    for clockwise in [false,true] {
+                        let layout=s.provider_layouts.get_mut("claude").unwrap();
+                        layout.segment_geometry=Some(1); layout.segments=Some([part].into()); layout.clockwise=clockwise;
+                        let scene=build_positioned_paths(&BorderInput { settings:&s,screen_w:1200.0,screen_h:800.0,
+                            bands:vec![ProviderBand { id:"claude".into(),ratio:0.5,color:RED,parts:vec![] }] },side);
+                        let path=&scene.items[0].path;
+                        assert_eq!(path.segments().count(),1,"{side:?} {menu} {part:?}");
+                        assert!(matches!(path.segments().next().unwrap(),PathSeg::Line(_)));
+                        let expected=um_core::dock::positioned_lines(&s,&[part].into(),1200.0,800.0,side.edge())[0];
+                        let bounds=path.bounding_box();
+                        assert_eq!(bounds.x0,expected.a.0.min(expected.b.0)); assert_eq!(bounds.x1,expected.a.0.max(expected.b.0));
+                        assert_eq!(bounds.y0,expected.a.1.min(expected.b.1)); assert_eq!(bounds.y1,expected.a.1.max(expected.b.1));
+                        let hit=HoverGeometry::new(&scene);
+                        assert_eq!(hit.candidates(&scene,(expected.a.0+expected.b.0)/2.0,(expected.a.1+expected.b.1)/2.0),vec![0]);
+                    }
+                }
+                if !menu { continue; }
+                for zone in ScreenZone::ALL {
+                    for anchor in BorderCorner::ALL {
+                        for clockwise in [false,true] {
+                            let layout=s.provider_layouts.get_mut("claude").unwrap();
+                            layout.segments=Some(zone_perimeter_on(&[zone].into(),menu,true,side.edge()));
+                            layout.anchor_corner=anchor; layout.clockwise=clockwise;
+                            let scene=build_positioned_paths(&BorderInput { settings:&s,screen_w:1200.0,screen_h:800.0,
+                                bands:vec![ProviderBand { id:"claude".into(),ratio:1.0,color:RED,parts:vec![] }] },side);
+                            let path=&scene.items[0].path;
+                            let area:f64=path.segments().map(|p| match p { PathSeg::Line(l)=>l.p0.x*l.p1.y-l.p1.x*l.p0.y,_=>0.0 }).sum();
+                            assert_eq!(area>0.0,clockwise,"{side:?} {zone:?} {anchor:?}");
+                            let bounds=path.bounding_box();
+                            let target=match anchor {
+                                BorderCorner::TopLeft=>(bounds.x0,bounds.y0), BorderCorner::TopRight=>(bounds.x1,bounds.y0),
+                                BorderCorner::BottomLeft=>(bounds.x0,bounds.y1), BorderCorner::BottomRight=>(bounds.x1,bounds.y1),
+                            };
+                            let first=path.segments().next().unwrap();
+                            assert_eq!((first.start().x,first.start().y),target);
+                        }
+                    }
                 }
             }
         }

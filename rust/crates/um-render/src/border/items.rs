@@ -4,7 +4,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use um_core::model::{UsageSnapshot, UsageSubItem};
-use um_core::segments::{PROVIDER_IDS, SegContext, chain_ends, end_override, seg_ends};
+use um_core::segments::{PROVIDER_IDS, SegContext, chain_ends_on, end_override, seg_ends_on, segs_for};
 use um_core::settings::{Settings, default_provider_color};
 use um_core::types::{Rgba, SegNode, SegPart};
 
@@ -24,8 +24,9 @@ pub(crate) struct DrawItem {
 }
 
 /// 세그먼트 그래프 함수에 넘길 설정 묶음.
-fn seg_ctx(s: &Settings) -> SegContext<'_> {
+fn seg_ctx(s: &Settings, side: um_core::types::BorderEdge) -> SegContext<'_> {
     SegContext {
+        side,
         menu_on: s.menu_line_enabled,
         dock_on: s.dock_line_enabled,
         no_overlap: s.no_overlap_lines,
@@ -41,16 +42,17 @@ fn seg_ctx(s: &Settings) -> SegContext<'_> {
 fn make_shape(
     s: &Settings,
     id: &str,
+    side: um_core::types::BorderEdge,
     lane_offsets: BTreeMap<SegPart, f64>,
     lane_widths: BTreeMap<SegPart, f64>,
     node_widths: BTreeMap<SegNode, f64>,
     notch_detour: bool,
 ) -> ChainShape {
-    let l = s.layout_for(id);
-    let segs = s.segs_for(id);
+    let l = um_core::segments::positioned_layout(&seg_ctx(s, side), id);
+    let segs = segs_for(&seg_ctx(s, side), id);
     let (mut a_half, mut a_auto, mut b_half, mut b_auto) = (false, false, false, false);
-    if let Some(ends) = chain_ends(&segs, s.menu_line_enabled, s.dock_line_enabled) {
-        let ctx = seg_ctx(s);
+    if let Some(ends) = chain_ends_on(&segs, s.menu_line_enabled, s.dock_line_enabled, side) {
+        let ctx = seg_ctx(s, side);
         (a_half, a_auto) = end_override(&ctx, id, ends.start.node, ends.start.seg);
         (b_half, b_auto) = end_override(&ctx, id, ends.end.node, ends.end.seg);
     }
@@ -92,19 +94,19 @@ fn spec_order(bands: &[ProviderBand]) -> Vec<&ProviderBand> {
 }
 
 /// 그릴 AI 목록(뒤 -> 앞 순서). 겹침 분할 레인/굵기를 여기서 계산한다. (Swift `drawItems`)
-pub(crate) fn draw_items(s: &Settings, bands: &[ProviderBand]) -> Vec<DrawItem> {
+pub(crate) fn draw_items(s: &Settings, bands: &[ProviderBand], side: um_core::types::BorderEdge) -> Vec<DrawItem> {
     let t = s.thickness;
     let active = spec_order(bands);
     // 세그먼트별 공유자 목록(활성 AI만, 스펙 순서로 고정 -> 레인 배정 결정적).
     let mut sharers: BTreeMap<SegPart, Vec<&str>> = BTreeMap::new();
     for b in &active {
-        for seg in s.segs_for(&b.id) {
+        for seg in segs_for(&seg_ctx(s, side), &b.id) {
             sharers.entry(seg).or_default().push(&b.id);
         }
     }
     // 상단선이 분할될 때 노치 우회 소유자: 상단선 공유자 중 잔여율 최소(최상단 레이어). 동률이면 앞쪽.
     let mut notch_owner: Option<&ProviderBand> = None;
-    for b in active.iter().filter(|b| s.segs_for(&b.id).contains(&SegPart::HTop)) {
+    for b in active.iter().filter(|b| segs_for(&seg_ctx(s, side), &b.id).contains(&SegPart::HTop)) {
         if notch_owner.is_none_or(|o| b.ratio < o.ratio) {
             notch_owner = Some(b);
         }
@@ -115,8 +117,8 @@ pub(crate) fn draw_items(s: &Settings, bands: &[ProviderBand]) -> Vec<DrawItem> 
     let (menu_on, dock_on) = (s.menu_line_enabled, s.dock_line_enabled);
     let mut node_ais: BTreeMap<SegNode, BTreeSet<&str>> = BTreeMap::new();
     for b in &active {
-        for seg in s.segs_for(&b.id) {
-            let (a, c) = seg_ends(seg, menu_on, dock_on);
+        for seg in segs_for(&seg_ctx(s, side), &b.id) {
+            let (a, c) = seg_ends_on(seg, menu_on, dock_on, side);
             node_ais.entry(a).or_default().insert(&b.id);
             node_ais.entry(c).or_default().insert(&b.id);
         }
@@ -130,7 +132,7 @@ pub(crate) fn draw_items(s: &Settings, bands: &[ProviderBand]) -> Vec<DrawItem> 
     let mut out = vec![];
     for item in ordered {
         let my_id = item.id.as_str();
-        let my_segs = s.segs_for(my_id);
+        let my_segs = segs_for(&seg_ctx(s, side), my_id);
         let mut lanes: BTreeMap<SegPart, f64> = BTreeMap::new();
         let mut widths: BTreeMap<SegPart, f64> = BTreeMap::new();
         for seg in &my_segs {
@@ -149,7 +151,7 @@ pub(crate) fn draw_items(s: &Settings, bands: &[ProviderBand]) -> Vec<DrawItem> 
         // 노드 분할 굵기는 겹침 분할이 실제로 동작 중일 때만(내가 분할에 참여할 때) 적용.
         let my_node_widths = if lanes.is_empty() { BTreeMap::new() } else { node_width_map.clone() };
         let split = !lanes.is_empty() || !my_node_widths.is_empty();
-        let shape = make_shape(s, my_id, lanes, widths, my_node_widths, !h_top_split || Some(my_id) == notch_owner);
+        let shape = make_shape(s, my_id, side, lanes, widths, my_node_widths, !h_top_split || Some(my_id) == notch_owner);
         out.push(DrawItem {
             id: my_id.to_string(),
             shape,

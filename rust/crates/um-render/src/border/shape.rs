@@ -706,10 +706,10 @@ impl ChainShape {
         let mut edges = um_core::dock::positioned_lines(settings, &self.segments, w, h, side);
         let mut em = Emitter { path: BezPath::new(), cp: Point::ZERO, rec: vec![] };
         while !edges.is_empty() {
-            // 물리 그래프의 끝 또는 사용자가 고른 모서리에서 시작한다. 접합부 상쇄로 여러 경로가 될 수도 있다.
+            // 물리 그래프의 위쪽 끝 또는 사용자가 고른 모서리에서 시작한다.
             let degree = |p| edges.iter().filter(|e| e.a == p || e.b == p).count();
-            let mut start = edges.iter().flat_map(|e| [e.a, e.b]).find(|&p| degree(p) == 1)
-                .unwrap_or(edges[0].a);
+            let mut start = edges.iter().flat_map(|e| [e.a, e.b]).filter(|&p| degree(p) == 1)
+                .min_by(|a,b| a.1.total_cmp(&b.1).then(a.0.total_cmp(&b.0))).unwrap_or(edges[0].a);
             let closed = degree(start) != 1;
             if closed {
                 let target = match self.anchor_corner {
@@ -737,21 +737,25 @@ impl ChainShape {
             if parts.is_empty() { continue; }
             let is_loop = points.first() == points.last();
             if !self.clockwise && !is_loop { points.reverse(); parts.reverse(); }
-            if is_loop { points.pop(); }
+            if is_loop {
+                // 화면 좌표의 양의 면적은 시계 방향이다. 좌우 반사 뒤에도 같은 설정을 지킨다.
+                let area: f64 = points.windows(2).map(|p| p[0].x*p[1].y-p[1].x*p[0].y).sum();
+                if (area > 0.0) != self.clockwise { points.reverse(); parts.reverse(); }
+                points.pop();
+            }
             let mut vt = Verts::default();
             for (j, &point) in points.iter().enumerate() {
                 let part = parts[j.min(parts.len() - 1)];
                 let previous = parts[if j == 0 { parts.len() - 1 } else { j - 1 }];
-                let zone = if [part, previous].iter().any(|p| matches!(p, SegPart::LDock | SegPart::RDock | SegPart::HBottom)) {
-                    ScreenZone::Dock
-                } else if [part, previous].iter().any(|p| matches!(p, SegPart::LMain | SegPart::RMain | SegPart::HDock)) {
-                    ScreenZone::Main
-                } else { ScreenZone::MenuBar };
-                let radii = match zone { ScreenZone::MenuBar => &self.menu_radii, ScreenZone::Dock => &self.dock_radii, ScreenZone::Main => &self.main_radii };
-                let corner = corner_of(point.y > h / 2.0, point.x > w / 2.0);
-                let endpoint = !is_loop && (j == 0 || j + 1 == points.len());
                 let before = points[if j == 0 { points.len() - 1 } else { j - 1 }];
                 let after = points[(j + 1) % points.len()];
+                let zone = ScreenZone::ALL.into_iter().find(|&z| {
+                    let perimeter = um_core::segments::zone_perimeter_on(&[z].into(), self.menu_on, self.dock_on, side);
+                    perimeter.contains(&part) && perimeter.contains(&previous)
+                }).unwrap_or(ScreenZone::Main);
+                let radii = match zone { ScreenZone::MenuBar => &self.menu_radii, ScreenZone::Dock => &self.dock_radii, ScreenZone::Main => &self.main_radii };
+                let corner = corner_of(before.y < point.y || after.y < point.y, before.x < point.x || after.x < point.x);
+                let endpoint = !is_loop && (j == 0 || j + 1 == points.len());
                 let straight = (before.x - point.x) * (after.y - point.y) == (before.y - point.y) * (after.x - point.x);
                 let radius = if endpoint || straight { 0.0 } else { radii.get(&corner).copied().unwrap_or(0.0).max(0.0) };
                 // 세그먼트의 실제 축으로 레인 오프셋을 옮겨 옆 Dock에서도 겹침 분할을 유지한다.
@@ -770,18 +774,23 @@ impl ChainShape {
                 }
                 let width = self.lane_widths.get(&part).copied().unwrap_or(self.full_width);
                 // 가로선 캡의 위·아래는 기준 구역의 방향이다. Dock선에서는 본문·Dock 쪽으로 꺾는다.
-                let right_end = if matches!(part, SegPart::HDock | SegPart::HBottom) { point.y > h / 2.0 }
-                    else { point.x > w / 2.0 };
+                let line = um_core::dock::positioned_lines(settings, &[part].into(), w, h, side)[0];
+                let vertical = line.a.0 == line.b.0;
+                let right_end = if vertical { point.y > line.a.1.min(line.b.1) } else { point.x > line.a.0.min(line.b.0) };
                 let cap = self.h_caps.get(&h_cap_key(part, right_end)).copied().unwrap_or(SegCap::None);
                 let cap_zone = match part {
                     SegPart::HTop => &self.menu_radii,
-                    SegPart::HMenu if cap == SegCap::Up => &self.menu_radii,
+                    SegPart::HMenu | SegPart::LDock if cap == SegCap::Up => &self.menu_radii,
+                    SegPart::LDock => &self.dock_radii,
                     SegPart::HDock if cap == SegCap::Down => &self.dock_radii,
                     SegPart::HBottom => &self.dock_radii,
                     _ => &self.main_radii,
                 };
-                let cap_r = if endpoint && part.is_horizontal() && matches!(cap, SegCap::Up | SegCap::Down) {
-                    cap_zone.get(&corner).copied().unwrap_or(0.0).max(0.0)
+                let cap_corner = if vertical {
+                    corner_of(right_end, (side == um_core::types::BorderEdge::Left) == (cap == SegCap::Down))
+                } else { corner_of(cap == SegCap::Up, right_end) };
+                let cap_r = if endpoint && (part.is_horizontal() || part == SegPart::LDock) && matches!(cap, SegCap::Up | SegCap::Down) {
+                    cap_zone.get(&cap_corner).copied().unwrap_or(0.0).max(0.0)
                 } else { 0.0 };
                 let extension = if matches!(part, SegPart::HDock | SegPart::HBottom) {
                     let toward_main = cap == SegCap::Up;
@@ -789,7 +798,12 @@ impl ChainShape {
                     Point::new(shifted.x + sign * cap_r, shifted.y)
                 } else { Point::new(shifted.x, shifted.y + if cap == SegCap::Up { -cap_r } else { cap_r }) };
                 if cap_r > 0.0 && j == 0 { vt.add(&[(pv(extension, 0.0, None), width, None)], false); }
-                vt.add(&[(pv(shifted, radius.max(cap_r), None), width, None)], false);
+                let (a,b) = um_core::segments::seg_ends_on(part, self.menu_on, self.dock_on, side);
+                let node_width = [a,b].into_iter().find(|&n| {
+                    let p = um_core::dock::side_node_position(settings,w,h,side,n);
+                    (p.0-point.x).abs()<0.01 && (p.1-point.y).abs()<0.01
+                }).and_then(|n| self.node_widths.get(&n)).copied();
+                vt.add(&[(pv(shifted, radius.max(cap_r), None), width, node_width)], false);
                 if cap_r > 0.0 && j + 1 == points.len() { vt.add(&[(pv(extension, 0.0, None), width, None)], false); }
                 if part == SegPart::HTop && j < parts.len() && self.notch_detour {
                     let cx = Ctx { s: self, segs: self.segments.clone(), w, h, xl: self.inset, xr: w - self.inset };

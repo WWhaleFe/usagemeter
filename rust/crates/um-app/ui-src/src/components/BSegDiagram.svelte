@@ -4,24 +4,15 @@
   // 유효성(toggleAllowed)은 Rust가 세그먼트 그래프로 계산해 준 값을 그대로 쓴다.
   import { t } from '../lib/api.svelte';
   import type { SegOption, SegCap } from './BTypes';
-  import { diagramLines, segmentKey, capVector, type DockSide, type Point } from './BDiagram';
+  import { diagramLines, segmentKey, type DockSide, type Point } from './BDiagram';
 
-  let { options, color, menuOn, dockOn, dockSide, caps = {}, warning = '', ontoggle, onexclusive }:
+  let { options, color, menuOn, dockOn, dockSide, warning = '', ontoggle, onexclusive }:
     { options: Record<string, SegOption>; color: string; menuOn: boolean; dockOn: boolean; dockSide: DockSide;
       caps?: Record<string, SegCap>; warning?: string; ontoggle: (seg: string) => void; onexclusive: (seg: string) => void } = $props();
 
   const W = 209, H = 133, BAR = 7;
   const frames = $derived(diagramLines(options, menuOn, dockOn && dockSide !== null, dockSide));
   const path = (points: Point[]) => points.map(([x, y], i) => `${i ? 'L' : 'M'}${x},${y}`).join(' ');
-  function capPath(seg: string, points: Point[], right: boolean): string {
-    const cap = caps[`${seg}.${right ? 'R' : 'L'}`];
-    if (cap !== 'up' && cap !== 'down') return '';
-    const p = points[right ? points.length - 1 : 0];
-    const near = points[right ? points.length - 2 : 1];
-    const n = Math.hypot(near[0] - p[0], near[1] - p[1]);
-    const [dx, dy] = capVector(seg, cap === 'up', dockSide, menuOn);
-    return `M${p[0] + (near[0] - p[0]) * 6 / n},${p[1] + (near[1] - p[1]) * 6 / n} Q${p[0]},${p[1]} ${p[0] + dx * 8},${p[1] + dy * 8}`;
-  }
 
   // 한 번 클릭과 더블클릭을 구분하려고 한 번 클릭은 잠깐 기다린다(Swift는 같은 제스처 우선순위로 처리).
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -63,11 +54,7 @@
         {:else}
           <path class="stroke" class:on={o.on} class:can={!o.on && o.toggleAllowed} d={path(f.points)} style:--c={color} />
         {/if}
-        {#if o.on}
-          {#each [false, true] as right (right)}
-            <path class="cap" d={capPath(f.seg, f.points, right)} style:--c={color} />
-          {/each}
-        {/if}
+
       </g>
     {/each}
   </svg>
@@ -80,9 +67,9 @@
   .bg { fill: var(--surface); stroke: var(--surface-stroke); stroke-width: 1; }
   .seg { cursor: default; outline: none; }
   .hit { fill: none; stroke: transparent; stroke-width: 16; pointer-events: stroke; }
-  .stroke, .cap { fill: none; stroke: var(--fg); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; opacity: 0.12; pointer-events: none; }
+  .stroke { fill: none; stroke: var(--fg); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; opacity: 0.12; pointer-events: none; }
   .stroke.can { stroke: var(--fg2); opacity: 0.6; }
-  .stroke.on, .cap { stroke: var(--c); opacity: 1; }
+  .stroke.on { stroke: var(--c); opacity: 1; }
   /* 불가 = 아주 흐림, 가능 = 진한 회색 + 테두리, 선택 = AI 색 + 같은 색 테두리(Swift :893-899). */
   .bar { fill: var(--fg); opacity: 0.12; }
   .bar.can { fill: var(--fg2); opacity: 0.6; stroke: var(--fg2); stroke-width: 1; }

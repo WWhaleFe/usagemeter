@@ -8,6 +8,7 @@ use crate::types::{BorderCorner, BorderEdge, SegPart};
 /// 테두리 판정용 세그먼트 문맥(그 화면의 테두리 설정 기준).
 pub fn seg_ctx(s: &Settings) -> SegContext<'_> {
     SegContext {
+        side: crate::types::BorderEdge::Bottom,
         menu_on: s.menu_line_enabled,
         dock_on: s.dock_line_enabled,
         no_overlap: s.no_overlap_lines,
@@ -72,8 +73,10 @@ pub fn border_hover_hit_positioned(display: &Settings, main: &Settings, w: f64, 
     let allowed = |edge, a, b, da, db| main.hover_edges.contains(&edge)
         || (main.hover_corners.contains(&a) && da <= main.hover_corner_size)
         || (main.hover_corners.contains(&b) && db <= main.hover_corner_size);
+    let mut ctx = seg_ctx(display);
+    ctx.side = side;
     PROVIDER_IDS.iter().filter(|id| !main.border_hidden_ids.contains(**id)).any(|id| {
-        crate::dock::positioned_lines(display, &display.segs_for(id), w, h, side).iter().any(|line| {
+        crate::dock::positioned_lines(display, &segs_for(&ctx, id), w, h, side).iter().any(|line| {
             if !near(line.a, line.b) { return false; }
             let (a, b) = (line.a, line.b);
             let on = |v: f64, p: f64, q: f64| (p - v).abs() < 0.01 && (q - v).abs() < 0.01;
@@ -81,7 +84,7 @@ pub fn border_hover_hit_positioned(display: &Settings, main: &Settings, w: f64, 
             if on(h - i, a.1, b.1) { return allowed(BorderEdge::Bottom, BorderCorner::BottomLeft, BorderCorner::BottomRight, x, w - x); }
             if on(i, a.0, b.0) { return allowed(BorderEdge::Left, BorderCorner::TopLeft, BorderCorner::BottomLeft, y, h - y); }
             if on(w - i, a.0, b.0) { return allowed(BorderEdge::Right, BorderCorner::TopRight, BorderCorner::BottomRight, y, h - y); }
-            (line.part == SegPart::HMenu && main.hover_menu_line)
+            ((line.part == SegPart::HMenu || (display.menu_line_enabled && matches!(side, BorderEdge::Left | BorderEdge::Right) && line.part == SegPart::LDock)) && main.hover_menu_line)
                 || (line.part == SegPart::HDock && main.hover_dock_line)
         })
     })

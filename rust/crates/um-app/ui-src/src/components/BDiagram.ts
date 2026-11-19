@@ -7,34 +7,33 @@ export const H_SEGS = ['hTop', 'hMenu', 'hDock', 'hBottom'];
 export const ORDER = [...H_SEGS, 'lMenuBar', 'lMain', 'lDock', 'rMenuBar', 'rMain', 'rDock'];
 export const sideDock = (side: DockSide) => side === 'left' || side === 'right';
 
-export function diagramLines(options: Record<string, SegOption>, menu: boolean, dock: boolean, side: DockSide): DiagramLine[] {
+export function diagramLines(options: Record<string, SegOption>, menu: boolean, dock: boolean, side: DockSide, trimEnds = true): DiagramLine[] {
   const levels = [0, ...(menu ? [1] : []), ...(dock ? [2] : []), 3];
   const lateral = sideDock(side);
   const y = (level: number, extent: number, margin: number) => margin + (extent - 2 * margin) *
     (levels.includes(level) ? levels.indexOf(level) : levels.length - 1) / (levels.length - 1);
   return ORDER.flatMap((seg) => {
     const o = options[seg];
-    if (!o?.available) return [];
-    // 없음일 때 경계선은 바깥 테두리로 접힌다. 같은 위치의 두 선은 선택할 수 있게 나란히 둔다.
+    if (!o?.available || (!dock && ['hDock', 'lDock', 'rDock'].includes(seg))) return [];
+    // 실제 경계와 같은 직선을 그린다. 끝의 클릭 여백만 줄인다.
     let points: Point[];
     if (menu && dock && lateral) {
       const m = 48, d = 74, l = 14, r = 195, t = 12, b = 121;
       const paths: Record<string, Point[]> = {
-        hTop: [[l, t], [r, t]], hMenu: [[l, m], [r, m]], hDock: [[d, m], [d, b]],
+        hTop: [[l, t], [r, t]], hMenu: [[d, m], [r, m]], hDock: [[d, m], [d, b]],
         hBottom: [[l, m], [l, b]], lMenuBar: [[l, t], [l, m]], rMenuBar: [[r, t], [r, m]],
-        // 실제 렌더러에서 겹치는 T자 접합부는 클릭 영역을 나란히 벌려 둔다.
-        lMain: [[l, m + 8], [d, m + 8]], lDock: [[l, m - 8], [d, m - 8]],
-        rMain: [[r, m], [r, b], [d, b]], rDock: [[d, b], [l, b]],
+        // 본문 위와 Dock 위는 같은 높이에서 한 번씩만 그린다.
+        lMain: [[r, m], [r, b]], lDock: [[l, m], [d, m]],
+        rMain: [[r, b], [d, b]], rDock: [[d, b], [l, b]],
       };
       points = paths[seg];
-      if (side === 'right' && !['hTop', 'hMenu', 'lMenuBar', 'rMenuBar'].includes(seg)) {
+      if (side === 'right' && !['hTop', 'lMenuBar', 'rMenuBar'].includes(seg)) {
         points = points.map(([x, y]) => [209 - x, y]);
       }
     } else {
       points = o.ends.map((end): Point => {
         const x = end.right ? (lateral ? 121 : 195) : (lateral ? 12 : 14);
         let cy = y(end.level, lateral ? 209 : 133, lateral ? 14 : 12);
-        if (!dock && seg === 'hDock') cy -= 10;
         if (side === 'top') return [x, 133 - cy];
         if (side === 'left') return [209 - cy, x];
         if (side === 'right') return [cy, x];
@@ -49,6 +48,7 @@ export function diagramLines(options: Record<string, SegOption>, menu: boolean, 
       const gap = Math.min(n / 3, a[1] === b[1] ? 12 : 9);
       return [a[0] + (b[0] - a[0]) * gap / n, a[1] + (b[1] - a[1]) * gap / n];
     };
+    if (!trimEnds) return [{ seg, points, horiz }];
     const last = points.length - 1;
     const start = trim(points[0], points[1]), end = trim(points[last], points[last - 1]);
     return [{ seg, points: [start, ...points.slice(1, -1), end], horiz }];
@@ -60,16 +60,15 @@ export function segmentKey(seg: string, side: DockSide, menu: boolean): string {
   const lateral = sideDock(side);
   if (lateral && menu) {
     const fixed: Record<string, string> = {
-      hDock: 'dockVertical', hBottom: side === 'left' ? 'edgeLeft' : 'edgeRight',
-      lMain: 'mainTop', lDock: 'dockTop', rDock: 'dockBottom',
-      rMain: side === 'left' ? 'mainRightBottom' : 'mainLeftBottom',
+      hMenu: 'mainTop', hDock: 'dockVertical', hBottom: 'dockOuter',
+      lMain: 'mainOuter', lDock: 'dockTop', rDock: 'dockBottom', rMain: 'mainBottom',
     };
     return 'seg.' + (fixed[seg] ?? seg);
   }
   const names: Record<string, string[]> = {
     top: ['hBottom', 'hMenu', 'hDock', 'hTop', 'lMenuBar', 'lMain', 'lDock', 'rMenuBar', 'rMain', 'rDock'],
-    left: ['edgeRight', 'hMenu', 'dockVertical', 'edgeLeft', 'lMenuBar', 'mainTop', 'dockTop', 'rMenuBar', 'mainBottom', 'dockBottom'],
-    right: ['edgeLeft', 'hMenu', 'dockVertical', 'edgeRight', 'lMenuBar', 'mainTop', 'dockTop', 'rMenuBar', 'mainBottom', 'dockBottom'],
+    left: ['mainOuter', 'hMenu', 'dockVertical', 'dockOuter', 'lMenuBar', 'mainTop', 'dockTop', 'rMenuBar', 'mainBottom', 'dockBottom'],
+    right: ['mainOuter', 'hMenu', 'dockVertical', 'dockOuter', 'lMenuBar', 'mainTop', 'dockTop', 'rMenuBar', 'mainBottom', 'dockBottom'],
   };
   return 'seg.' + names[side][ORDER.indexOf(seg)];
 }

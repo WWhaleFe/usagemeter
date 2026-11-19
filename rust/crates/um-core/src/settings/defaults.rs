@@ -48,6 +48,7 @@ pub(crate) fn fallback_layout() -> ProviderLayout {
 
 fn layout_with(anchor_corner: BorderCorner, seg: SegPart) -> ProviderLayout {
     ProviderLayout {
+        segment_geometry: Some(1),
         edges: None,
         anchor_corner,
         anchor_side: AnchorSide::Center,
