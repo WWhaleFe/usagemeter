@@ -142,6 +142,7 @@ impl Default for Settings {
             appearance: AppAppearance::System,
             hover_info_enabled: true,
             hover_emphasis_enabled: true,
+            hover_text_emphasis: true,
             hover_menu_line: false,
             hover_dock_line: false,
             chart_hover_enabled: true,

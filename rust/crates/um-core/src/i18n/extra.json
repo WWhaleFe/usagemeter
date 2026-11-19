@@ -20,9 +20,14 @@
     "Dock上の線(画面分割)"
   ],
   "hover.emphasis": [
-    "호버한 선과 해당 글 강조",
-    "Emphasize hovered lines and text",
-    "ホバー中の線とテキストを強調"
+    "호버한 선 강조(맨 위로 올려 표시)",
+    "Emphasize hovered line (bring to top)",
+    "ホバー中の線を強調(最前面に表示)"
+  ],
+  "hover.textEmphasis": [
+    "호버 글에서 그 선의 줄을 굵고 크게",
+    "Bold and enlarge that line's text in hover info",
+    "ホバー情報でその線の行を太く大きく"
   ],
   "window.settings": [
     "UsageMeter 설정",

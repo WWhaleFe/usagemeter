@@ -19,6 +19,9 @@ pub struct Overlay {
     scenes: BTreeMap<String, (border::BorderScene, border::HoverGeometry, f64)>,
     #[cfg(target_os = "macos")]
     hover: Option<(String, Vec<usize>, usize)>,
+    /// 호버한 선을 띠에 강조해 그리는 중인지(선 강조 옵션). 글 강조만 켜면 후보만 고르고 띠는 그대로.
+    #[cfg(target_os = "macos")]
+    hover_draw: bool,
 }
 
 fn signature(ds: &[DisplayInfo]) -> String {
@@ -128,7 +131,7 @@ impl Overlay {
 #[cfg(target_os = "macos")]
 impl Overlay {
     /// 후보가 달라질 때만 띠를 다시 그린다. 좌표만 바뀌면 기존 그림을 유지한다.
-    pub fn hover_at(&mut self, display: Option<(&str, f64, f64)>) -> Vec<(String, Option<String>)> {
+    pub fn hover_at(&mut self, display: Option<(&str, f64, f64)>, draw: bool) -> Vec<(String, Option<String>)> {
         let next = display.and_then(|(id, x, y)| {
             let (scene, geometry, _) = self.scenes.get(id)?;
             let hits = geometry.candidates(scene, x, y);
@@ -139,11 +142,14 @@ impl Overlay {
             (None, None) => true,
             _ => false,
         };
-        if !same {
-            let old = self.hover.take().map(|h| h.0);
+        if !same || draw != self.hover_draw {
+            let old = self.hover.take().map(|h| h.0).filter(|_| self.hover_draw);
             self.hover = next.map(|(id, hits)| (id, hits, 0));
+            self.hover_draw = draw;
+            // 강조를 지우거나 새로 그려야 하는 화면만 다시 그린다.
             if let Some(id) = &old { self.present_hover(id); }
-            if let Some((id, _, _)) = &self.hover
+            if draw
+                && let Some((id, _, _)) = &self.hover
                 && old.as_ref() != Some(id)
             { self.present_hover(id); }
         }
@@ -156,6 +162,7 @@ impl Overlay {
     }
 
     pub fn cycle_hover(&mut self) {
+        if !self.hover_draw { return; }
         let Some((id, hits, index)) = &mut self.hover else { return };
         if hits.len() < 2 { return; }
         *index = (*index + 1) % hits.len();
@@ -165,7 +172,7 @@ impl Overlay {
 
     fn present_hover(&self, id: &str) {
         let Some((scene, _, scale)) = self.scenes.get(id) else { return };
-        let selected = self.hover.as_ref().filter(|h| h.0 == id).map(|h| h.1[h.2]);
+        let selected = self.hover.as_ref().filter(|h| self.hover_draw && h.0 == id).map(|h| h.1[h.2]);
         if let Some(strips) = self.strips.get(id) {
             for (w, r) in strips {
                 let pm = border::render_emphasized(scene, (r[0], r[1]), (r[2], r[3]), *scale, selected);

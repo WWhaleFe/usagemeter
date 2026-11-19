@@ -164,7 +164,10 @@ pub struct Settings {
     pub chart_hours: u32,
     pub appearance: AppAppearance,
     pub hover_info_enabled: bool,
+    /// 호버한 선을 테두리에서 강조(선 강조). 글 강조와 따로 켜고 끈다.
     pub hover_emphasis_enabled: bool,
+    /// 호버 글에서 그 선의 줄을 굵고 크게(글 강조).
+    pub hover_text_emphasis: bool,
     /// 화면 분할의 메뉴바 아래 선·독 위 선에도 호버 정보를 띄울지(화면 가장자리 변 설정과 따로, 기본 꺼짐).
     pub hover_menu_line: bool,
     pub hover_dock_line: bool,
@@ -379,6 +382,8 @@ impl Settings {
         self.appearance = s.appearance.as_deref().and_then(parse).unwrap_or_default();
         self.hover_info_enabled = s.hover_info_enabled.unwrap_or(true);
         self.hover_emphasis_enabled = s.hover_emphasis_enabled.unwrap_or(true);
+        // 따로 나누기 전에는 한 옵션이 둘 다 껐으니 그 값을 따른다.
+        self.hover_text_emphasis = s.hover_text_emphasis.or(s.hover_emphasis_enabled).unwrap_or(true);
         self.hover_menu_line = s.hover_menu_line.unwrap_or(false);
         self.hover_dock_line = s.hover_dock_line.unwrap_or(false);
         self.chart_hover_enabled = s.chart_hover_enabled.unwrap_or(true);
@@ -481,6 +486,7 @@ impl Settings {
             provider_order: Some(self.provider_order.clone()),
             hover_info_enabled: Some(self.hover_info_enabled),
             hover_emphasis_enabled: Some(self.hover_emphasis_enabled),
+            hover_text_emphasis: Some(self.hover_text_emphasis),
             hover_menu_line: Some(self.hover_menu_line),
             hover_dock_line: Some(self.hover_dock_line),
             chart_hover_enabled: Some(self.chart_hover_enabled),

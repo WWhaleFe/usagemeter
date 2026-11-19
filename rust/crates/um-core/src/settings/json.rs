@@ -96,6 +96,12 @@ mod tests {
         let mut old = serde_json::to_value(Settings::default().to_snapshot()).unwrap();
         old.as_object_mut().unwrap().remove("hoverEmphasisEnabled");
         assert!(Settings::from_json(&old.to_string()).unwrap().hover_emphasis_enabled);
+        // 예전 한 옵션으로 껐던 설정은 글 강조도 꺼진 채로 읽는다.
+        let mut off = old.clone();
+        off["hoverEmphasisEnabled"] = serde_json::json!(false);
+        off.as_object_mut().unwrap().remove("hoverTextEmphasis");
+        let off = Settings::from_json(&off.to_string()).unwrap();
+        assert!(!off.hover_emphasis_enabled && !off.hover_text_emphasis);
         let s = Settings { hover_emphasis_enabled: false, ..Settings::default() };
         let text = s.to_json().unwrap();
         let v: Value = serde_json::from_str(&text).unwrap();

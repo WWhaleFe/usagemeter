@@ -58,6 +58,7 @@
   <Toggle label={t('hover.enable')} checked={hoverOn} onchange={(v) => set('main', { hoverInfoEnabled: v })} />
   <span class="caption">{t('hover.enableDesc')}</span>
   <Toggle label={t('hover.emphasis')} checked={m.hoverEmphasisEnabled ?? true} disabled={!hoverOn} onchange={(v) => set('main', { hoverEmphasisEnabled: v })} />
+  <Toggle label={t('hover.textEmphasis')} checked={m.hoverTextEmphasis ?? true} disabled={!hoverOn} onchange={(v) => set('main', { hoverTextEmphasis: v })} />
   <fieldset class="grp" disabled={!hoverOn}>
     <legend>{t('hoverArea.edges')}</legend>
     <div class="checks">

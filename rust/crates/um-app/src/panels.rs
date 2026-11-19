@@ -52,6 +52,7 @@ struct Panels {
     hover_key: String,
     emphasis: Vec<(String, Option<String>)>,
     emphasis_timer: Option<objc2::rc::Retained<objc2_foundation::NSTimer>>,
+    emphasis_line: bool,
     /// 열린 정보 패널의 차트 높이(pt, 차트 없으면 0)와 마지막 차트 호버 위치(같으면 다시 그리지 않음).
     chart_h: f32,
     chart_hover: Option<i32>,
@@ -94,7 +95,7 @@ pub fn init(app: &AppHandle) {
     let h = app.clone();
     let mouse = MouseMonitor::start(move |x, y, kind| on_mouse(&h, x, y, kind));
     PANELS.with(|p| {
-        *p.borrow_mut() = Some(Panels { hover, card, card_open: false, tray: None, hover_key: String::new(), emphasis: vec![], emphasis_timer: None, chart_h: 0.0, chart_hover: None, displays: display::displays(), _mouse: mouse, _menu_observers: observers })
+        *p.borrow_mut() = Some(Panels { hover, card, card_open: false, tray: None, hover_key: String::new(), emphasis: vec![], emphasis_timer: None, emphasis_line: false, chart_h: 0.0, chart_hover: None, displays: display::displays(), _mouse: mouse, _menu_observers: observers })
     });
 }
 
@@ -250,8 +251,8 @@ fn near_cursor(d: &DisplayInfo, cx: f64, cy: f64, w: f64, h: f64) -> (f64, f64) 
 }
 
 fn show_hover_at(p: &mut Panels, st: &AppState, scale: f32, border: bool, place: impl Fn(f64, f64) -> (f64, f64)) {
-    if !border { set_emphasis(p, None); }
-    let lines = hover_lines(st, border, if border { &p.emphasis } else { &[] });
+    if !border { set_emphasis(p, None, false); }
+    let lines = hover_lines(st, border, if border && st.main.hover_text_emphasis { &p.emphasis } else { &[] });
     let key = format!("{scale}:{:?}:{:?}:{}", st.main.appearance, p.emphasis, lines.iter().map(|l| l.text.as_str()).collect::<Vec<_>>().join("\n"));
     if key != p.hover_key || !p.hover.is_visible() {
         let r = panel::render_hover(&lines, HOVER_MAX_W, theme(&st.main), scale);
@@ -266,12 +267,15 @@ fn show_hover_at(p: &mut Panels, st: &AppState, scale: f32, border: bool, place:
     }
 }
 
-fn set_emphasis(p: &mut Panels, hit: Option<(&str, f64, f64)>) {
-    let emphasis = crate::OVERLAY.with(|o| o.borrow_mut().hover_at(hit));
-    if p.emphasis == emphasis { return; }
+/// `line` = 호버한 선을 띠에 강조(선 강조 옵션). 글 강조만 켜져 있으면 후보만 골라 호버 글에 쓴다.
+fn set_emphasis(p: &mut Panels, hit: Option<(&str, f64, f64)>, line: bool) {
+    let emphasis = crate::OVERLAY.with(|o| o.borrow_mut().hover_at(hit, line));
+    if p.emphasis == emphasis && p.emphasis_line == line { return; }
     p.emphasis = emphasis;
+    p.emphasis_line = line;
     if let Some(timer) = p.emphasis_timer.take() { timer.invalidate(); }
-    if p.emphasis.len() > 1 {
+    // 번갈아 강조는 선을 그릴 때만 의미가 있다(글은 후보 줄을 모두 강조).
+    if line && p.emphasis.len() > 1 {
         let block = block2::RcBlock::new(move |_: std::ptr::NonNull<objc2_foundation::NSTimer>| {
             crate::OVERLAY.with(|o| o.borrow_mut().cycle_hover());
         });
@@ -297,7 +301,7 @@ pub fn refresh_hover(app: &AppHandle) {
 }
 
 fn hide_hover(p: &mut Panels) {
-    set_emphasis(p, None);
+    set_emphasis(p, None, false);
     if p.hover.is_visible() {
         p.hover.hide();
     }
@@ -351,7 +355,8 @@ fn on_mouse(app: &AppHandle, x: f64, y: f64, kind: MouseKind) {
         ds.border_hidden_ids.extend(um_core::settings::PROVIDER_IDS.iter().filter(|id| !st.snapshots.contains_key(**id)).map(|id| id.to_string()));
         if enabled && um_core::hover::border_hover_hit(&ds, &ds, d.width_pt, d.height_pt, lx, ly) {
             let d = d.clone();
-            set_emphasis(p, (st.main.hover_emphasis_enabled && !st.hide_overlay).then_some((d.id.as_str(), lx, ly)));
+            let (line, text) = (st.main.hover_emphasis_enabled, st.main.hover_text_emphasis);
+            set_emphasis(p, ((line || text) && !st.hide_overlay).then_some((d.id.as_str(), lx, ly)), line);
             show_hover_at(p, &st, d.scale as f32, true, |w, h| near_cursor(&d, x, y, w, h));
         } else {
             hide_hover(p);
