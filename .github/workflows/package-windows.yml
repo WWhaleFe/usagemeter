@@ -63,6 +63,9 @@ jobs:
       MSIX_VERSION: ${{ needs.version.outputs.msix-version }}
       PACKAGE_ARCH: ${{ matrix.arch }}
       RUST_TARGET: ${{ matrix.target }}
+      STORE_IDENTITY_NAME: ${{ vars.STORE_IDENTITY_NAME }}
+      STORE_PUBLISHER: ${{ vars.STORE_PUBLISHER }}
+      STORE_PUBLISHER_DISPLAY_NAME: ${{ vars.STORE_PUBLISHER_DISPLAY_NAME }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -131,8 +134,23 @@ jobs:
           Copy-Item "rust/target/$env:RUST_TARGET/release/usagemeter.exe" "$layout/usagemeter.exe"
           Copy-Item rust/crates/um-app/icons/*.png "$layout/Assets/"
           $manifest = Get-Content rust/crates/um-app/packaging/msix/AppxManifest.xml -Raw
-          $manifest.Replace('__VERSION__', $env:MSIX_VERSION).Replace('__ARCH__', $env:PACKAGE_ARCH) |
-            Set-Content "$layout/AppxManifest.xml" -Encoding utf8NoBOM
+          $manifest = $manifest.Replace('__VERSION__', $env:MSIX_VERSION).Replace('__ARCH__', $env:PACKAGE_ARCH)
+          # Partner Center → 제품 ID의 값(저장소 변수 STORE_*)이 있으면 Store 업로드용 신원으로 바꾼다.
+          if ($env:STORE_IDENTITY_NAME) {
+            $manifest = $manifest.Replace('Name="WWhaleFe.UsageMeter"', "Name=`"$env:STORE_IDENTITY_NAME`"")
+            $manifest = $manifest.Replace('Publisher="CN=PLACEHOLDER-PARTNER-CENTER"', "Publisher=`"$env:STORE_PUBLISHER`"")
+            $manifest = $manifest.Replace('<PublisherDisplayName>WWhaleFe</PublisherDisplayName>', "<PublisherDisplayName>$env:STORE_PUBLISHER_DISPLAY_NAME</PublisherDisplayName>")
+          } else {
+            Write-Warning "Store 신원 변수가 없어 시험용 신원으로 만듭니다(업로드 불가)."
+          }
+          $manifest | Set-Content "$layout/AppxManifest.xml" -Encoding utf8NoBOM
+          # resources.pri: 매니페스트의 언어(ko·en·ja)와 이미지를 Windows·Store가 찾게 한다.
+          $makepri = Join-Path (Split-Path $makeappx) "makepri.exe"
+          $priconfig = "$env:RUNNER_TEMP/priconfig-$env:PACKAGE_ARCH.xml"
+          & $makepri createconfig /cf $priconfig /dq ko-KR_en-US_ja-JP /pv 10.0.0 /o
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $makepri new /pr $layout /cf $priconfig /mn "$layout/AppxManifest.xml" /of "$layout/resources.pri" /o
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $makeappx pack /d $layout /p "rust/dist/UsageMeter-$env:PACKAGE_VERSION-$env:PACKAGE_ARCH.msix" /o
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
