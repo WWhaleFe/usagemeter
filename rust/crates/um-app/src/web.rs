@@ -486,28 +486,39 @@ pub fn read_cookies(
     app: &AppHandle,
     spec: &'static ProviderSpec,
 ) -> Result<Cookies, ()> {
-    let label = format!("cookies-{}-{}", spec.id, next_token().replace('x', "-"));
-    tracing::info!("쿠키 저장소 창 생성 시작");
-    let Ok(w) = WebviewWindowBuilder::new(
-        app,
-        &label,
-        WebviewUrl::External("about:blank".parse().expect("blank")),
-    )
-    .visible(false)
-    .focused(false)
-    .user_agent(USER_AGENT)
-    .skip_taskbar(true)
-    .build() else {
-        tracing::warn!("쿠키 저장소 창 생성 실패");
-        return Err(());
+    // Windows: 숨은 웹뷰 하나를 계속 살려 두고 쓴다. 매번 만들고 닫으면 마지막 웹뷰가 닫힐 때 WebView2 브라우저
+    // 프로세스까지 내려가, 다음 조회·로그인·설정 창이 매번 콜드 스타트를 겪었다(Microsoft WebView2 성능 권장: 재사용).
+    const STORE: &str = "cookies-store";
+    let keep = cfg!(windows);
+    let label = if keep { STORE.to_string() } else { format!("cookies-{}-{}", spec.id, next_token().replace('x', "-")) };
+    let existing = if keep { app.get_webview_window(&label) } else { None };
+    let w = match existing {
+        Some(w) => w,
+        None => {
+            tracing::info!("쿠키 저장소 창 생성 시작");
+            let built = WebviewWindowBuilder::new(
+                app,
+                &label,
+                WebviewUrl::External("about:blank".parse().expect("blank")),
+            )
+            .visible(false)
+            .focused(false)
+            .user_agent(USER_AGENT)
+            .skip_taskbar(true)
+            .build();
+            // 동시에 두 조회가 같은 창을 만들려 하면 늦은 쪽은 먼저 만든 창을 쓴다.
+            match built.ok().or_else(|| keep.then(|| app.get_webview_window(&label)).flatten()) {
+                Some(w) => { tracing::info!("쿠키 저장소 창 생성 완료"); w }
+                None => { tracing::warn!("쿠키 저장소 창 생성 실패"); return Err(()); }
+            }
+        }
     };
-    tracing::info!("쿠키 저장소 창 생성 완료");
     let out = cookies_for(&w, spec);
     match &out {
         Ok(cookies) => tracing::info!("쿠키 읽기 완료: {}개", cookies.len()),
         Err(()) => tracing::warn!("쿠키 읽기 실패"),
     }
-    let _ = w.destroy();
+    if !keep { let _ = w.destroy(); }
     out
 }
 

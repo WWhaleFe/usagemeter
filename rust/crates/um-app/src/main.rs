@@ -511,13 +511,13 @@ fn apply_text_locale(lang: um_core::types::AppLanguage) {
 fn main() {
     let log_path = diagnostics::init();
     tracing::info!("UsageMeter {} 시작 (OS={}, 로그={})", update::current_version(), std::env::consts::OS, log_path.display());
-    // Windows: 자동 감지(WPAD)만 켜진 PC에서 WebView2가 프록시를 찾느라 20초 넘게 멈추지 않게 한다.
+    // Windows: 자동 감지(WPAD)만 켜진 PC에서 WebView2가 프록시를 찾느라 20초 넘게 멈추지 않게 하고,
+    // 숨은 조회 창의 백그라운드 제한을 끈다.
     // 웹뷰를 하나도 만들기 전에 정해야 하고, 사용자가 직접 정한 값은 건드리지 않는다.
     #[cfg(windows)]
-    if std::env::var_os("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS").is_none()
-        && let Some(args) = um_platform::webview_proxy::current_browser_args()
-    {
-        tracing::info!("WebView2 프록시 자동 감지 건너뜀");
+    if std::env::var_os("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS").is_none() {
+        let args = um_platform::webview_proxy::current_browser_args();
+        tracing::info!("WebView2 인자: {args}");
         // SAFETY: 다른 스레드를 만들기 전(main 시작)이라 환경 변수를 바꿔도 경쟁이 없다.
         unsafe { std::env::set_var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", args) };
     }

@@ -63,6 +63,21 @@ pub fn seed_from_history(
     out
 }
 
+/// agy 위치는 10분 동안 기억한다. 없는 PC에서 조회마다 후보 경로와 where.exe를 다시 뒤지지 않게 한다.
+fn cached_agy(find: impl FnOnce() -> Option<std::path::PathBuf>) -> Option<std::path::PathBuf> {
+    static CACHE: std::sync::Mutex<Option<(Instant, Option<std::path::PathBuf>)>> = std::sync::Mutex::new(None);
+    let mut cache = CACHE.lock().unwrap();
+    if let Some((at, path)) = cache.as_ref()
+        && at.elapsed() < Duration::from_secs(600)
+        && path.as_ref().is_none_or(|p| p.exists())
+    {
+        return path.clone();
+    }
+    let path = find();
+    *cache = Some((Instant::now(), path.clone()));
+    path
+}
+
 /// agy를 한 번 실행해 Gemini 스냅샷을 얻는다(12초 제한). agy가 없거나 실패하면 None.
 pub fn fetch_agy(parser: &std::sync::Mutex<AgyParser>) -> Option<UsageSnapshot> {
     let os = Os::current();
@@ -70,7 +85,7 @@ pub fn fetch_agy(parser: &std::sync::Mutex<AgyParser>) -> Option<UsageSnapshot> 
         .home_dir()
         .to_string_lossy()
         .to_string();
-    let Some(exe) = agy::find_executable(os, &home).or_else(where_agy) else {
+    let Some(exe) = cached_agy(|| agy::find_executable(os, &home).or_else(where_agy)) else {
         tracing::info!("agy 실행 파일 없음: Gemini는 웹 조회로(세부 항목이 적다)");
         return None;
     };

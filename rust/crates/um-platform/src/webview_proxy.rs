@@ -3,21 +3,25 @@
 //! Windows 기본값인 "설정 자동 감지(WPAD)"만 켜져 있으면 WebView2가 새로 뜰 때마다 프록시를 찾느라
 //! 20초 넘게 페이지 로드를 시작하지 않았다(실기: 조회 창·로그인 창이 하얀 빈 창으로 25초 제한을 넘김,
 //! `--no-proxy-server`로는 3초). 수동 프록시나 PAC 주소가 설정돼 있으면 시스템 설정을 그대로 따른다.
+//! 숨은 조회 창의 백그라운드 제한도 끈다.
 
 /// wry가 인자를 따로 주지 않을 때 쓰는 기본값. 환경 변수로 인자를 덮어쓰면 이것도 함께 넣어야 한다.
 pub const WRY_DEFAULT_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection";
 
-/// 인터넷 설정(HKCU) 값으로 WebView2에 줄 추가 인자를 정한다. None = 시스템 설정 그대로.
-pub fn browser_args(proxy_enabled: bool, proxy_server: &str, pac_url: &str) -> Option<String> {
-    if (proxy_enabled && !proxy_server.trim().is_empty()) || !pac_url.trim().is_empty() {
-        return None;
-    }
-    Some(format!("{WRY_DEFAULT_ARGS} --no-proxy-server"))
+/// 숨은 조회 창이 백그라운드로 취급돼 타이머·렌더링이 느려지지 않게 한다(Chromium 플래그).
+pub const NO_BACKGROUND_THROTTLE: &str = "--disable-background-timer-throttling --disable-renderer-backgrounding --disable-backgrounding-occluded-windows";
+
+/// 인터넷 설정(HKCU) 값으로 WebView2에 줄 추가 인자를 정한다. 수동 프록시나 PAC가 있으면 프록시는 시스템 설정을 따른다.
+pub fn browser_args(proxy_enabled: bool, proxy_server: &str, pac_url: &str) -> String {
+    let system_proxy = (proxy_enabled && !proxy_server.trim().is_empty()) || !pac_url.trim().is_empty();
+    let mut args = format!("{WRY_DEFAULT_ARGS} {NO_BACKGROUND_THROTTLE}");
+    if !system_proxy { args.push_str(" --no-proxy-server"); }
+    args
 }
 
 /// 현재 사용자의 인터넷 설정을 읽어 `browser_args`를 돌려준다.
 #[cfg(windows)]
-pub fn current_browser_args() -> Option<String> {
+pub fn current_browser_args() -> String {
     use windows::Win32::System::Registry::{HKEY_CURRENT_USER, RRF_RT_REG_DWORD, RRF_RT_REG_SZ, RegGetValueW};
     use windows::core::{HSTRING, w};
     let key = w!("Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings");
@@ -46,17 +50,19 @@ mod tests {
 
     #[test]
     fn 자동_감지만_켜져_있으면_프록시_탐색을_건너뛴다() {
-        let args = browser_args(false, "", "").unwrap();
-        assert!(args.starts_with(WRY_DEFAULT_ARGS) && args.ends_with("--no-proxy-server"));
+        let args = browser_args(false, "", "");
+        assert!(args.starts_with(WRY_DEFAULT_ARGS) && args.contains(NO_BACKGROUND_THROTTLE) && args.ends_with("--no-proxy-server"));
         // 프록시 주소가 남아 있어도 꺼져 있으면 쓰지 않는 것이다.
-        assert!(browser_args(false, "10.0.0.1:8080", "").is_some());
+        assert!(browser_args(false, "10.0.0.1:8080", "").contains("--no-proxy-server"));
+        // 켜져 있어도 주소가 비어 있으면 실제 프록시가 없다.
+        assert!(browser_args(true, " ", "").contains("--no-proxy-server"));
     }
 
     #[test]
     fn 수동_프록시나_pac가_있으면_시스템_설정을_따른다() {
-        assert_eq!(browser_args(true, "10.0.0.1:8080", ""), None);
-        assert_eq!(browser_args(false, "", "http://wpad/proxy.pac"), None);
-        // 켜져 있어도 주소가 비어 있으면 실제 프록시가 없다.
-        assert!(browser_args(true, " ", "").is_some());
+        for args in [browser_args(true, "10.0.0.1:8080", ""), browser_args(false, "", "http://wpad/proxy.pac")] {
+            assert!(!args.contains("--no-proxy-server"));
+            assert!(args.starts_with(WRY_DEFAULT_ARGS) && args.contains(NO_BACKGROUND_THROTTLE));
+        }
     }
 }
