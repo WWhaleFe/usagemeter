@@ -149,17 +149,29 @@ impl Store {
         )
     }
 
-    /// 요일(월=0..일=6) x 시간(0..23) 토큰 합계 행렬.
+    /// 시간 x 모델 묶음(1일·3일 보기의 쌓은 막대용). 키는 `YYYY-MM-DD HH|모델`(현지 시각).
+    pub fn by_hour_model(&self, range: Range, source: Option<Source>, tz_offset_secs: i64) -> Result<Vec<Group>> {
+        self.group_by(
+            "strftime('%Y-%m-%d %H', t + ?4, 'unixepoch') || '|' || COALESCE(model,'')",
+            range,
+            source,
+            tz_offset_secs,
+        )
+    }
+
+    /// 요일(월=0..일=6) x 시간(0..23) 토큰 합계 행렬. `with_cache_read`가 거짓이면 캐시 읽기를 뺀다.
     pub fn weekday_hour_matrix(
         &self,
         range: Range,
         source: Option<Source>,
         tz_offset_secs: i64,
+        with_cache_read: bool,
     ) -> Result<[[i64; 24]; 7]> {
+        let sum = if with_cache_read { "input + output + cache_read + cache_write" } else { "input + output + cache_write" };
         let sql = format!(
             "SELECT CAST(strftime('%w', t + ?4, 'unixepoch') AS INTEGER),
                     CAST(strftime('%H', t + ?4, 'unixepoch') AS INTEGER),
-                    COALESCE(SUM(input + output + cache_read + cache_write),0)
+                    COALESCE(SUM({sum}),0)
              FROM token_events WHERE {FILTER} GROUP BY 1, 2"
         );
         let mut stmt = self.conn.prepare(&sql)?;

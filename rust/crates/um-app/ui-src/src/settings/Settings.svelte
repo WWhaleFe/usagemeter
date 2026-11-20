@@ -1,5 +1,5 @@
 <script lang="ts">
-  // 설정 창 틀: 두 플랫폼이 상단 영역과 가운데 탭 12개를 함께 쓴다.
+  // 설정 창 틀: 두 플랫폼이 상단 영역과 가운데 탭(내보내기 포함)을 함께 쓴다.
   import { ui, t } from '../lib/api.svelte';
   import TopArea from './TopArea.svelte';
   import { tabsForStore } from './tabs';

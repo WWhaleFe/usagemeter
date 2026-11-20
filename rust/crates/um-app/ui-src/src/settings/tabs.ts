@@ -11,6 +11,7 @@ import Partition from './tabs/Partition.svelte';
 import Layout from './tabs/Layout.svelte';
 import Corner from './tabs/Corner.svelte';
 import Notch from './tabs/Notch.svelte';
+import Export from './tabs/Export.svelte';
 import Support from './tabs/Support.svelte';
 
 export interface TabDef { id: string; component: Component }
@@ -27,6 +28,7 @@ export const TABS: TabDef[] = [
   { id: 'layout', component: Layout },
   { id: 'corner', component: Corner },
   { id: 'notch', component: Notch },
+  { id: 'export', component: Export },
   { id: 'support', component: Support },
 ];
 

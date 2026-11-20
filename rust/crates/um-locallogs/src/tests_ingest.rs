@@ -216,14 +216,19 @@ fn query_aggregates() {
     // 2026-11-10은 화요일(월=0이면 1), 12시 UTC
     write(&roots.claude_projects.join("a.jsonl"), &cc_line("m1", "r1", TS, false, 10));
     ingest_source(&mut store, &roots, Source::Claude, &IngestOptions::default()).unwrap();
-    let m = store.weekday_hour_matrix(all_time(), None, 0).unwrap();
+    let m = store.weekday_hour_matrix(all_time(), None, 0, true).unwrap();
     assert_eq!(m[1][12], 10 + 10 + 5 + 40);
-    let m = store.weekday_hour_matrix(all_time(), None, 9 * 3600).unwrap();
+    let m = store.weekday_hour_matrix(all_time(), None, 9 * 3600, true).unwrap();
     assert_eq!(m[1][21], 65);
+    let m = store.weekday_hour_matrix(all_time(), None, 9 * 3600, false).unwrap();
+    assert_eq!(m[1][21], 65 - 40);
     let days = store.by_day(all_time(), None, 0).unwrap();
     assert_eq!(days[0].key, "2026-11-10");
     let days = store.by_day(all_time(), None, 13 * 3600).unwrap();
     assert_eq!(days[0].key, "2026-11-11");
+    let hours = store.by_hour_model(all_time(), None, 9 * 3600).unwrap();
+    assert_eq!(hours[0].key, "2026-11-10 21|model-a");
+    assert_eq!(hours.iter().map(|g| g.totals.total()).sum::<i64>(), 65);
     let t = store.totals(all_time(), Some(Source::Codex)).unwrap();
     assert_eq!((t.turns, t.cache_hit_ratio(), t.tokens_per_turn()), (0, None, None));
     assert_eq!(store.by_model(all_time(), None).unwrap()[0].key, "model-a");

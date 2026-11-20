@@ -163,6 +163,12 @@ pub struct SettingsSnapshot {
     pub sub_item_bar_hidden: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sub_item_menu_hidden: Option<Vec<String>>,
+    /// 미니 차트에 선으로 그릴 세부 항목(Rust 이식에서 추가). 비어 있는 AI는 대표선 하나.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sub_item_chart_shown: Option<Vec<String>>,
+    /// 분석 창에서 숨길 세부 항목(Rust 이식에서 추가). 내보내기에는 영향 없음.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sub_item_analytics_hidden: Option<Vec<String>>,
 }
 
 impl SettingsSnapshot {

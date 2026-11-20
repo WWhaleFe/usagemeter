@@ -188,6 +188,10 @@ pub fn ui_tokens(app: AppHandle, range: String, source: Option<String>) -> Value
             p.key = format!("#{}", i + 1);
         }
     }
+    // 모델 색 순서: 전체 기록·전체 소스 기준이라 기간이나 소스 칩을 바꿔도 모델 색이 바뀌지 않는다.
+    let mut model_order = store.by_model(Range { from: 0.0, to: now + 1.0 }, None).unwrap_or_default();
+    model_order.sort_by_key(|g| std::cmp::Reverse(g.totals.total()));
+    let model_order: Vec<String> = model_order.into_iter().map(|g| g.key).collect();
     json!({
         "totals": tv(&totals),
         "cacheHit": totals.cache_hit_ratio(),
@@ -196,8 +200,12 @@ pub fn ui_tokens(app: AppHandle, range: String, source: Option<String>) -> Value
         "byModel": groups(store.by_model(r, src).unwrap_or_default()),
         "byProject": groups(projects),
         "bySource": groups(store.by_source(r, src).unwrap_or_default()),
+        "modelOrder": model_order,
         "byDayModel": groups(store.by_day_model(r, src, tz).unwrap_or_default()),
-        "weekdayHour": store.weekday_hour_matrix(r, src, tz).map(|m| m.iter().map(|row| row.to_vec()).collect::<Vec<_>>()).unwrap_or_default(),
+        // 1일·3일은 하루 막대가 1~3개뿐이라 시간 단위로도 준다(창이 3일은 3시간씩 묶는다).
+        "byHourModel": if hours <= 72.0 { groups(store.by_hour_model(r, src, tz).unwrap_or_default()) } else { vec![] },
+        "weekdayHour": store.weekday_hour_matrix(r, src, tz, true).map(|m| m.iter().map(|row| row.to_vec()).collect::<Vec<_>>()).unwrap_or_default(),
+        "weekdayHourNoCache": store.weekday_hour_matrix(r, src, tz, false).map(|m| m.iter().map(|row| row.to_vec()).collect::<Vec<_>>()).unwrap_or_default(),
         "codexLimits": store.codex_limit_series(r).unwrap_or_default().iter().map(|p| json!({"t": p.t, "primary": p.primary_used, "secondary": p.secondary_used})).collect::<Vec<_>>(),
     })
 }

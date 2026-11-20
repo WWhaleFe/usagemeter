@@ -26,10 +26,17 @@ fn open_inner(app: &AppHandle, page: &str) {
         return open_line_drag(app);
     }
     // 두 플랫폼이 같은 논리 크기를 사용하며 Windows DPI 배율은 Tauri가 적용한다.
-    let (label, w, h) = match kind {
-        "analytics" => ("analytics", 1000.0, 720.0),
+    let (label, w, h): (&str, f64, f64) = match kind {
+        "analytics" => ("analytics", 1000.0, 920.0),
         _ => ("settings", 760.0, 880.0), // 설정·후원은 같은 창(후원 탭)
     };
+    // 작은 화면(13인치 노트북 등)에서는 메뉴바·Dock·작업 표시줄 자리를 남기고 화면 높이에 맞춘다.
+    let h = app
+        .primary_monitor()
+        .ok()
+        .flatten()
+        .map(|m| (m.size().height as f64 / m.scale_factor() - 120.0).max(520.0))
+        .map_or(h, |max| h.min(max));
     let tab = if kind == "support" { "support" } else { tab };
     let hash = if tab.is_empty() { label.to_string() } else { format!("{label}/{tab}") };
     if let Some(win) = app.get_webview_window(label) {
@@ -41,7 +48,14 @@ fn open_inner(app: &AppHandle, page: &str) {
     let lang = crate::shared(app).lock().map(|s| s.main.language).unwrap_or_default();
     let title = um_core::i18n::tr(if label == "analytics" { "analytics.title" } else { "window.settings" }, lang);
     let url = WebviewUrl::App(format!("index.html#{hash}").into());
-    let builder = WebviewWindowBuilder::new(app, label, url).title(title).inner_size(w, h).min_inner_size(640.0, 520.0).center();
+    // 분석 창은 세로로만 크기를 바꿀 수 있다(가로는 레이아웃 폭에 고정).
+    let tall_only = label == "analytics";
+    let builder = WebviewWindowBuilder::new(app, label, url).title(title).inner_size(w, h).center();
+    let builder = if tall_only {
+        builder.min_inner_size(w, 520.0).max_inner_size(w, 10_000.0)
+    } else {
+        builder.min_inner_size(640.0, 520.0)
+    };
     #[cfg(target_os = "macos")]
     let builder = builder
         .theme(mac_theme(app))
@@ -49,7 +63,7 @@ fn open_inner(app: &AppHandle, page: &str) {
         .title_bar_style(tauri::TitleBarStyle::Transparent)
         .hidden_title(false)
         .visible(false)
-        .resizable(false)
+        .resizable(tall_only)
         .maximizable(false);
     // Mica가 지원되는 Windows 11에서만 투명 배경을 쓴다.
     #[cfg(windows)]
@@ -64,7 +78,7 @@ fn open_inner(app: &AppHandle, page: &str) {
         Ok(win) => {
             tracing::info!("창 생성 완료({label})");
             #[cfg(target_os = "macos")]
-            center_native_title(&win, w, h);
+            center_native_title(&win, w, h, tall_only);
             dock_visible(app, true);
             let h = app.clone();
             win.on_window_event(move |e| {
@@ -88,7 +102,7 @@ fn open_inner(app: &AppHandle, page: &str) {
 
 /// AppKit의 독립된 제목 줄을 사용해 창 제목을 가운데 둔다.
 #[cfg(target_os = "macos")]
-fn center_native_title(win: &tauri::WebviewWindow, width: f64, height: f64) {
+fn center_native_title(win: &tauri::WebviewWindow, width: f64, height: f64, tall_only: bool) {
     let handle = win.clone();
     let _ = win.run_on_main_thread(move || {
         if let Ok(ptr) = handle.ns_window() {
@@ -97,11 +111,17 @@ fn center_native_title(win: &tauri::WebviewWindow, width: f64, height: f64) {
             // Swift의 일반 titled 창과 같은 마스크와 독립된 제목줄을 창을 보이기 전에 적용한다.
             use objc2_app_kit::{NSWindowStyleMask as Mask, NSWindowTitleVisibility};
             native.setToolbar(None);
-            native.setStyleMask(Mask::Titled | Mask::Closable | Mask::Miniaturizable);
+            let mask = Mask::Titled | Mask::Closable | Mask::Miniaturizable;
+            native.setStyleMask(if tall_only { mask | Mask::Resizable } else { mask });
             native.setTitleVisibility(NSWindowTitleVisibility::Visible);
             native.setTitlebarAppearsTransparent(false);
             native.setToolbarStyle(objc2_app_kit::NSWindowToolbarStyle::Expanded);
             native.setContentSize(objc2_foundation::NSSize::new(width, height));
+            if tall_only {
+                // 가로는 고정, 세로만 520pt 이상으로 늘이고 줄인다.
+                native.setContentMinSize(objc2_foundation::NSSize::new(width, 520.0));
+                native.setContentMaxSize(objc2_foundation::NSSize::new(width, 10_000.0));
+            }
             native.center();
         }
         let _ = handle.show();

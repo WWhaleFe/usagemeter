@@ -21,6 +21,8 @@
     octagon: 'M8 3h8l5 5v8l-5 5H8l-5-5V8z M12 8v5 M12 16v.01',
     gear: 'M12 9a3 3 0 1 0 0 6a3 3 0 0 0 0-6z M12 3v3 M12 18v3 M3 12h3 M18 12h3 M5.6 5.6l2.1 2.1 M16.3 16.3l2.1 2.1 M5.6 18.4l2.1-2.1 M16.3 7.7l2.1-2.1',
     doc: 'M6 3h9l4 4v14H6z M9 17v-3 M12 17v-6 M15 17v-4',
+    export: 'M12 15V3 M7 8l5-5 5 5 M5 12v8h14v-8',
+    folder: 'M3 6h6l2 2h10v11H3z',
   };
   const MAC_NAMES: Record<string, string> = {
     send: 'paperplane.fill', copy: 'doc.on.doc', check: 'checkmark', link: 'link',
@@ -28,6 +30,7 @@
     line: 'chart.line.downtrend.xyaxis', grid: 'square.grid.3x3.fill', table: 'tablecells',
     info: 'info.circle', warn: 'exclamationmark.triangle', cal: 'calendar',
     octagon: 'exclamationmark.octagon', gear: 'gearshape', doc: 'chart.bar.doc.horizontal',
+    export: 'square.and.arrow.up', folder: 'folder',
   };
   const symbol = $derived(MAC_NAMES[name] ?? name);
   const fallback = $derived(P[name] ?? P[Object.keys(MAC_NAMES).find((k) => MAC_NAMES[k] === name) ?? ''] ?? ({

@@ -184,6 +184,10 @@ pub struct Settings {
     pub sub_item_colors: BTreeMap<String, Rgba>,
     pub sub_item_bar_hidden: BTreeSet<String>,
     pub sub_item_menu_hidden: BTreeSet<String>,
+    /// 미니 차트에 선으로 그릴 세부 항목. 한 항목도 없는 AI는 대표선 하나.
+    pub sub_item_chart_shown: BTreeSet<String>,
+    /// 분석 창에서 숨길 세부 항목(내보내기는 전부 담는다).
+    pub sub_item_analytics_hidden: BTreeSet<String>,
 }
 
 // ---- 문자열 <-> 열거형 (serde 이름 = Swift rawValue) ----
@@ -404,6 +408,8 @@ impl Settings {
             .collect();
         self.sub_item_bar_hidden = s.sub_item_bar_hidden.iter().flatten().cloned().collect();
         self.sub_item_menu_hidden = s.sub_item_menu_hidden.iter().flatten().cloned().collect();
+        self.sub_item_chart_shown = s.sub_item_chart_shown.iter().flatten().cloned().collect();
+        self.sub_item_analytics_hidden = s.sub_item_analytics_hidden.iter().flatten().cloned().collect();
         if let Some(po) = &s.provider_order {
             self.provider_order = normalize_provider_order(po);
         }
@@ -499,6 +505,8 @@ impl Settings {
             sub_item_colors: Some(self.sub_item_colors.iter().map(|(k, c)| (k.clone(), c.to_vec())).collect()),
             sub_item_bar_hidden: Some(ids(&self.sub_item_bar_hidden)),
             sub_item_menu_hidden: Some(ids(&self.sub_item_menu_hidden)),
+            sub_item_chart_shown: Some(ids(&self.sub_item_chart_shown)),
+            sub_item_analytics_hidden: Some(ids(&self.sub_item_analytics_hidden)),
         }
     }
 

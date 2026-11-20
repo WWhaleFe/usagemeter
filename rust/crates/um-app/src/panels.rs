@@ -196,16 +196,31 @@ fn card_image(st: &AppState, scale: f32, hover_x: Option<f32>) -> (panel::Render
     }
     let hours = st.main.chart_hours as f64;
     let now = Utc::now().timestamp_millis() as f64 / 1000.0;
+    let since = now - hours * 3600.0;
     let series: Vec<ChartSeries> = um_providers::spec::ALL.iter()
         .map(|sp| sp.id)
         .filter(|id| st.snapshots.contains_key(*id))
-        .filter_map(|id| {
-            let pts = st.history.as_ref()?.series(id, now - hours * 3600.0).ok()?;
-            (pts.len() >= 2).then(|| ChartSeries {
-                name: um_providers::spec::spec(id).map(|s| s.name).unwrap_or("AI").to_string(),
+        .flat_map(|id| {
+            let ai_name = um_providers::spec::spec(id).map(|s| s.name).unwrap_or("AI");
+            // 세부 항목 탭에서 "미니차트"를 켠 항목은 각자 선으로, 한 항목도 없으면 AI 대표선 하나.
+            let picked: Vec<ChartSeries> = if st.main.sub_item_chart_shown.iter().any(|k| k.starts_with(&format!("{id}/"))) {
+                crate::analytics_ui::item_series(st, id, since)
+                    .into_iter()
+                    .filter(|s| s.item.as_ref().is_some_and(|i| st.main.sub_item_chart_shown.contains(&format!("{id}/{i}"))))
+                    .filter(|s| s.series.points.len() >= 2)
+                    .map(|s| ChartSeries { name: format!("{ai_name} {}", s.name), color: s.rgba, points: s.series.points.iter().map(|p| (p.t, p.r)).collect() }.displayed(st.main.bar_fill_mode))
+                    .collect()
+            } else {
+                vec![]
+            };
+            if !picked.is_empty() {
+                return picked;
+            }
+            st.history.as_ref().and_then(|db| db.series(id, since).ok()).filter(|pts| pts.len() >= 2).map(|pts| ChartSeries {
+                name: ai_name.to_string(),
                 color: provider_color(&st.main, id),
                 points: pts.iter().map(|p| (p.t, p.r)).collect(),
-            }.displayed(st.main.bar_fill_mode))
+            }.displayed(st.main.bar_fill_mode)).into_iter().collect()
         })
         .collect();
     if series.is_empty() {

@@ -115,14 +115,14 @@
     "最終収集: %@"
   ],
   "view.limits": [
-    "한도",
-    "Limits",
-    "上限"
+    "% 기준",
+    "% of limit",
+    "% 基準"
   ],
   "view.tokens": [
-    "토큰",
+    "토큰 기준",
     "Tokens",
-    "トークン"
+    "トークン基準"
   ],
   "tokens.all": [
     "전체",
@@ -220,9 +220,9 @@
     "記録を読み込み中…"
   ],
   "tokens.note": [
-    "숫자는 각 도구가 이 컴퓨터에 남긴 기록으로 계산합니다. 다른 기기에서 쓴 양은 포함되지 않습니다.",
-    "Counts come from logs these tools leave on this computer; usage on other devices isn't included.",
-    "数値は各ツールがこのコンピューターに残した記録から計算します。他のデバイスでの使用は含まれません。"
+    "숫자는 Claude Code·Codex CLI가 이 컴퓨터에 남긴 기록 그대로입니다. 웹·앱이나 다른 기기에서 쓴 양은 포함되지 않습니다.",
+    "Counts come straight from the logs Claude Code and Codex CLI leave on this computer; usage on the web, in apps or on other devices isn't included.",
+    "数値は Claude Code・Codex CLI がこのコンピューターに残した記録そのままです。Web・アプリや他のデバイスでの使用は含まれません。"
   ],
   "color.custom": [
     "직접 선택",
@@ -568,5 +568,345 @@
     "%@에서 로그아웃할까요?\n다시 로그인하기 전까지 이 AI의 사용량을 볼 수 없습니다.",
     "Sign out of %@?\nYou won't see this AI's usage until you sign in again.",
     "%@からログアウトしますか？\n再ログインするまでこのAIの使用量は表示されません。"
+  ],
+  "tab.export": [
+    "내보내기",
+    "Export",
+    "エクスポート"
+  ],
+  "export.button": [
+    "내보내기…",
+    "Export…",
+    "エクスポート…"
+  ],
+  "export.nowTitle": [
+    "분석 내용 내보내기",
+    "Export analytics",
+    "分析内容のエクスポート"
+  ],
+  "export.nowDesc": [
+    "사용량 기록을 CSV(Excel·Numbers·Google 스프레드시트)와 JSON(다른 프로그램·스크립트)으로 저장합니다. 고른 폴더 안에 날짜·시각 이름의 폴더를 만들어 저장하며, 분석 창의 내보내기 버튼도 같은 설정을 씁니다.",
+    "Saves your usage history as CSV (Excel, Numbers, Google Sheets) and JSON (other apps and scripts) in a new folder named with the date and time. The Export button in the analytics window uses the same settings.",
+    "使用量の記録を CSV(Excel・Numbers・Google スプレッドシート)と JSON(他のアプリやスクリプト)で、日時名の新しいフォルダに保存します。分析ウィンドウのエクスポートボタンも同じ設定を使います。"
+  ],
+  "export.range": [
+    "기간",
+    "Period",
+    "期間"
+  ],
+  "export.rangeAll": [
+    "전체 기록",
+    "All history",
+    "すべての記録"
+  ],
+  "export.format": [
+    "파일 형식",
+    "File format",
+    "ファイル形式"
+  ],
+  "export.fmtBoth": [
+    "CSV + JSON",
+    "CSV + JSON",
+    "CSV + JSON"
+  ],
+  "export.fmtCsv": [
+    "CSV",
+    "CSV",
+    "CSV"
+  ],
+  "export.fmtJson": [
+    "JSON",
+    "JSON",
+    "JSON"
+  ],
+  "export.pickTitle": [
+    "내보낼 폴더 선택",
+    "Choose a folder to export to",
+    "エクスポート先のフォルダを選択"
+  ],
+  "export.pickAutoTitle": [
+    "자동 저장 폴더 선택",
+    "Choose a folder for automatic saves",
+    "自動保存のフォルダを選択"
+  ],
+  "export.saved": [
+    "저장했습니다",
+    "Saved",
+    "保存しました"
+  ],
+  "export.failed": [
+    "저장하지 못했습니다: %@",
+    "Couldn't save: %@",
+    "保存できませんでした: %@"
+  ],
+  "export.noDir": [
+    "폴더를 찾을 수 없습니다: %@",
+    "Folder not found: %@",
+    "フォルダが見つかりません: %@"
+  ],
+  "export.open": [
+    "폴더 열기",
+    "Open folder",
+    "フォルダを開く"
+  ],
+  "export.autoTitle": [
+    "자동 저장",
+    "Automatic save",
+    "自動保存"
+  ],
+  "export.autoEnable": [
+    "분석 내용을 주기적으로 저장",
+    "Save analytics periodically",
+    "分析内容を定期的に保存"
+  ],
+  "export.autoDesc": [
+    "앱이 켜져 있으면 정한 시각에 저장하고, 그때 꺼져 있었으면 다음에 켤 때 한 번 저장합니다. 매일은 최근 1일, 매주는 7일, 매월은 30일 내용을 위 파일 형식으로 담습니다.",
+    "Saves at the set time while the app is running; if it was closed then, it saves once on the next start. Daily covers the last day, weekly 7 days and monthly 30 days, in the file format above.",
+    "起動中は指定の時刻に保存し、その時刻に終了していた場合は次回起動時に一度保存します。毎日は直近1日、毎週は7日、毎月は30日の内容を上のファイル形式で保存します。"
+  ],
+  "export.folder": [
+    "저장 폴더",
+    "Folder",
+    "保存先"
+  ],
+  "export.noFolder": [
+    "선택 안 함",
+    "Not chosen",
+    "未選択"
+  ],
+  "export.choose": [
+    "선택…",
+    "Choose…",
+    "選択…"
+  ],
+  "export.period": [
+    "주기",
+    "Frequency",
+    "頻度"
+  ],
+  "export.daily": [
+    "매일",
+    "Daily",
+    "毎日"
+  ],
+  "export.weekly": [
+    "매주",
+    "Weekly",
+    "毎週"
+  ],
+  "export.monthly": [
+    "매월",
+    "Monthly",
+    "毎月"
+  ],
+  "export.weekday": [
+    "요일",
+    "Day of week",
+    "曜日"
+  ],
+  "export.monthday": [
+    "날짜",
+    "Day of month",
+    "日付"
+  ],
+  "export.dayFmt": [
+    "%d일",
+    "Day %d",
+    "%d日"
+  ],
+  "export.time": [
+    "시각",
+    "Time",
+    "時刻"
+  ],
+  "export.next": [
+    "다음 저장: %@",
+    "Next save: %@",
+    "次回の保存: %@"
+  ],
+  "export.needFolder": [
+    "저장 폴더를 고르면 자동 저장이 시작됩니다.",
+    "Choose a folder to start saving.",
+    "保存先を選ぶと自動保存が始まります。"
+  ],
+  "export.last": [
+    "마지막 저장: %@",
+    "Last save: %@",
+    "前回の保存: %@"
+  ],
+  "export.lastAuto": [
+    "자동",
+    "auto",
+    "自動"
+  ],
+  "export.autoFailed": [
+    "분석 자동 저장 실패",
+    "Analytics auto-save failed",
+    "分析の自動保存に失敗"
+  ],
+  "export.wd1": [
+    "월요일",
+    "Monday",
+    "月曜日"
+  ],
+  "export.wd2": [
+    "화요일",
+    "Tuesday",
+    "火曜日"
+  ],
+  "export.wd3": [
+    "수요일",
+    "Wednesday",
+    "水曜日"
+  ],
+  "export.wd4": [
+    "목요일",
+    "Thursday",
+    "木曜日"
+  ],
+  "export.wd5": [
+    "금요일",
+    "Friday",
+    "金曜日"
+  ],
+  "export.wd6": [
+    "토요일",
+    "Saturday",
+    "土曜日"
+  ],
+  "export.wd7": [
+    "일요일",
+    "Sunday",
+    "日曜日"
+  ],
+  "export.filesLabel": [
+    "파일",
+    "Files",
+    "ファイル"
+  ],
+  "export.fSummary": [
+    "항목별 요약",
+    "Summary per item",
+    "項目別の概要"
+  ],
+  "export.fRemaining": [
+    "잔여율 기록",
+    "Remaining history",
+    "残量の記録"
+  ],
+  "export.fEvents": [
+    "사용 기록",
+    "Usage events",
+    "使用の記録"
+  ],
+  "export.fDaily": [
+    "날짜별 사용량",
+    "Usage by day",
+    "日別の使用量"
+  ],
+  "export.fHourly": [
+    "시간대별 사용량",
+    "Usage by hour",
+    "時間帯別の使用量"
+  ],
+  "export.fJson": [
+    "전체 데이터",
+    "All data",
+    "すべてのデータ"
+  ],
+  "export.hour": [
+    "시",
+    "Hour",
+    "時"
+  ],
+  "export.minute": [
+    "분",
+    "Minute",
+    "分"
+  ],
+  "subItems.chart": [
+    "미니차트",
+    "Mini chart",
+    "ミニチャート"
+  ],
+  "subItems.analytics": [
+    "분석",
+    "Analytics",
+    "分析"
+  ],
+  "subItems.viewDesc": [
+    "미니차트: 켠 항목을 정보 카드 차트에 각각 선으로 그립니다. 한 항목도 켜지 않은 AI는 대표선 하나로 그립니다. 분석: 끈 항목은 분석 창에서 숨깁니다(내보내기 파일에는 그대로 담깁니다).",
+    "Mini chart: checked items get their own line in the info card chart; an AI with none checked shows one summary line. Analytics: unchecked items are hidden in the analytics window (exports still include them).",
+    "ミニチャート: オンにした項目を情報カードのチャートに個別の線で描きます。1つもオンにしていないAIは代表線1本です。分析: オフにした項目は分析ウィンドウで非表示になります(エクスポートには含まれます)。"
+  ],
+  "tokens.modelTotal": [
+    "모델별 토큰 합계",
+    "Total tokens by model",
+    "モデル別トークン合計"
+  ],
+  "tokens.geminiNo": [
+    "Gemini는 지원하지 않습니다. Antigravity 기록에 남는 숫자가 토큰 수인지 확인되지 않아 정확하게 셀 수 없습니다.",
+    "Gemini isn't supported: the numbers in Antigravity's logs aren't confirmed to be token counts, so they can't be counted accurately.",
+    "Gemini には対応していません。Antigravity の記録に残る数値がトークン数か確認できず、正確に数えられないためです。"
+  ],
+  "tokens.noLimit": [
+    "요금제별 전체 사용 가능 토큰은 Anthropic·OpenAI가 공개하지 않아 표시하지 않습니다. 한도 대비 사용량은 % 기준에서 볼 수 있습니다.",
+    "Anthropic and OpenAI don't publish how many tokens each plan allows, so no token limit is shown. See % of limit for usage against your limits.",
+    "Anthropic・OpenAI はプランごとの利用可能トークン数を公開していないため表示しません。上限に対する使用量は「% 基準」で確認できます。"
+  ],
+  "tokens.kindAll": [
+    "모든 토큰",
+    "All tokens",
+    "すべてのトークン"
+  ],
+  "tokens.kindNoCache": [
+    "캐시 읽기 제외",
+    "Without cache reads",
+    "キャッシュ読み取りを除く"
+  ],
+  "tokens.kindDesc": [
+    "캐시 읽기는 이전 대화를 다시 불러온 토큰이라 양이 매우 큽니다. 빼고 보면 새로 처리한 양을 비교하기 쉽습니다.",
+    "Cache reads re-load earlier context and are very large; leave them out to compare newly processed tokens.",
+    "キャッシュ読み取りは以前の文脈を再読み込みしたトークンで量が非常に多くなります。除くと新たに処理した量を比べやすくなります。"
+  ],
+  "tokens.trendDesc": [
+    "모델별로 쌓았습니다. 1일은 1시간, 3일은 3시간, 주간·한달은 하루 단위입니다.",
+    "Stacked by model: hourly for 1 day, 3-hourly for 3 days, daily for week and month.",
+    "モデル別に積み上げています。1日は1時間、3日は3時間、週間・1か月は1日単位です。"
+  ],
+  "tokens.modelTotalDesc": [
+    "선택한 기간에 모델마다 쓴 토큰 합계와 비율입니다.",
+    "Tokens used by each model in this period, with its share.",
+    "この期間にモデルごとに使ったトークンの合計と割合です。"
+  ],
+  "tokens.compositionDesc": [
+    "입력·출력·캐시 쓰기·캐시 읽기가 차지하는 비중입니다.",
+    "Share of input, output, cache write and cache read tokens.",
+    "入力・出力・キャッシュ書き込み・キャッシュ読み取りの割合です。"
+  ],
+  "tokens.projectsDesc": [
+    "토큰을 많이 쓴 프로젝트 상위 10개입니다.",
+    "Top 10 projects by tokens.",
+    "トークンを多く使ったプロジェクトの上位10件です。"
+  ],
+  "tokens.heatmapDesc": [
+    "칸이 진할수록 그 요일·시각에 토큰을 많이 썼습니다.",
+    "Darker cells mean more tokens at that weekday and hour.",
+    "セルが濃いほど、その曜日・時刻にトークンを多く使っています。"
+  ],
+  "tokens.codexLimitsDesc": [
+    "Codex CLI가 직접 기록한 5시간·주간 한도 사용률(%)입니다.",
+    "5-hour and weekly limit usage (%) recorded by Codex CLI itself.",
+    "Codex CLI 自身が記録した5時間・週間の上限使用率(%)です。"
+  ],
+  "tokens.less": [
+    "적음",
+    "Less",
+    "少"
+  ],
+  "tokens.more": [
+    "많음",
+    "More",
+    "多"
   ]
 }

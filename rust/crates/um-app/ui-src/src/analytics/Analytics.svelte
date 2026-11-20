@@ -19,6 +19,10 @@
   import Consent from '../tokens/Consent.svelte';
   import Segmented from '../components/Segmented.svelte';
   import LocalLogsSection from '../settings/LocalLogsSection.svelte';
+  import ExportResult from '../components/ExportResult.svelte';
+  import { ex, startExport, exportNow } from '../lib/export.svelte';
+
+  startExport();
 
   let range = $state<Range>('day1');
   // 보기: 한도(잔여율 이력) / 토큰(로컬 기록). 로컬 기록을 아직 묻지 않았으면 동의 안내를 띄운다.
@@ -106,18 +110,22 @@
     <header>
       <div class="top">
         <h1>{t('analytics.title')}</h1>
+        <!-- 기준 전환(% / 토큰)은 제목 바로 옆: 이 창에서 가장 먼저 고르는 것. -->
+        <div class="view-seg">
+          <Segmented options={[{ value: 'limits', label: t('view.limits') }, { value: 'tokens', label: t('view.tokens') }]} value={view} onchange={(v) => (view = v)} />
+        </div>
+        <span class="spacer"></span>
         {#if d?.earliest != null}
           <span class="since"><Icon name="cal" size={13} />{tf('analytics.since', fmtYMD(new Date(d.earliest * 1000)))}</span>
         {/if}
+        <button class="gear" disabled={ex.busy} onclick={exportNow}><Icon name="export" size={14} />{t('export.button')}</button>
         <button class="gear" onclick={() => act('openSettings', {})}><Icon name="gear" size={14} />{t('menu.settings')}</button>
       </div>
+      <ExportResult />
       <div class="seg" role="radiogroup" aria-label={t('analytics.range')}>
         {#each RANGES as r (r.id)}
           <button role="radio" aria-checked={range === r.id} class:on={range === r.id} onclick={() => (range = r.id)}>{t(r.key)}</button>
         {/each}
-      </div>
-      <div class="mac-view">
-        <Segmented options={[{ value: 'limits', label: t('view.limits') }, { value: 'tokens', label: t('view.tokens') }]} value={view} onchange={(v) => (view = v)} />
       </div>
     </header>
 
@@ -207,8 +215,9 @@
   .inner { min-width: 604px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
 
   header { display: flex; flex-direction: column; gap: 14px; }
-  .top { display: flex; align-items: baseline; gap: 12px; }
-  h1 { margin: 0; font-size: 20px; font-weight: 700; flex: 1; }
+  .top { display: flex; align-items: center; gap: 12px; }
+  h1 { margin: 0; font-size: 20px; font-weight: 700; white-space: nowrap; }
+  .spacer { flex: 1; }
   .since { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-small); color: var(--fg2); }
   .gear { display: inline-flex; align-items: center; gap: 5px; align-self: center; }
   .seg { display: flex; border: 1px solid var(--control-stroke); border-radius: var(--r-control); overflow: hidden; }
@@ -253,7 +262,10 @@
   .about hr { border: none; border-top: 1px solid var(--grid); margin: 10px 0; }
   .about ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
   .about li { display: flex; gap: 6px; }
-  .mac-view { width: 180px; align-self: center; }
+  /* 기준 전환: 다른 세그먼트보다 한 단계 크게(높이 26px, 글자 13px). */
+  .view-seg { width: 210px; align-self: center; flex: none; }
+  .view-seg :global(button) { min-height: 26px; font-size: 13px; font-weight: 600; padding: 3px 14px; }
+  :global(:root[data-skin="macos"]) .view-seg :global(button) { min-height: 26px; line-height: 20px; font-size: 13px; }
   :global(:root[data-skin="macos"]) .page { --card-bg: var(--surface); }
   :global(:root[data-skin="macos"]) h1 { font-size: 17px; line-height: 20px; }
   :global(:root[data-skin="macos"]) .seg { background: var(--segment-bg); }

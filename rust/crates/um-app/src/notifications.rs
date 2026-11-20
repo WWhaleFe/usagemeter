@@ -31,6 +31,11 @@ pub fn update(app: &AppHandle, version: &str) {
     }
 }
 
+/// 자동 저장이 실패했을 때(폴더가 사라짐·권한 없음 등). 같은 오류는 한 번만 알린다.
+pub fn export_failed(app: &AppHandle, title: &str, err: &str) {
+    fire(app, &format!("export|{err}"), title, err);
+}
+
 #[cfg(target_os = "macos")]
 pub fn init() {
     use objc2_user_notifications::{UNAuthorizationOptions, UNUserNotificationCenter};

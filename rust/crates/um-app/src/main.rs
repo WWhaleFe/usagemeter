@@ -7,6 +7,7 @@ mod agy_activity;
 mod analytics_ui;
 mod data;
 mod direct;
+mod export;
 mod diagnostics;
 mod ipc;
 mod locallogs;
@@ -541,7 +542,7 @@ fn main() {
         .manage(DirectClients(Mutex::new(BTreeMap::new())))
         .manage(ipc::Editing::default())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
-        .invoke_handler(tauri::generate_handler![ipc::ui_state, ipc::ui_set, ipc::ui_action, analytics_ui::ui_analytics, locallogs::ui_locallogs, locallogs::ui_locallogs_set, locallogs::ui_tokens, symbols::ui_symbol])
+        .invoke_handler(tauri::generate_handler![ipc::ui_state, ipc::ui_set, ipc::ui_action, analytics_ui::ui_analytics, locallogs::ui_locallogs, locallogs::ui_locallogs_set, locallogs::ui_tokens, symbols::ui_symbol, export::ui_export])
         .setup(move |app| {
             {
                 let mut st = shared_state.lock().unwrap();
@@ -667,6 +668,10 @@ fn main() {
                     }
                 }
             });
+            // 분석 내용 자동 저장(설정 "내보내기" 탭에서 켬).
+            if !headless() {
+                export::start(app.handle().clone());
+            }
             // 업데이트 자동 확인: 시작 때 + 24시간마다(설정으로 끔, Store판 제외). (Swift UpdateChecker.swift:88-98)
             if !cfg!(feature = "store") && !headless() {
                 let h = app.handle().clone();

@@ -10,6 +10,8 @@
   const colors = $derived((m.subItemColors ?? {}) as Record<string, number[]>);
   const barHidden = $derived<string[]>(m.subItemBarHidden ?? []);
   const menuHidden = $derived<string[]>(m.subItemMenuHidden ?? []);
+  const chartShown = $derived<string[]>(m.subItemChartShown ?? []);
+  const analyticsHidden = $derived<string[]>(m.subItemAnalyticsHidden ?? []);
   const member = (list: string[], v: string, on: boolean) => (on ? (list.includes(v) ? list : [...list, v]) : list.filter((x) => x !== v));
   function setColor(key: string, hex: string) {
     set('main', { subItemColors: { ...colors, [key]: fromHex(hex) } });
@@ -21,6 +23,7 @@
 </script>
 
 <span class="caption desc">{t('subItems.desc')}</span>
+<span class="caption desc">{t('subItems.viewDesc')}</span>
 
 {#each providers as p (p.id)}
   {@const split = splitIDs.includes(p.id)}
@@ -47,6 +50,8 @@
           <div class="row opts">
             <label class="chk"><input type="checkbox" checked={!barHidden.includes(it.key)} disabled={!split} onchange={(e) => set('main', { subItemBarHidden: member(barHidden, it.key, !e.currentTarget.checked) })} />{t('subItems.bar')}</label>
             <label class="chk"><input type="checkbox" checked={!menuHidden.includes(it.key)} onchange={(e) => set('main', { subItemMenuHidden: member(menuHidden, it.key, !e.currentTarget.checked) })} />{t('subItems.menu')}</label>
+            <label class="chk"><input type="checkbox" checked={chartShown.includes(it.key)} onchange={(e) => set('main', { subItemChartShown: member(chartShown, it.key, e.currentTarget.checked) })} />{t('subItems.chart')}</label>
+            <label class="chk"><input type="checkbox" checked={!analyticsHidden.includes(it.key)} onchange={(e) => set('main', { subItemAnalyticsHidden: member(analyticsHidden, it.key, !e.currentTarget.checked) })} />{t('subItems.analytics')}</label>
             <span class="grow"></span>
             <button class="reset" style:visibility={custom ? 'visible' : 'hidden'} disabled={!custom} aria-label={t('subItems.resetColor')} title={t('subItems.resetColor')} onclick={() => resetColor(it.key)}>&#8630;</button>
           </div>

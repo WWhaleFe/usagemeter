@@ -169,6 +169,8 @@ impl Default for Settings {
             sub_item_colors: BTreeMap::new(),
             sub_item_bar_hidden: BTreeSet::new(),
             sub_item_menu_hidden: BTreeSet::new(),
+            sub_item_chart_shown: BTreeSet::new(),
+            sub_item_analytics_hidden: BTreeSet::new(),
         }
     }
 }

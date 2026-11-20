@@ -2,11 +2,12 @@
   // 차트 카드(Swift `card`, AnalyticsView.swift:613-624: 아이콘+제목, 설명 2줄, 내용).
   import type { Snippet } from 'svelte';
   import Icon from './Icon.svelte';
+  // height = null이면 내용 높이를 따른다(목록 카드).
   let { title, desc, icon, height = 250, children }:
-    { title: string; desc: string; icon: string; height?: number; children: Snippet } = $props();
+    { title: string; desc: string; icon: string; height?: number | null; children: Snippet } = $props();
 </script>
 
-<section class="card" style:height="{height}px">
+<section class="card" style:height={height == null ? null : `${height}px`}>
   <h2><Icon name={icon} size={15} />{title}</h2>
   <p class="desc">{desc}</p>
   {@render children()}

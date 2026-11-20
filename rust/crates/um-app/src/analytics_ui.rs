@@ -17,7 +17,7 @@ use um_render::border::{provider_color, sub_item_color};
 
 use crate::state::AppState;
 
-fn hex(c: [f64; 4]) -> String {
+pub(crate) fn hex(c: [f64; 4]) -> String {
     format!("#{:02x}{:02x}{:02x}", (c[0] * 255.0).round() as u8, (c[1] * 255.0).round() as u8, (c[2] * 255.0).round() as u8)
 }
 
@@ -34,17 +34,19 @@ fn range_of(s: &str) -> AnalyticsRange {
 type Groups = Vec<(String, Vec<S>)>;
 
 /// 차트에 그릴 계열 하나(AI 대표 또는 세부 항목).
-struct S {
-    provider: String,
-    item: Option<String>,
-    name: String,
-    color: String,
-    series: Series,
-    reset_at: Option<f64>,
+pub(crate) struct S {
+    pub(crate) provider: String,
+    pub(crate) item: Option<String>,
+    pub(crate) name: String,
+    pub(crate) color: String,
+    /// 같은 색(sRGB 0~1). 미니 차트처럼 직접 그리는 곳에서 쓴다.
+    pub(crate) rgba: [f64; 4],
+    pub(crate) series: Series,
+    pub(crate) reset_at: Option<f64>,
 }
 
 /// 한 AI의 세부 항목 계열. 순서 = 지금 항목 → 이력에만 있는 항목(설정 탭·테두리와 같은 기본 색).
-fn item_series(st: &AppState, id: &str, since: f64) -> Vec<S> {
+pub(crate) fn item_series(st: &AppState, id: &str, since: f64) -> Vec<S> {
     let Some(db) = st.history.as_ref() else { return vec![] };
     let lang = st.main.language;
     let (live, _) = st.providers.get(id).map(|p| p.sub_items()).unwrap_or_default();
@@ -61,11 +63,13 @@ fn item_series(st: &AppState, id: &str, since: f64) -> Vec<S> {
                 return None;
             }
             let kind = tr(if it.is_five_hour { "subItems.kind5h" } else { "subItems.kindWeekly" }, lang);
+            let rgba = sub_item_color(&st.main, id, &it.id, &objs);
             Some(S {
                 provider: id.to_string(),
                 item: Some(it.id.clone()),
                 name: it.model_label.as_ref().map(|l| format!("{l} {kind}")).unwrap_or(kind),
-                color: hex(sub_item_color(&st.main, id, &it.id, &objs)),
+                color: hex(rgba),
+                rgba,
                 series: Series { events: drops(&pts), points: pts },
                 reset_at: it.reset_at.map(|d| d.timestamp() as f64),
             })
@@ -73,7 +77,7 @@ fn item_series(st: &AppState, id: &str, since: f64) -> Vec<S> {
         .collect()
 }
 
-fn ai_series(st: &AppState, since: f64) -> Vec<S> {
+pub(crate) fn ai_series(st: &AppState, since: f64) -> Vec<S> {
     let Some(db) = st.history.as_ref() else { return vec![] };
     st.main
         .provider_order
@@ -88,6 +92,7 @@ fn ai_series(st: &AppState, since: f64) -> Vec<S> {
                 item: None,
                 name: spec::spec(id).map(|s| s.name).unwrap_or("AI").to_string(),
                 color: hex(provider_color(&st.main, id)),
+                rgba: provider_color(&st.main, id),
                 series: Series { points: pts, events: db.consumption_events(id, since).unwrap_or_default() },
                 reset_at: st.snapshots.get(id).and_then(|s| s.reset_at).map(|d| d.timestamp() as f64),
             })
@@ -95,15 +100,35 @@ fn ai_series(st: &AppState, since: f64) -> Vec<S> {
         .collect()
 }
 
+pub(crate) enum Eta {
+    /// 바닥나기 전에 리셋된다.
+    Safe,
+    /// 이 시각(Unix 초)에 바닥난다.
+    At(f64),
+    /// 쓰는 중이 아니다.
+    Idle,
+}
+
+/// 지금 속도로 쓰면 언제 바닥나는지. 리셋이 먼저 오면 "여유". (Swift etaText)
+pub(crate) fn eta(stt: &a::SeriesStats, reset_at: Option<f64>, now: f64) -> Eta {
+    match (stt.rate_per_hour, stt.current) {
+        (Some(rate), Some(cur)) if rate > 0.0 => {
+            let empty = now + cur / rate * 3600.0;
+            if reset_at.is_some_and(|rt| rt < empty) { Eta::Safe } else { Eta::At(empty) }
+        }
+        _ => Eta::Idle,
+    }
+}
+
 /// 분석 창 데이터. `range` = day1|day3|week|month, `scope` = AI id(없으면 전체), `items` = 고른 세부 항목 id(비면 전체).
 #[tauri::command]
 pub fn ui_analytics(app: AppHandle, range: String, scope: Option<String>, items: Vec<String>) -> Value {
-    let st = crate::shared(&app);
-    let st = st.lock().unwrap();
     let now = chrono::Utc::now().timestamp_millis() as f64 / 1000.0;
     let r = range_of(&range);
     let since = r.since(now);
     let tz = Local;
+    let st = crate::shared(&app);
+    let st = st.lock().unwrap();
 
     let ai_all = ai_series(&st, since);
     let has_data: Vec<String> = st
@@ -119,7 +144,14 @@ pub fn ui_analytics(app: AppHandle, range: String, scope: Option<String>, items:
     let scoped_items: Vec<Value>;
     let shown_is_items: bool;
     let mut shown: Vec<&S> = vec![];
-    let all_groups: Groups = st.main.provider_order.iter().map(|id| (id.clone(), item_series(&st, id, since))).collect();
+    // 세부 항목 탭에서 "분석"을 끈 항목은 이 창에서만 뺀다(내보내기는 전부).
+    let hidden = &st.main.sub_item_analytics_hidden;
+    let all_groups: Groups = st
+        .main
+        .provider_order
+        .iter()
+        .map(|id| (id.clone(), item_series(&st, id, since).into_iter().filter(|s| !s.item.as_ref().is_some_and(|i| hidden.contains(&format!("{id}/{i}")))).collect()))
+        .collect();
     let picked_groups: Groups;
     if let Some(id) = scope.as_ref().filter(|id| spec::spec(id).is_some()) {
         let mut g = all_groups.into_iter().find(|(gid, _)| gid == id).map(|(_, v)| v).unwrap_or_default();
@@ -169,13 +201,10 @@ pub fn ui_analytics(app: AppHandle, range: String, scope: Option<String>, items:
                 .iter()
                 .map(|s| {
                     let stt = stats(&s.series, now);
-                    // 지금 속도로 쓰면 언제 바닥나는지. 리셋이 먼저 오면 "여유". (Swift etaText)
-                    let eta = match (stt.rate_per_hour, stt.current) {
-                        (Some(rate), Some(cur)) if rate > 0.0 => {
-                            let empty = now + cur / rate * 3600.0;
-                            if s.reset_at.is_some_and(|rt| rt < empty) { json!({"kind": "safe"}) } else { json!({"kind": "at", "t": empty}) }
-                        }
-                        _ => json!({"kind": "idle"}),
+                    let eta = match eta(&stt, s.reset_at, now) {
+                        Eta::Safe => json!({"kind": "safe"}),
+                        Eta::At(t) => json!({"kind": "at", "t": t}),
+                        Eta::Idle => json!({"kind": "idle"}),
                     };
                     json!({
                         "name": s.name, "color": s.color, "current": stt.current, "consumed": stt.consumed,
