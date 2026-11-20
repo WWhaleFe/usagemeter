@@ -410,7 +410,8 @@ fn record_history(st: &mut AppState) {
 }
 
 /// 로그인/로그아웃 메뉴 클릭.
-fn toggle_account(app: &AppHandle, id: String) {
+/// `ask`: 트레이 메뉴에서 눌렀을 때 Windows는 로그아웃 전에 묻는다(메뉴는 눌렀는지 알기 어렵고 되돌리려면 다시 로그인해야 한다).
+fn toggle_account(app: &AppHandle, id: String, ask: bool) {
     let Some(sp) = spec::spec(&id) else { return };
     let app = app.clone();
     std::thread::spawn(move || {
@@ -419,6 +420,12 @@ fn toggle_account(app: &AppHandle, id: String) {
             let st = st.lock().unwrap();
             (st.is_logged_in(&id), st.main.language)
         };
+        #[cfg(windows)]
+        if logged_in && ask && !um_platform::dialog::confirm("UsageMeter", &um_core::i18n::tf("acct.logoutConfirm", lang, sp.name)) {
+            return;
+        }
+        #[cfg(not(windows))]
+        let _ = ask;
         if logged_in {
             invalidate_session(&app, &id);
             web::logout(&app, sp);

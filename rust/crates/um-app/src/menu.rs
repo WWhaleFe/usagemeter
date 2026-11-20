@@ -220,7 +220,15 @@ pub fn on_event(app: &AppHandle, id: &str) {
     match id {
         "refresh" => {
             let app = app.clone();
-            std::thread::spawn(move || crate::refresh_all(&app));
+            std::thread::spawn(move || {
+                crate::refresh_all(&app);
+                // Windows: 메뉴에서 새로 고치면 화면에 달라지는 게 없어 눌렸는지 알 수 없었다. 끝나면 정보 카드로 결과를 보여 준다.
+                #[cfg(windows)]
+                {
+                    let h = app.clone();
+                    let _ = app.run_on_main_thread(move || crate::panels::open_card(&h));
+                }
+            });
         }
         "hide" => change(app, |st| st.hide_overlay = !st.hide_overlay),
         "quit" => app.exit(0),
@@ -258,7 +266,7 @@ pub fn on_event(app: &AppHandle, id: &str) {
                     if !st.main.border_hidden_ids.remove(pid) { st.main.border_hidden_ids.insert(pid.to_string()); }
                 });
             } else if let Some(rest) = id.strip_prefix("acct:") {
-                crate::toggle_account(app, rest.to_string());
+                crate::toggle_account(app, rest.to_string(), true);
             } else if let Some(m) = id.strip_prefix("interval:").and_then(|m| m.parse::<u32>().ok()) {
                 change(app, |st| {
                     st.main.refresh_use_custom = false;

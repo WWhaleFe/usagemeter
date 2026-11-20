@@ -563,5 +563,10 @@
     "선·화면 분할·배치·모서리 탭은 선택한 화면에만 적용됩니다. 언어·트레이·AI 색 등은 모든 화면 공통입니다.",
     "The Line, Partition, Layout and Corner tabs apply only to the selected display. Language, tray, AI colors and other options are shared.",
     "線・画面分割・配置・角のタブは選択した画面にのみ適用されます。言語・トレイ・AIの色などは全画面共通です。"
+  ],
+  "acct.logoutConfirm": [
+    "%@에서 로그아웃할까요?\n다시 로그인하기 전까지 이 AI의 사용량을 볼 수 없습니다.",
+    "Sign out of %@?\nYou won't see this AI's usage until you sign in again.",
+    "%@からログアウトしますか？\n再ログインするまでこのAIの使用量は表示されません。"
   ]
 }

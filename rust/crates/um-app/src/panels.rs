@@ -469,6 +469,14 @@ pub fn menu_opening() {
     });
 }
 
+/// 정보 카드를 연다(이미 열려 있으면 그대로). 트레이 메뉴의 새로고침 결과를 보여 줄 때 쓴다.
+#[cfg(windows)]
+pub fn open_card(app: &AppHandle) {
+    let Some(rect) = app.tray_by_id(crate::TRAY_ID).and_then(|t| t.rect().ok().flatten()).map(|r| crate::tray_rect(app, &r)) else { return };
+    if with(|p| p.card_open).unwrap_or(true) { return; }
+    toggle_card(app, rect);
+}
+
 /// 메뉴바 클릭 설정의 카드 버튼: 정보 패널 열기/닫기.
 pub fn toggle_card(app: &AppHandle, rect: Rect) {
     let st = crate::shared(app);

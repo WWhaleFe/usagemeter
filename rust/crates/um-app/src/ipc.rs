@@ -373,7 +373,7 @@ pub fn ui_action(app: AppHandle, action: String, arg: Value) -> Result<Value, St
             let id = s("id").ok_or("id")?;
             let want_in = action == "login";
             if crate::shared(&app).lock().unwrap().is_logged_in(&id) != want_in {
-                crate::toggle_account(&app, id);
+                crate::toggle_account(&app, id, false);
             }
         }
         "refresh" => {
