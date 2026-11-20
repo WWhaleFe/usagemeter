@@ -835,9 +835,9 @@
     "分析"
   ],
   "subItems.viewDesc": [
-    "미니차트: 켠 항목을 정보 카드 차트에 각각 선으로 그립니다. 한 항목도 켜지 않은 AI는 대표선 하나로 그립니다. 분석: 끈 항목은 분석 창에서 숨깁니다(내보내기 파일에는 그대로 담깁니다).",
-    "Mini chart: checked items get their own line in the info card chart; an AI with none checked shows one summary line. Analytics: unchecked items are hidden in the analytics window (exports still include them).",
-    "ミニチャート: オンにした項目を情報カードのチャートに個別の線で描きます。1つもオンにしていないAIは代表線1本です。分析: オフにした項目は分析ウィンドウで非表示になります(エクスポートには含まれます)。"
+    "5시간 항목 색은 선 탭의 AI 선 색과 항상 같습니다. 미니차트: AI 기본 선은 늘 그리고, 켠 항목 선을 더합니다(기본 선과 똑같은 선은 겹치지 않게 뺍니다). 분석: 끈 항목은 분석 창에서 숨깁니다(내보내기 파일에는 그대로 담깁니다).",
+    "The 5-hour item always matches the AI line color from the Line tab. Mini chart: the AI's main line is always drawn and checked items are added (a line identical to the main line is skipped). Analytics: unchecked items are hidden in the analytics window (exports still include them).",
+    "5時間の項目の色は線タブのAI線の色と常に同じです。ミニチャート: AIの基本線は常に描き、オンにした項目の線を加えます(基本線と同じ線は重ならないよう除きます)。分析: オフにした項目は分析ウィンドウで非表示になります(エクスポートには含まれます)。"
   ],
   "tokens.modelTotal": [
     "모델별 토큰 합계",
@@ -908,5 +908,10 @@
     "많음",
     "More",
     "多"
+  ],
+  "subItems.followsAi": [
+    "5시간 항목은 선 탭의 AI 선 색을 그대로 씁니다.",
+    "The 5-hour item always uses the AI line color from the Line tab.",
+    "5時間の項目は線タブのAI線の色をそのまま使います。"
   ]
 }

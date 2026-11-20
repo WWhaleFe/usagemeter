@@ -35,13 +35,14 @@
       {#if !p.itemsLive}<span class="caption warn">{t('subItems.lastKnown')}</span>{/if}
       {#each p.items as it (it.key)}
         {@const pct = Math.round(it.ratio * 100)}
-        {@const custom = it.key in colors}
+        {@const locked = it.key.endsWith('/5h')}
+        {@const custom = !locked && it.key in colors}
         <div class="item" style:opacity={p.itemsLive ? 1 : 0.6}>
           <div class="row">
             {#if s.platform === 'mac'}
-              <button class="color-well" disabled={!split} aria-label={it.name} onclick={() => act('pickColor', { id: p.id, item: it.key })}><span style:background={it.color}></span></button>
+              <button class="color-well" disabled={!split || locked} title={locked ? t('subItems.followsAi') : ''} aria-label={it.name} onclick={() => act('pickColor', { id: p.id, item: it.key })}><span style:background={it.color}></span></button>
             {:else}
-              <input class="color-well" type="color" value={it.color} disabled={!split} aria-label={it.name} onchange={(e) => setColor(it.key, e.currentTarget.value)} />
+              <input class="color-well" type="color" value={it.color} disabled={!split || locked} title={locked ? t('subItems.followsAi') : ''} aria-label={it.name} onchange={(e) => setColor(it.key, e.currentTarget.value)} />
             {/if}
             <span class="name grow" title={it.name}>{it.name}</span>
             <span class="bar" style:background={it.color + '2e'} aria-hidden="true"><span style:background={it.color} style:width="{pct}%"></span></span>

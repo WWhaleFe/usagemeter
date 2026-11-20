@@ -6,7 +6,7 @@ members = ["crates/*"]
 exclude = ["spikes"]
 
 [workspace.package]
-version = "2.1.0"
+version = "2.1.1"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/WWhaleFe/usagemeter"

@@ -390,6 +390,24 @@ pub fn num(v: f64) -> String {
     }
 }
 
+/// 두 계열이 사실상 같은 선인지. 같은 시각(초 단위)에 찍힌 점의 잔여율이 모두 0.5%p 안이고,
+/// 짧은 쪽 점의 95% 이상이 서로 맞물리면 같다고 본다. (미니 차트에서 기본 선과 겹치는 세부 항목 선 빼기)
+pub fn same_series(a: &[Point], b: &[Point]) -> bool {
+    if a.is_empty() || b.is_empty() {
+        return false;
+    }
+    let by_t: std::collections::HashMap<i64, f64> = b.iter().map(|p| (p.t.round() as i64, p.r)).collect();
+    let mut matched = 0usize;
+    for p in a {
+        match by_t.get(&(p.t.round() as i64)) {
+            Some(r) if (r - p.r).abs() <= 0.005 => matched += 1,
+            Some(_) => return false,
+            None => {}
+        }
+    }
+    matched * 100 >= a.len().min(b.len()) * 95
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -488,5 +506,17 @@ mod tests {
         let h = heat_cells(&tz, 0, [&s]);
         assert_eq!(h.cells.len(), 168);
         assert!(h.cells.iter().all(|c| (0.0..=1.0).contains(&c.amount)));
+    }
+
+    #[test]
+    fn 같은_선_판정() {
+        let p = |t: f64, r: f64| Point { t, r };
+        let base = [p(0.0, 1.0), p(300.0, 0.9), p(600.0, 0.8)];
+        assert!(same_series(&[p(0.0, 1.0), p(300.0, 0.9), p(600.0, 0.801)], &base));
+        // 한 점이라도 크게 다르면 다른 선
+        assert!(!same_series(&[p(0.0, 1.0), p(300.0, 0.7), p(600.0, 0.8)], &base));
+        // 시각이 거의 안 겹치면 같다고 하지 않는다
+        assert!(!same_series(&[p(10.0, 1.0), p(310.0, 0.9), p(600.0, 0.8)], &base));
+        assert!(!same_series(&[], &base));
     }
 }

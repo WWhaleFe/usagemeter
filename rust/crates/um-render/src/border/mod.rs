@@ -251,6 +251,20 @@ mod tests {
     const RED: Rgba = [1.0, 0.0, 0.0, 1.0];
     const BLUE: Rgba = [0.0, 0.0, 1.0, 1.0];
 
+    #[test]
+    fn 오시간_항목은_언제나_ai_선_색() {
+        let mut s = Settings::default();
+        s.provider_colors.insert("claude".into(), RED);
+        // 예전에 5시간 항목에 따로 고른 색이 남아 있어도 AI 선 색을 따른다.
+        s.sub_item_colors.insert("claude/5h".into(), BLUE);
+        s.sub_item_colors.insert("claude/weekly".into(), BLUE);
+        let items = um_core::model::UsageSubItem::from_id("5h", 0.5, None).into_iter().chain(um_core::model::UsageSubItem::from_id("weekly", 0.5, None)).collect::<Vec<_>>();
+        assert_eq!(items::sub_item_color(&s, "claude", "5h", &items), RED);
+        assert_eq!(items::sub_item_color(&s, "claude", "weekly", &items), BLUE);
+        s.provider_colors.insert("claude".into(), BLUE);
+        assert_eq!(items::sub_item_color(&s, "claude", "5h", &items), BLUE);
+    }
+
     fn 겹침_설정(mode: BarFillMode) -> Settings {
         let mut s = Settings {
             bar_fill_mode: mode, thickness: 4.0, show_track: false, fade_enabled: false,

@@ -186,8 +186,12 @@ fn sub_item_palette(provider_id: &str) -> [Rgba; 4] {
     SUB_ITEM_PALETTES.iter().find(|(id, _)| *id == provider_id).map_or(SUB_ITEM_PALETTES[0].1, |(_, p)| *p)
 }
 
-/// 세부 항목 색: 사용자 지정이 있으면 그것, 없으면 목록 안의 위치로(첫 항목 = AI 색, 이후 그 AI의 묶음 순환).
+/// 세부 항목 색. 5시간 항목은 언제나 AI 선 색(선 탭이 기준, 따로 고를 수 없다).
+/// 나머지는 사용자 지정이 있으면 그것, 없으면 목록 안의 위치로(그 AI의 묶음 순환).
 pub fn sub_item_color(s: &Settings, provider_id: &str, item_id: &str, items: &[UsageSubItem]) -> Rgba {
+    if item_id == "5h" {
+        return provider_color(s, provider_id);
+    }
     let key = UsageSubItem::settings_key(provider_id, item_id);
     s.sub_item_colors.get(&key).copied().unwrap_or_else(|| {
         let i = items.iter().position(|it| it.id == item_id).unwrap_or(0);
