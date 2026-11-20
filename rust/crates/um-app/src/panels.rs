@@ -672,8 +672,18 @@ pub fn show_menu(app: &AppHandle, rect: Rect, together: bool) {
     }
     MENU_TRACKING.store(0, Ordering::Relaxed);
     menu_opening();
-    crate::menu::rebuild(app);
-    crate::redraw(app);
+    // 고른 항목은 메뉴가 닫힌 뒤 WM_COMMAND로 따로 온다. 여기서 바로 메뉴를 바꾸면 새 메뉴에서 옛 항목 번호를
+    // 못 찾아 선택이 버려졌다(설정·종료 등 무반응). 그 메시지가 처리된 뒤에 바꾼다.
+    let app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        let h = app.clone();
+        let _ = app.run_on_main_thread(move || {
+            if menu_tracking() { return; }
+            crate::menu::rebuild(&h);
+            crate::redraw(&h);
+        });
+    });
 }
 
 #[cfg(windows)]
