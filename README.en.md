@@ -22,12 +22,18 @@ brew update && brew upgrade --cask usagemeter
 ```
 
 This quits the running app, replaces it with the new version and starts it again (settings and logins are kept). Run `brew update` as well so a new version shows up right away — Homebrew refreshes taps on its own only once a day.
-Remove: `brew uninstall --cask usagemeter` (add `--zap` to also delete settings and history).
+Remove: `brew uninstall --cask usagemeter` (app only). To also delete settings, history, sign-ins and the launch-at-login item, use `brew uninstall --zap --cask usagemeter`.
 The tap ([WWhaleFe/homebrew-tap](https://github.com/WWhaleFe/homebrew-tap)) checks for new releases every 30 minutes and follows them automatically.
 
 > 💡 If you already installed from the zip and get an `already an App` error, overwrite it with `brew install --cask --force wwhalefe/tap/usagemeter` (settings and logins are kept).
 
-> 💡 If Homebrew refuses with an `untrusted tap` error, run `brew trust --cask wwhalefe/tap/usagemeter` first, then install again.
+> 💡 If an install or upgrade stops with `Error: Refusing to load cask wwhalefe/tap/usagemeter from untrusted tap wwhalefe/tap.`, recent Homebrew wants you to trust non-official taps once. Run this one time and it won't ask again (to allow only UsageMeter, use `brew trust --cask wwhalefe/tap/usagemeter`):
+> ```sh
+> brew trust wwhalefe/tap
+> brew update && brew upgrade --cask usagemeter
+> ```
+
+> 🗑 If you installed from the zip, quit UsageMeter from its menu bar icon and move `UsageMeter.app` from Applications to the Trash. To also remove settings and history, delete `~/Library/Application Support/UsageMeter`, plus the items starting with `com.usagemeter.app` or `UsageMeter` in `~/Library/WebKit`, `~/Library/HTTPStorages` and `~/Library/Caches` (sign-ins and caches). If you turned on "Launch at login", also delete `~/Library/LaunchAgents/UsageMeter.plist`.
 
 **Direct download**
 

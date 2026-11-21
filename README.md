@@ -24,12 +24,18 @@ brew update && brew upgrade --cask usagemeter
 ```
 
 실행 중인 앱을 종료해 새 버전으로 교체한 뒤 다시 켭니다(설정·로그인은 유지). `brew update`를 함께 실행해야 새 버전이 바로 보입니다 — Homebrew는 탭을 하루 한 번만 자동 갱신합니다.
-삭제: `brew uninstall --cask usagemeter` (설정·기록까지 지우려면 `--zap`).
+삭제: `brew uninstall --cask usagemeter`(앱만). 설정·사용 기록·로그인 정보·로그인 시 자동 실행 항목까지 모두 지우려면 `brew uninstall --zap --cask usagemeter`.
 탭([WWhaleFe/homebrew-tap](https://github.com/WWhaleFe/homebrew-tap))은 30분마다 새 릴리스를 확인해 자동으로 따라갑니다.
 
 > 💡 zip으로 이미 설치해 `already an App` 오류가 나면 `brew install --cask --force wwhalefe/tap/usagemeter`로 덮어쓰세요(설정·로그인은 유지).
 
-> 💡 Homebrew가 `untrusted tap` 오류로 거부하면 먼저 `brew trust --cask wwhalefe/tap/usagemeter`를 실행한 뒤 다시 설치하세요.
+> 💡 설치나 업데이트 중에 `Error: Refusing to load cask wwhalefe/tap/usagemeter from untrusted tap wwhalefe/tap.` 오류가 나면, 최신 Homebrew가 공식 저장소가 아닌 탭을 한 번 신뢰로 등록하라는 뜻입니다. 아래를 한 번만 실행하면 이후에는 다시 묻지 않습니다(UsageMeter만 허용하려면 `brew trust --cask wwhalefe/tap/usagemeter`).
+> ```sh
+> brew trust wwhalefe/tap
+> brew update && brew upgrade --cask usagemeter
+> ```
+
+> 🗑 zip으로 직접 설치했다면 메뉴바 아이콘에서 종료한 뒤 `응용 프로그램`의 `UsageMeter.app`을 휴지통으로 옮기세요. 설정·기록까지 지우려면 `~/Library/Application Support/UsageMeter` 폴더와, `~/Library/WebKit`·`~/Library/HTTPStorages`·`~/Library/Caches` 안에서 이름이 `com.usagemeter.app` 또는 `UsageMeter`로 시작하는 항목(로그인 정보·캐시)도 지웁니다. 설정에서 "Mac 로그인 시 자동 실행"을 켰었다면 `~/Library/LaunchAgents/UsageMeter.plist`도 지우세요.
 
 **직접 받기**
 
