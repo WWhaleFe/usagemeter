@@ -1,13 +1,14 @@
 //! Windows Store판 업데이트. 새 버전이 있는지는 Microsoft Store에 묻고, 버전 번호는 GitHub
 //! `usagemeter-windows`의 최신 공개 릴리스에서 읽는다(Store API는 새 버전 번호를 주지 않는다).
 //! 설치는 자동 업데이트와 '지금 업데이트'가 같은 길을 쓴다: Store에 확인하고, 새 패키지를 조용히 받아 설치한 뒤 앱을 다시 연다.
+//! '지금 업데이트'만 조용히 안 될 때 Store 확인 창을 띄우고, 그것도 실패하면 Store 상품 페이지를 연다.
 
 use tauri::{AppHandle, Manager};
 use um_platform::store::{self, Install};
 
 use crate::update::{DownloadState, UpdateState, current_version};
 
-/// Store 상품 페이지(확인 결과의 페이지 주소로만 쓴다).
+/// Store 상품 페이지('지금 업데이트'가 앱 안에서 끝나지 못했을 때 연다).
 pub const STORE_PAGE: &str = "ms-windows-store://pdp/?productid=9P0K09D9VQNM";
 
 /// Store 확인 창의 주인 창. 열린 창이 없으면 0(창을 띄우지 않는 확인·조용한 설치는 그래도 된다).
@@ -49,7 +50,8 @@ pub fn check(app: &AppHandle) -> (UpdateState, Option<String>) {
 }
 
 /// Store에서 조용히 받아 설치한다(자동 업데이트와 '지금 업데이트' 공통). 설치되면 Store가 앱을 닫고 다시 연다.
-pub fn install(app: &AppHandle) {
+/// `manual`('지금 업데이트')이면 조용히 안 될 때 Store 확인 창, 그것도 실패하면 Store 상품 페이지까지 간다.
+pub fn install(app: &AppHandle, manual: bool) {
     {
         let st = crate::shared(app);
         let mut st = st.lock().unwrap();
@@ -61,7 +63,7 @@ pub fn install(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
         store::restart_after_update();
-        let r = store::install(owner(&app), false);
+        let r = store::install(owner(&app), manual);
         tracing::info!("Store 업데이트 설치: {r:?}");
         let mut blocked = false;
         let next = match r {
@@ -77,7 +79,12 @@ pub fn install(app: &AppHandle) {
                 DownloadState::Idle
             }
             Ok(Install::Canceled) => DownloadState::Idle,
-            Ok(Install::Failed) | Err(_) => DownloadState::Failed,
+            // 자동 업데이트는 다음 확인 때 다시 시도한다. '지금 업데이트'는 Store 페이지를 연다.
+            Ok(Install::Failed) | Err(_) if manual => {
+                let _ = open::that(STORE_PAGE);
+                DownloadState::Failed
+            }
+            Ok(Install::Failed) | Err(_) => DownloadState::Idle,
         };
         {
             let st = crate::shared(&app);
@@ -102,6 +109,6 @@ pub fn after_check(app: &AppHandle, state: &UpdateState, now: bool) {
         crate::notifications::update(app, version);
     }
     if auto || now {
-        install(app);
+        install(app, now);
     }
 }
