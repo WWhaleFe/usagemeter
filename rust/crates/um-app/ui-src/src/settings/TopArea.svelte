@@ -112,7 +112,7 @@
   .mac-top .row { flex-wrap: nowrap; }
   .update strong { font-size: 12px; white-space: nowrap; }
   .update button { white-space: nowrap; flex: none; }
-  .update .caption { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .update .caption { flex: none; white-space: nowrap; }
   .mac-top .row.hint { align-items: flex-start; }
   .hint .caption { min-width: 0; white-space: normal; line-height: 1.45; }
   .hint button { flex: none; white-space: nowrap; }
