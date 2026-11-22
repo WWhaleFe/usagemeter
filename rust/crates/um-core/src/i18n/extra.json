@@ -845,9 +845,9 @@
     "モデル別トークン合計"
   ],
   "tokens.geminiNo": [
-    "Gemini는 지원하지 않습니다. Antigravity 기록에 남는 숫자가 토큰 수인지 확인되지 않아 정확하게 셀 수 없습니다.",
-    "Gemini isn't supported: the numbers in Antigravity's logs aren't confirmed to be token counts, so they can't be counted accurately.",
-    "Gemini には対応していません。Antigravity の記録に残る数値がトークン数か確認できず、正確に数えられないためです。"
+    "Gemini(Antigravity)는 기록에 남는 숫자가 토큰 수인지 확인되지 않아 'Antigravity CLI'에서 요청 횟수로 따로 보여 줍니다.",
+    "Gemini (Antigravity) logs aren't confirmed to hold token counts, so they're shown separately as request counts under 'Antigravity CLI'.",
+    "Gemini(Antigravity)は記録の数値がトークン数か確認できないため、「Antigravity CLI」でリクエスト回数として別に表示します。"
   ],
   "tokens.noLimit": [
     "요금제별 전체 사용 가능 토큰은 Anthropic·OpenAI가 공개하지 않아 표시하지 않습니다. 한도 대비 사용량은 % 기준에서 볼 수 있습니다.",
@@ -913,6 +913,91 @@
     "5시간 항목은 선 탭의 AI 선 색을 그대로 씁니다.",
     "The 5-hour item always uses the AI line color from the Line tab.",
     "5時間の項目は線タブのAI線の色をそのまま使います。"
+  ],
+  "tokens.agyNote": [
+    "Antigravity는 토큰 수가 검증되지 않아 요청 횟수로 셉니다. 요청 시각은 대화 기록의 단계별 시각입니다.",
+    "Antigravity token numbers aren't verified, so requests are counted instead. Times come from each step in the conversation log.",
+    "Antigravity はトークン数が検証されていないため、リクエスト回数で数えます。時刻は会話記録の各ステップの時刻です。"
+  ],
+  "tokens.requests": [
+    "요청 수",
+    "Requests",
+    "リクエスト数"
+  ],
+  "tokens.conversations": [
+    "대화",
+    "Conversations",
+    "会話"
+  ],
+  "tokens.perConversation": [
+    "대화당 요청",
+    "Requests per conversation",
+    "会話あたりリクエスト"
+  ],
+  "tokens.byModelReq": [
+    "모델별 요청 추이",
+    "Requests by model",
+    "モデル別リクエスト推移"
+  ],
+  "tokens.modelTotalReq": [
+    "모델별 요청 수",
+    "Requests by model (total)",
+    "モデル別リクエスト数"
+  ],
+  "tokens.modelTotalReqDesc": [
+    "선택한 기간에 모델마다 보낸 요청 수와 비율입니다.",
+    "Requests sent to each model in this period, with its share.",
+    "この期間にモデルごとに送ったリクエスト数と割合です。"
+  ],
+  "tokens.heatmapReq": [
+    "요일 × 시간대(요청)",
+    "Weekday × hour (requests)",
+    "曜日 × 時間帯(リクエスト)"
+  ],
+  "tokens.heatmapReqDesc": [
+    "칸이 진할수록 그 요일·시각에 요청을 많이 보냈습니다.",
+    "Darker cells mean more requests at that weekday and hour.",
+    "セルが濃いほど、その曜日・時刻にリクエストを多く送っています。"
+  ],
+  "tokens.projectsReqDesc": [
+    "요청을 많이 보낸 프로젝트 상위 10개입니다.",
+    "Top 10 projects by requests.",
+    "リクエストを多く送ったプロジェクトの上位10件です。"
+  ],
+  "tokens.quota": [
+    "한도 묶음별 요청",
+    "Requests by limit group",
+    "上限グループ別リクエスト"
+  ],
+  "tokens.quotaDesc": [
+    "agy /usage 한도 묶음으로 모았습니다. Argon은 별도 한도, 나머지 Gemini는 공용 한도를 씁니다.",
+    "Grouped by agy /usage limit: Argon has its own limit, other Gemini models share one.",
+    "agy /usage の上限グループ別です。Argon は別枠、その他の Gemini は共通の上限を使います。"
+  ],
+  "tokens.quota.gemini": [
+    "Gemini 공용 한도",
+    "Shared Gemini limit",
+    "Gemini 共通上限"
+  ],
+  "tokens.quota.argon": [
+    "Argon 별도 한도",
+    "Argon limit",
+    "Argon 別枠上限"
+  ],
+  "tokens.quota.thirdParty": [
+    "Claude·GPT 한도",
+    "Claude·GPT limit",
+    "Claude・GPT 上限"
+  ],
+  "tokens.agyThirdParty": [
+    "기타(Claude·GPT)",
+    "Other (Claude·GPT)",
+    "その他(Claude・GPT)"
+  ],
+  "tokens.agyFoot": [
+    "숫자는 Antigravity CLI가 이 컴퓨터에 남긴 대화 기록에서 센 요청 수입니다. Gemini 웹·앱이나 다른 기기에서 쓴 양은 포함되지 않습니다.",
+    "Counts are requests found in the conversation logs Antigravity CLI leaves on this computer; Gemini web, app or other-device usage isn't included.",
+    "数値は Antigravity CLI がこのコンピューターに残した会話記録から数えたリクエスト数です。Gemini の Web・アプリや他のデバイスでの使用は含まれません。"
   ],
   "update.current": [
     "현재 버전",

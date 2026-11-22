@@ -18,6 +18,7 @@
   interface Tot { input: number; output: number; cacheRead: number; cacheWrite: number; reasoning: number; turns: number; total: number }
   interface Grp { key: string; sessions: number; totals: Tot }
   interface Data {
+    agy: boolean; quotaGroups?: { key: string; v: number; models: string[] }[];
     totals: Tot; cacheHit: number | null; perTurn: number | null; sessions: number; modelOrder: string[];
     byModel: Grp[]; byProject: Grp[]; byDayModel: Grp[]; byHourModel: Grp[];
     weekdayHour: number[][]; weekdayHourNoCache: number[][];
@@ -30,9 +31,15 @@
   let kind = $state<'all' | 'nocache'>('all');
   let d = $state<Data | null>(null);
   let ll = $state<LL | null>(null);
+  // 칩을 빨리 바꾸면 늦게 온 이전 응답이 새 화면을 덮지 않게, 마지막 요청의 응답만 받는다.
+  let seq = 0;
   async function load() {
-    ll = (await invoke('ui_locallogs')) as LL;
-    d = (await invoke('ui_tokens', { range, source })) as Data;
+    const n = ++seq;
+    const l = (await invoke('ui_locallogs')) as LL;
+    const r = (await invoke('ui_tokens', { range, source })) as Data;
+    if (n !== seq) return;
+    ll = l;
+    d = r;
   }
   $effect(() => { void range; void source; load(); });
   onMount(() => {
@@ -45,7 +52,7 @@
   const fmt = (n: number) => nf.format(n);
   const days = $derived(({ day1: 1, day3: 3, week: 7, month: 30 } as Record<string, number>)[range] ?? 1);
   /** 고른 종류의 합계. */
-  const val = (x: Tot) => (kind === 'all' ? x.total : x.total - x.cacheRead);
+  const val = (x: Tot) => (d?.agy || kind === 'all' ? x.total : x.total - x.cacheRead);
   /** 비율 표기: 99% 이상은 소수 한 자리(반올림해 100%로 보이지 않게). */
   const pct1 = (r: number) => (r >= 0.99 && r < 1 ? (Math.floor(r * 1000) / 10).toFixed(1) + '%' : Math.round(r * 100) + '%');
   const share = (v: number, all: number) => { const p = (v / Math.max(1, all)) * 100; return p > 0 && p < 1 ? '<1%' : Math.round(p) + '%'; };
@@ -55,7 +62,7 @@
   const order = $derived(d?.modelOrder ?? []);
   const modelKey = (m: string) => { const i = order.indexOf(m); return i >= 0 && i < palette.order.length ? m : OTHER; };
   const modelColor = (k: string) => (k === OTHER ? 'var(--fg3)' : palette.order[order.indexOf(k)] ?? 'var(--fg3)');
-  const modelName = (k: string) => (k === OTHER ? t('tokens.other') : k || '?');
+  const modelName = (k: string) => (k === OTHER ? t('tokens.other') : k === '__claude_gpt' ? t('tokens.agyThirdParty') : k || '?');
 
   // ---------- 추이(쌓은 세로 막대) ----------
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -120,6 +127,8 @@
     { k: 'tokens.cacheRead', v: d.totals.cacheRead, cache: true }, { k: 'tokens.input', v: d.totals.input, cache: false },
     { k: 'tokens.output', v: d.totals.output, cache: false }, { k: 'tokens.cacheWrite', v: d.totals.cacheWrite, cache: false },
   ].filter((p) => kind === 'all' || !p.cache).sort((a, b) => b.v - a.v) : []);
+  const quotas = $derived((d?.quotaGroups ?? []).filter((q) => q.v > 0));
+  const quotaMax = $derived(Math.max(1, ...quotas.map((q) => q.v)));
   const partMax = $derived(Math.max(1, ...parts.map((p) => p.v)));
   const projects = $derived((d?.byProject ?? []).map((p) => ({ key: p.key, v: val(p.totals) })).sort((a, b) => b.v - a.v));
   const projMax = $derived(Math.max(1, ...projects.map((p) => p.v)));
@@ -137,36 +146,45 @@
 <!-- 거르기는 한 줄, 모든 차트 위(소스·토큰 종류). -->
 <div class="filters">
   <div class="chips">
-    {#each [null, 'claude', 'codex'] as s (s ?? 'all')}
+    {#each [null, 'claude', 'codex', 'agy'] as s (s ?? 'all')}
       <button class:on={source === s} onclick={() => (source = s)}>{s ? t('locallogs.source.' + s) : t('tokens.all')}</button>
     {/each}
   </div>
-  <div class="kind"><Segmented options={kinds} value={kind} onchange={(v) => (kind = v)} /></div>
+  {#if !d?.agy}<div class="kind"><Segmented options={kinds} value={kind} onchange={(v) => (kind = v)} /></div>{/if}
 </div>
-<p class="notice caption"><span aria-hidden="true">ⓘ</span>{t('tokens.geminiNo')}</p>
-{#if kind === 'nocache'}<p class="notice caption"><span aria-hidden="true">ⓘ</span>{t('tokens.kindDesc')}</p>{/if}
+<p class="notice caption"><span aria-hidden="true">ⓘ</span>{d?.agy ? t('tokens.agyNote') : t('tokens.geminiNo')}</p>
+{#if kind === 'nocache' && !d?.agy}<p class="notice caption"><span aria-hidden="true">ⓘ</span>{t('tokens.kindDesc')}</p>{/if}
 
 {#if !anyOn}
   <p class="empty">{t('tokens.off')}</p>
 {:else if !d || d.totals.total === 0}
   <p class="empty">{ll?.scanning ? t('tokens.scanning') : t('tokens.empty')}</p>
 {:else}
-  <div class="kpis">
-    <div class="tile"><span class="tt">{t('tokens.total')}</span><b>{fmt(sum)}</b></div>
-    <div class="tile"><span class="tt">{t('tokens.dailyAvg')}</span><b>{fmt(sum / days)}</b></div>
-    <div class="tile"><span class="tt">{t('tokens.cacheHit')}</span><b>{d.cacheHit == null ? '-' : pct1(d.cacheHit)}</b></div>
-    <div class="tile"><span class="tt">{t('tokens.sessions')}</span><b>{d.sessions}</b></div>
-    <div class="tile"><span class="tt">{t('tokens.perTurn')}</span><b>{d.totals.turns > 0 ? fmt(sum / d.totals.turns) : '-'}</b></div>
-  </div>
+  {#if d.agy}
+    <div class="kpis four">
+      <div class="tile"><span class="tt">{t('tokens.requests')}</span><b>{fmt(sum)}</b></div>
+      <div class="tile"><span class="tt">{t('tokens.dailyAvg')}</span><b>{fmt(sum / days)}</b></div>
+      <div class="tile"><span class="tt">{t('tokens.conversations')}</span><b>{d.sessions}</b></div>
+      <div class="tile"><span class="tt">{t('tokens.perConversation')}</span><b>{d.sessions > 0 ? fmt(sum / d.sessions) : '-'}</b></div>
+    </div>
+  {:else}
+    <div class="kpis">
+      <div class="tile"><span class="tt">{t('tokens.total')}</span><b>{fmt(sum)}</b></div>
+      <div class="tile"><span class="tt">{t('tokens.dailyAvg')}</span><b>{fmt(sum / days)}</b></div>
+      <div class="tile"><span class="tt">{t('tokens.cacheHit')}</span><b>{d.cacheHit == null ? '-' : pct1(d.cacheHit)}</b></div>
+      <div class="tile"><span class="tt">{t('tokens.sessions')}</span><b>{d.sessions}</b></div>
+      <div class="tile"><span class="tt">{t('tokens.perTurn')}</span><b>{d.totals.turns > 0 ? fmt(sum / d.totals.turns) : '-'}</b></div>
+    </div>
+  {/if}
 
-  <Card title={t('tokens.byModel')} desc={t('tokens.trendDesc')} icon="bars2" height={290}>
+  <Card title={t(d.agy ? 'tokens.byModelReq' : 'tokens.byModel')} desc={t('tokens.trendDesc')} icon="bars2" height={290}>
     <ChartBox>
       {#snippet children(w: number, h: number)}
         {@const pw = w - 4 - 44}
         {@const ph = h - 18 - 6}
         {@const slot = pw / slots.length}
         {@const bw = Math.max(2, Math.min(24, slot * 0.62))}
-        <svg width={w} height={h} role="img" aria-label={t('tokens.byModel')}>
+        <svg width={w} height={h} role="img" aria-label={t(d?.agy ? 'tokens.byModelReq' : 'tokens.byModel')}>
           {#each yScale.ticks as v (v)}
             {@const y = MT + ph * (1 - v / yScale.top)}
             <line x1={ML} x2={ML + pw} y1={y} y2={y} class="grid" />
@@ -204,37 +222,53 @@
   </Card>
 
   <div class="cols">
-    <Card title={t('tokens.modelTotal')} desc={t('tokens.modelTotalDesc')} icon="bars" height={null}>
+    <Card title={t(d.agy ? 'tokens.modelTotalReq' : 'tokens.modelTotal')} desc={t(d.agy ? 'tokens.modelTotalReqDesc' : 'tokens.modelTotalDesc')} icon="bars" height={null}>
       <ul class="ranked">
         {#each models as m (m.key)}
           <li>
-            <span class="name" title={m.key || '?'}><i class="sw" style:background={modelColor(modelKey(m.key))}></i>{m.key || '?'}</span>
+            <span class="name" title={modelName(m.key)}><i class="sw" style:background={modelColor(modelKey(m.key))}></i>{modelName(m.key)}</span>
             <span class="track"><span class="fill" style:width={(m.v / modelMax) * 100 + '%'} style:background={modelColor(modelKey(m.key))}></span></span>
             <span class="num">{fmt(m.v)}</span>
             <span class="num pct">{share(m.v, sum)}</span>
           </li>
         {/each}
       </ul>
-      <p class="caption foot">{t('tokens.noLimit')}</p>
+      {#if !d.agy}<p class="caption foot">{t('tokens.noLimit')}</p>{/if}
     </Card>
 
-    <Card title={t('tokens.composition')} desc={t('tokens.compositionDesc')} icon="pie" height={null}>
-      <ul class="ranked">
-        {#each parts as p (p.k)}
-          <li>
-            <span class="name">{t(p.k)}</span>
-            <span class="track"><span class="fill neutral" style:width={(p.v / partMax) * 100 + '%'}></span></span>
-            <span class="num">{fmt(p.v)}</span>
-            <span class="num pct">{share(p.v, sum)}</span>
-          </li>
-        {/each}
-      </ul>
-      <p class="caption foot">{t('tokens.reasoning')} {fmt(d.totals.reasoning)}</p>
-    </Card>
+    {#if d.agy}
+      <Card title={t('tokens.quota')} desc={t('tokens.quotaDesc')} icon="pie" height={null}>
+        <ul class="ranked">
+          {#each quotas as q (q.key)}
+            <li>
+              <span class="name">{t('tokens.quota.' + q.key)}</span>
+              <span class="track"><span class="fill neutral" style:width={(q.v / quotaMax) * 100 + '%'}></span></span>
+              <span class="num">{fmt(q.v)}</span>
+              <span class="num pct">{share(q.v, sum)}</span>
+              <span class="caption sub">{q.models.join(' · ')}</span>
+            </li>
+          {/each}
+        </ul>
+      </Card>
+    {:else}
+      <Card title={t('tokens.composition')} desc={t('tokens.compositionDesc')} icon="pie" height={null}>
+        <ul class="ranked">
+          {#each parts as p (p.k)}
+            <li>
+              <span class="name">{t(p.k)}</span>
+              <span class="track"><span class="fill neutral" style:width={(p.v / partMax) * 100 + '%'}></span></span>
+              <span class="num">{fmt(p.v)}</span>
+              <span class="num pct">{share(p.v, sum)}</span>
+            </li>
+          {/each}
+        </ul>
+        <p class="caption foot">{t('tokens.reasoning')} {fmt(d.totals.reasoning)}</p>
+      </Card>
+    {/if}
   </div>
 
   <div class="cols">
-    <Card title={t('tokens.heatmap')} desc={t('tokens.heatmapDesc')} icon="grid" height={null}>
+    <Card title={t(d.agy ? 'tokens.heatmapReq' : 'tokens.heatmap')} desc={t(d.agy ? 'tokens.heatmapReqDesc' : 'tokens.heatmapDesc')} icon="grid" height={null}>
       <div class="heat">
         {#each heat as row, r (r)}
           <span class="wd">{weekdayNames[r]}</span>
@@ -246,7 +280,7 @@
       <div class="scale"><span>{t('tokens.less')}</span>{#each ramp as c (c)}<i style:background={c}></i>{/each}<span>{t('tokens.more')}</span></div>
     </Card>
 
-    <Card title={t('tokens.projects')} desc={t('tokens.projectsDesc')} icon="table" height={null}>
+    <Card title={t('tokens.projects')} desc={t(d.agy ? 'tokens.projectsReqDesc' : 'tokens.projectsDesc')} icon="table" height={null}>
       <ul class="ranked">
         {#each projects as p (p.key)}
           <li>
@@ -288,7 +322,7 @@
       <div class="legend"><span><i class="ln-key" style:background={palette.order[3]}></i>{t('menu.line5h')}</span><span><i class="ln-key" style:background={palette.order[4]}></i>{t('menu.lineWeekly')}</span></div>
     </Card>
   {/if}
-  <p class="caption">{t('tokens.note')}</p>
+  <p class="caption">{t(d.agy ? 'tokens.agyFoot' : 'tokens.note')}</p>
 {/if}
 
 <style>
@@ -304,6 +338,7 @@
   .empty { min-height: 220px; display: grid; place-items: center; text-align: center; white-space: pre-line; margin: 0; padding: 24px; color: var(--fg2); background: var(--card-bg); border: var(--card-border); border-radius: var(--card-r); }
 
   .kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+  .kpis.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .tile { background: var(--card-bg); border: var(--card-border); border-radius: var(--card-r); padding: 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
   .tt { font-size: var(--fs-small); color: var(--fg2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tile b { font-size: 22px; line-height: 26px; font-weight: 700; }
@@ -332,6 +367,7 @@
   .num { text-align: right; font-variant-numeric: tabular-nums; color: var(--fg); }
   .pct { color: var(--fg2); }
   .foot { margin: 6px 0 0; }
+  .sub { grid-column: 1 / -1; margin-top: -4px; }
 
   .heat { display: grid; grid-template-columns: 26px repeat(24, minmax(0, 1fr)); gap: 2px; align-items: center; }
   .wd, .hx { font-size: 10px; color: var(--fg2); }

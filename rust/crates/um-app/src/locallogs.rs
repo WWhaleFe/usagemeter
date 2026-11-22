@@ -10,7 +10,7 @@ use std::time::Duration;
 use chrono::{Local, Offset};
 use serde_json::{Value, json};
 use tauri::{AppHandle, Emitter, Manager};
-use um_locallogs::query::Range;
+use um_locallogs::query::{Group, Range, Totals, agy_quota_groups, bundle_third_party, relabel_models};
 use um_locallogs::{IngestOptions, Roots, Source, Store, Watcher, ingest_source};
 
 pub struct LocalLogs {
@@ -175,37 +175,75 @@ pub fn ui_tokens(app: AppHandle, range: String, source: Option<String>) -> Value
     let r = Range { from: now - hours * 3600.0, to: now + 1.0 };
     let src = source.as_deref().and_then(Source::parse);
     let tz = Local::now().offset().fix().local_minus_utc() as i64;
-    let totals = store.totals(r, src).unwrap_or_default();
-    let tv = |t: &um_locallogs::query::Totals| {
+    let tv = |t: &Totals| {
         json!({"input": t.input, "output": t.output, "cacheRead": t.cache_read, "cacheWrite": t.cache_write, "reasoning": t.reasoning, "turns": t.turns, "total": t.total()})
     };
-    let groups = |v: Vec<um_locallogs::query::Group>| -> Vec<Value> { v.iter().map(|g| json!({"key": g.key, "sessions": g.sessions, "totals": tv(&g.totals)})).collect() };
-    let mut projects = store.by_project(r, src).unwrap_or_default();
-    projects.sort_by_key(|g| std::cmp::Reverse(g.totals.total()));
-    projects.truncate(10);
-    if hide {
-        for (i, p) in projects.iter_mut().enumerate() {
-            p.key = format!("#{}", i + 1);
+    let groups = |v: Vec<Group>| -> Vec<Value> { v.iter().map(|g| json!({"key": g.key, "sessions": g.sessions, "totals": tv(&g.totals)})).collect() };
+    let matrix = |m: Option<[[i64; 24]; 7]>| m.map(|m| m.iter().map(|row| row.to_vec()).collect::<Vec<_>>()).unwrap_or_default();
+    let top_projects = |mut projects: Vec<Group>, by: &dyn Fn(&Group) -> i64| {
+        projects.sort_by_key(|g| std::cmp::Reverse(by(g)));
+        projects.truncate(10);
+        if hide {
+            for (i, p) in projects.iter_mut().enumerate() {
+                p.key = format!("#{}", i + 1);
+            }
         }
+        projects
+    };
+    let by_total = |g: &Group| g.totals.total();
+    let by_turns = |g: &Group| g.totals.turns;
+    let hourly = hours <= 72.0;
+    if src == Some(Source::Agy) {
+        // agy는 토큰 숫자가 검증되지 않아 요청 수(행 수)로만 센다. 같은 JSON 모양에 요청 수를 담는다.
+        // 요청 수를 `total`에도 넣기 위해 agy 전용 변환을 쓴다.
+        let tv_req = |t: &Totals| json!({"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "reasoning": 0, "turns": t.turns, "total": t.turns});
+        let groups_req = |v: Vec<Group>| -> Vec<Value> { v.into_iter().map(|g| json!({"key": g.key, "sessions": g.sessions, "totals": tv_req(&g.totals)})).collect() };
+        let bundled = |v: Vec<Group>| bundle_third_party(relabel_models(v));
+        let totals = store.agy_totals(r).unwrap_or_default();
+        let by_model = relabel_models(store.agy_by_model(r).unwrap_or_default());
+        let quota: Vec<Value> = agy_quota_groups(&by_model).into_iter().map(|q| json!({"key": q.key, "v": q.v, "models": q.models})).collect();
+        let mut model_order = bundle_third_party(relabel_models(store.agy_by_model(Range { from: 0.0, to: now + 1.0 }).unwrap_or_default()));
+        model_order.sort_by_key(|g| std::cmp::Reverse(g.totals.turns));
+        let wh = matrix(store.agy_weekday_hour_matrix(r, tz).ok());
+        return json!({
+            "agy": true,
+            "totals": tv_req(&totals),
+            "cacheHit": Value::Null,
+            "perTurn": Value::Null,
+            "sessions": store.agy_sessions_count(r).unwrap_or(0),
+            "byModel": groups_req(bundle_third_party(by_model)),
+            "byProject": groups_req(top_projects(store.agy_by_project(r).unwrap_or_default(), &by_turns)),
+            "bySource": Vec::<Value>::new(),
+            "modelOrder": model_order.into_iter().map(|g| g.key).collect::<Vec<_>>(),
+            "byDayModel": groups_req(bundled(store.agy_by_day_model(r, tz).unwrap_or_default())),
+            "byHourModel": if hourly { groups_req(bundled(store.agy_by_hour_model(r, tz).unwrap_or_default())) } else { vec![] },
+            "weekdayHour": wh,
+            "weekdayHourNoCache": wh,
+            "codexLimits": Vec::<Value>::new(),
+            "quotaGroups": quota,
+        });
     }
+    let totals = store.totals(r, src).unwrap_or_default();
+    let projects = top_projects(store.by_project(r, src).unwrap_or_default(), &by_total);
     // 모델 색 순서: 전체 기록·전체 소스 기준이라 기간이나 소스 칩을 바꿔도 모델 색이 바뀌지 않는다.
-    let mut model_order = store.by_model(Range { from: 0.0, to: now + 1.0 }, None).unwrap_or_default();
+    let mut model_order = relabel_models(store.by_model(Range { from: 0.0, to: now + 1.0 }, None).unwrap_or_default());
     model_order.sort_by_key(|g| std::cmp::Reverse(g.totals.total()));
     let model_order: Vec<String> = model_order.into_iter().map(|g| g.key).collect();
     json!({
+        "agy": false,
         "totals": tv(&totals),
         "cacheHit": totals.cache_hit_ratio(),
         "perTurn": totals.tokens_per_turn(),
         "sessions": store.sessions_count(r, src).unwrap_or(0),
-        "byModel": groups(store.by_model(r, src).unwrap_or_default()),
+        "byModel": groups(relabel_models(store.by_model(r, src).unwrap_or_default())),
         "byProject": groups(projects),
         "bySource": groups(store.by_source(r, src).unwrap_or_default()),
         "modelOrder": model_order,
-        "byDayModel": groups(store.by_day_model(r, src, tz).unwrap_or_default()),
+        "byDayModel": groups(relabel_models(store.by_day_model(r, src, tz).unwrap_or_default())),
         // 1일·3일은 하루 막대가 1~3개뿐이라 시간 단위로도 준다(창이 3일은 3시간씩 묶는다).
-        "byHourModel": if hours <= 72.0 { groups(store.by_hour_model(r, src, tz).unwrap_or_default()) } else { vec![] },
-        "weekdayHour": store.weekday_hour_matrix(r, src, tz, true).map(|m| m.iter().map(|row| row.to_vec()).collect::<Vec<_>>()).unwrap_or_default(),
-        "weekdayHourNoCache": store.weekday_hour_matrix(r, src, tz, false).map(|m| m.iter().map(|row| row.to_vec()).collect::<Vec<_>>()).unwrap_or_default(),
+        "byHourModel": if hourly { groups(relabel_models(store.by_hour_model(r, src, tz).unwrap_or_default())) } else { vec![] },
+        "weekdayHour": matrix(store.weekday_hour_matrix(r, src, tz, true).ok()),
+        "weekdayHourNoCache": matrix(store.weekday_hour_matrix(r, src, tz, false).ok()),
         "codexLimits": store.codex_limit_series(r).unwrap_or_default().iter().map(|p| json!({"t": p.t, "primary": p.primary_used, "secondary": p.secondary_used})).collect::<Vec<_>>(),
     })
 }

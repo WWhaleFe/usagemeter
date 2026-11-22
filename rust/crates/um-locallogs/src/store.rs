@@ -4,7 +4,7 @@ use crate::{Result, Source};
 use rusqlite::{Connection, OptionalExtension, Transaction, params};
 use std::path::Path;
 
-const SCHEMA_VERSION: &str = "1";
+const SCHEMA_VERSION: &str = "2";
 
 const SCHEMA: &str = r#"
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS agy_events(
     idx INTEGER NOT NULL,
     t REAL NOT NULL,
     model TEXT,
+    label TEXT,
     project TEXT,
     agy_f1 INTEGER, agy_f2 INTEGER, agy_f3 INTEGER, agy_f5 INTEGER,
     agy_f6 INTEGER, agy_f9 INTEGER, agy_f10 INTEGER,
@@ -59,6 +60,16 @@ CREATE TABLE IF NOT EXISTS agy_events(
 );
 CREATE INDEX IF NOT EXISTS agy_events_t ON agy_events(t);
 "#;
+
+/// 버전 1 -> 2: `agy_events.label` 열을 더하고, 요청 시각을 다시 읽도록 agy 기록을 비운다.
+fn migrate_v1(conn: &Connection) -> Result<()> {
+    // 열이 이미 있으면 오류가 나므로 무시한다.
+    let _ = conn.execute("ALTER TABLE agy_events ADD COLUMN label TEXT", []);
+    conn.execute("DELETE FROM agy_events", [])?;
+    conn.execute("DELETE FROM ingest_files WHERE source='agy'", [])?;
+    conn.execute("UPDATE meta SET value=?1 WHERE key='schema_version'", [SCHEMA_VERSION])?;
+    Ok(())
+}
 
 /// 파일별 읽은 위치. `ctx_*`는 Codex처럼 앞줄에서 정해지는 문맥을 이어받기 위한 값(개인정보 아님).
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -104,11 +115,22 @@ impl Store {
     fn init(conn: Connection) -> Result<Store> {
         conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;")
             .or_else(|_| conn.execute_batch("PRAGMA synchronous=NORMAL;"))?;
+        // 새 DB인지는 스키마를 만들기 전에 본다(새 DB는 이전하지 않는다).
+        let existed: bool = conn.query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='meta')",
+            [],
+            |r| r.get(0),
+        )?;
         conn.execute_batch(SCHEMA)?;
         conn.execute(
             "INSERT OR IGNORE INTO meta(key,value) VALUES('schema_version',?1)",
             [SCHEMA_VERSION],
         )?;
+        let version: Option<String> =
+            conn.query_row("SELECT value FROM meta WHERE key='schema_version'", [], |r| r.get(0)).optional()?;
+        if existed && version.as_deref() == Some("1") {
+            migrate_v1(&conn)?;
+        }
         // 소스별 설정은 기본 꺼짐(결정 D4)
         for s in Source::ALL {
             conn.execute(
@@ -289,6 +311,35 @@ mod tests {
         assert_eq!(s.enabled_sources().unwrap(), vec![Source::Codex]);
         s.set_enabled(Source::Codex, false).unwrap();
         assert!(!s.is_enabled(Source::Codex).unwrap());
-        assert_eq!(s.get_meta("schema_version").unwrap().as_deref(), Some("1"));
+        assert_eq!(s.get_meta("schema_version").unwrap().as_deref(), Some("2"));
+    }
+
+    #[test]
+    fn migrates_v1_agy_events() {
+        let dir = crate::testutil::TempDir::new();
+        let path = dir.path().join("old.db");
+        {
+            let c = Connection::open(&path).unwrap();
+            c.execute_batch(
+                "CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);
+                 INSERT INTO meta VALUES('schema_version','1');
+                 CREATE TABLE ingest_files(path TEXT PRIMARY KEY, source TEXT NOT NULL, size INTEGER NOT NULL,
+                   mtime REAL NOT NULL, \"offset\" INTEGER NOT NULL, ctx_model TEXT, ctx_project TEXT, ctx_session TEXT);
+                 INSERT INTO ingest_files VALUES('a','agy',1,1,0,NULL,NULL,NULL);
+                 INSERT INTO ingest_files VALUES('b','claude',1,1,0,NULL,NULL,NULL);
+                 CREATE TABLE agy_events(conversation TEXT NOT NULL, idx INTEGER NOT NULL, t REAL NOT NULL,
+                   model TEXT, project TEXT, agy_f1 INTEGER, agy_f2 INTEGER, agy_f3 INTEGER, agy_f5 INTEGER,
+                   agy_f6 INTEGER, agy_f9 INTEGER, agy_f10 INTEGER, PRIMARY KEY(conversation, idx));
+                 INSERT INTO agy_events(conversation,idx,t) VALUES('c',0,1);",
+            )
+            .unwrap();
+        }
+        let s = Store::open(&path).unwrap();
+        let n: i64 = s.conn.query_row("SELECT COUNT(*) FROM agy_events", [], |r| r.get(0)).unwrap();
+        assert_eq!(n, 0);
+        s.conn.execute("INSERT INTO agy_events(conversation,idx,t,label) VALUES('c',0,1,'x')", []).unwrap();
+        let files: i64 = s.conn.query_row("SELECT COUNT(*) FROM ingest_files", [], |r| r.get(0)).unwrap();
+        assert_eq!(files, 1);
+        assert_eq!(s.get_meta("schema_version").unwrap().as_deref(), Some("2"));
     }
 }

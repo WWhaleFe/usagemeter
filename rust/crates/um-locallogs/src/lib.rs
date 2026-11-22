@@ -5,6 +5,7 @@ pub mod agy;
 mod claude;
 mod codex;
 mod ingest;
+pub mod models;
 pub mod paths;
 pub mod protobuf;
 pub mod query;

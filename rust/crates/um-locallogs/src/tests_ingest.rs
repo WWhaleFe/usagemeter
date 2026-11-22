@@ -236,6 +236,11 @@ fn query_aggregates() {
 }
 
 fn gen_blob(model: &str, f: [(u32, u64); 3]) -> Vec<u8> {
+    gen_blob_ext(model, None, None, f)
+}
+
+/// 표시 이름(`1.21`)과 `last_step_index`(`1.20`)까지 넣은 `gen_metadata` blob.
+fn gen_blob_ext(model: &str, label: Option<&str>, step: Option<i64>, f: [(u32, u64); 3]) -> Vec<u8> {
     let mut usage = Vec::new();
     for (n, v) in f {
         enc::field_varint(n, v, &mut usage);
@@ -243,6 +248,20 @@ fn gen_blob(model: &str, f: [(u32, u64); 3]) -> Vec<u8> {
     let mut inner = Vec::new();
     enc::field_len(4, &usage, &mut inner);
     enc::field_len(19, model.as_bytes(), &mut inner);
+    // 관계없는 반복 항목도 하나 섞는다.
+    let mut other = Vec::new();
+    enc::field_len(1, b"other_key", &mut other);
+    enc::field_len(2, b"7", &mut other);
+    enc::field_len(20, &other, &mut inner);
+    if let Some(step) = step {
+        let mut e = Vec::new();
+        enc::field_len(1, b"last_step_index", &mut e);
+        enc::field_len(2, step.to_string().as_bytes(), &mut e);
+        enc::field_len(20, &e, &mut inner);
+    }
+    if let Some(l) = label {
+        enc::field_len(21, l.as_bytes(), &mut inner);
+    }
     let mut root = Vec::new();
     enc::field_len(1, &inner, &mut root);
     root
@@ -342,4 +361,63 @@ fn large_file_streams_with_bounded_memory() {
         st.peak_line_bytes,
         rss.trim()
     );
+}
+
+/// `steps` 테이블이 있는 가짜 대화 DB에 step 시각(초, 나노초)을 넣는다.
+fn add_steps(path: &Path, steps: &[(i64, u64, Option<u64>)]) {
+    let c = Connection::open(path).unwrap();
+    c.execute_batch("CREATE TABLE steps(idx INTEGER, metadata BLOB)").unwrap();
+    for (i, sec, ns) in steps {
+        let mut inner = Vec::new();
+        enc::field_varint(1, *sec, &mut inner);
+        if let Some(ns) = ns {
+            enc::field_varint(2, *ns, &mut inner);
+        }
+        let mut m = Vec::new();
+        enc::field_len(1, &inner, &mut m);
+        c.execute("INSERT INTO steps VALUES(?1,?2)", rusqlite::params![i, m]).unwrap();
+    }
+}
+
+#[test]
+fn agy_label_and_step_time() {
+    let (_t, roots, mut store) = setup();
+    let db = roots.agy_conversations().join("conv-2.db");
+    make_agy_db(
+        &db,
+        &[
+            (0, gen_blob_ext("gemini-3.8-flash-n", Some("Gemini 3.8 Flash (High)"), Some(4), [(1, 1), (2, 2), (3, 3)])),
+            (1, gen_blob_ext("gemini-3.8-flash-tiered", None, Some(9), [(1, 1), (2, 2), (3, 3)])), // step 9의 시각 없음
+        ],
+    );
+    add_steps(&db, &[(4, 1_700_000_000, Some(500_000_000)), (5, 1_700_000_100, None)]);
+    let rows = agy::read_conversation(&db).unwrap();
+    assert_eq!(rows[0].meta.label.as_deref(), Some("Gemini 3.8 Flash (High)"));
+    assert_eq!(rows[0].meta.step, Some(4));
+    assert_eq!(rows[0].t, Some(1_700_000_000.5));
+    assert_eq!((rows[1].meta.label.clone(), rows[1].meta.step, rows[1].t), (None, Some(9), None));
+
+    let mtime = fs::metadata(&db).unwrap().modified().unwrap().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs_f64();
+    let o = IngestOptions::default();
+    ingest_source(&mut store, &roots, Source::Agy, &o).unwrap();
+    let get = |idx: i64| -> (f64, Option<String>, String) {
+        store
+            .conn
+            .query_row("SELECT t,label,model FROM agy_events WHERE idx=?1", [idx], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+            .unwrap()
+    };
+    assert_eq!(get(0), (1_700_000_000.5, Some("Gemini 3.8 Flash (High)".to_string()), "gemini-3.8-flash-n".to_string()));
+    let (t1, label1, _) = get(1);
+    assert!((t1 - mtime).abs() < 2.0 && label1.is_none());
+}
+
+#[test]
+fn agy_without_steps_table_uses_mtime() {
+    let (_t, roots, mut store) = setup();
+    let db = roots.agy_conversations().join("conv-3.db");
+    make_agy_db(&db, &[(0, gen_blob_ext("gemini-x", None, Some(1), [(1, 1), (2, 2), (3, 3)]))]);
+    let mtime = fs::metadata(&db).unwrap().modified().unwrap().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs_f64();
+    ingest_source(&mut store, &roots, Source::Agy, &IngestOptions::default()).unwrap();
+    let t: f64 = store.conn.query_row("SELECT t FROM agy_events", [], |r| r.get(0)).unwrap();
+    assert!((t - mtime).abs() < 2.0);
 }

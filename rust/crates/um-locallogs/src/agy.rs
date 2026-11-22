@@ -2,7 +2,7 @@
 //! 쓰는 중에는 원본을 못 여므로 사본(+wal, shm)을 임시 폴더에 만들어 읽기 전용으로 연다.
 
 use crate::ingest::{IngestOptions, IngestStats, mtime_secs, walk_files};
-use crate::protobuf::{string_at, varint_at};
+use crate::protobuf::{Wire, fields, find_path, string_at, varint_at};
 use crate::store::{FileState, Store, save_file_state};
 use crate::{Result, Roots, Source, basename};
 use rusqlite::types::ValueRef;
@@ -31,11 +31,25 @@ pub fn provisional_total(raw: &AgyRaw) -> u64 {
     raw.f2.unwrap_or(0).saturating_add(raw.f3.unwrap_or(0))
 }
 
-/// `gen_metadata` 한 행(blob)을 해석한다. 모델과 숫자가 모두 없으면 `None`.
-pub fn parse_gen_metadata(blob: &[u8]) -> Option<(Option<String>, AgyRaw)> {
+/// `gen_metadata` 한 행에서 읽은 값.
+#[derive(Debug, Clone, PartialEq)]
+pub struct GenMeta {
+    /// 모델 ID(`1.19`)
+    pub model: Option<String>,
+    /// 사람이 읽는 표시 이름(`1.21`)
+    pub label: Option<String>,
+    /// 이 요청의 step 번호(`1.20` 중 키 `last_step_index`의 값)
+    pub step: Option<i64>,
+    pub raw: AgyRaw,
+}
+
+/// `gen_metadata` 한 행(blob)을 해석한다. 모델·표시 이름·step·숫자가 모두 없으면 `None`.
+pub fn parse_gen_metadata(blob: &[u8]) -> Option<GenMeta> {
     let model = string_at(blob, &[1, 19]).filter(|m| {
         !m.is_empty() && m.len() < 128 && m.chars().all(|c| c.is_ascii_alphanumeric() || "._-:/".contains(c))
     });
+    let label = string_at(blob, &[1, 21]).filter(|m| !m.trim().is_empty() && m.len() < 128 && !m.chars().any(char::is_control));
+    let step = last_step_index(blob);
     let v = |n: u32| varint_at(blob, &[1, 4, n]);
     let raw = AgyRaw {
         f1: v(1),
@@ -46,10 +60,29 @@ pub fn parse_gen_metadata(blob: &[u8]) -> Option<(Option<String>, AgyRaw)> {
         f9: v(9),
         f10: v(10),
     };
-    if model.is_none() && raw == AgyRaw::default() {
+    if model.is_none() && label.is_none() && step.is_none() && raw == AgyRaw::default() {
         return None;
     }
-    Some((model, raw))
+    Some(GenMeta { model, label, step, raw })
+}
+
+/// `1.20` 반복 항목(키 `20.1`, 값 `20.2`)에서 `last_step_index`의 값을 찾는다.
+fn last_step_index(blob: &[u8]) -> Option<i64> {
+    let Some(Wire::Len(inner)) = find_path(blob, &[1]) else { return None };
+    for (n, w) in fields(inner) {
+        let (20, Wire::Len(entry)) = (n, w) else { continue };
+        if string_at(entry, &[1]).as_deref() == Some("last_step_index") {
+            return string_at(entry, &[2]).and_then(|v| v.trim().parse().ok());
+        }
+    }
+    None
+}
+
+/// `steps.metadata`의 생성 시각(유닉스 초). `1.1` 초 + `1.2` 나노초(없을 수 있음).
+fn step_time(meta: &[u8]) -> Option<f64> {
+    let sec = varint_at(meta, &[1, 1])?;
+    let nanos = varint_at(meta, &[1, 2]).unwrap_or(0);
+    Some(sec as f64 + (nanos.min(999_999_999) as f64) / 1e9)
 }
 
 /// 사본 폴더. 버릴 때 지운다.
@@ -94,21 +127,51 @@ pub fn open_copy(copy: &TempCopy) -> rusqlite::Result<Connection> {
     Connection::open_with_flags(&copy.db, OpenFlags::SQLITE_OPEN_READ_ONLY)
 }
 
-/// 원본 db를 복사해 `gen_metadata`의 (idx, 모델, 원시 숫자)를 읽는다.
-pub fn read_conversation(src: &Path) -> Result<Vec<(i64, Option<String>, AgyRaw)>> {
+/// 대화 한 건의 요청 한 행.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AgyRow {
+    pub idx: i64,
+    pub meta: GenMeta,
+    /// 그 요청 step의 시각(유닉스 초). 찾지 못하면 `None`.
+    pub t: Option<f64>,
+}
+
+/// 원본 db를 복사해 `gen_metadata`의 요청 행과 `steps`의 step 시각을 읽는다.
+/// `steps`가 없거나 읽기에 실패하면 시각은 모두 `None`이다.
+pub fn read_conversation(src: &Path) -> Result<Vec<AgyRow>> {
     let copy = copy_db(src)?;
     let conn = open_copy(&copy)?;
+    let steps = read_steps(&conn).unwrap_or_else(|e| {
+        tracing::warn!("agy steps 읽기 실패 {}: {e}", src.display());
+        HashMap::new()
+    });
     let mut stmt = conn.prepare("SELECT idx, data FROM gen_metadata")?;
     let mut rows = stmt.query([])?;
     let mut out = Vec::new();
     while let Some(r) = rows.next()? {
         let idx: i64 = r.get(0)?;
         let ValueRef::Blob(b) = r.get_ref(1)? else { continue };
-        if let Some((m, raw)) = parse_gen_metadata(b) {
-            out.push((idx, m, raw));
+        if let Some(meta) = parse_gen_metadata(b) {
+            let t = meta.step.and_then(|s| steps.get(&s).copied());
+            out.push(AgyRow { idx, meta, t });
         }
     }
     Ok(out)
+}
+
+/// `steps`의 idx -> 시각(초).
+fn read_steps(conn: &Connection) -> rusqlite::Result<HashMap<i64, f64>> {
+    let mut stmt = conn.prepare("SELECT idx, metadata FROM steps")?;
+    let mut rows = stmt.query([])?;
+    let mut map = HashMap::new();
+    while let Some(r) = rows.next()? {
+        let idx: i64 = r.get(0)?;
+        let ValueRef::Blob(b) = r.get_ref(1)? else { continue };
+        if let Some(t) = step_time(b) {
+            map.insert(idx, t);
+        }
+    }
+    Ok(map)
 }
 
 /// `workspace_uris` 값에서 첫 `file://` 주소의 마지막 폴더 이름을 뽑는다.
@@ -226,17 +289,20 @@ pub(crate) fn ingest(
             .cloned();
         let tx = store.conn.transaction()?;
         {
+            // 다시 읽을 때는 같은 요청 행을 새 값으로 바꾼다(먼저 읽을 때 step 시각이 아직 없었을 수 있다).
             let mut ins = tx.prepare_cached(
-                "INSERT OR IGNORE INTO agy_events
-                 (conversation,idx,t,model,project,agy_f1,agy_f2,agy_f3,agy_f5,agy_f6,agy_f9,agy_f10)
-                 VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)",
+                "INSERT OR REPLACE INTO agy_events
+                 (conversation,idx,t,model,label,project,agy_f1,agy_f2,agy_f3,agy_f5,agy_f6,agy_f9,agy_f10)
+                 VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)",
             )?;
-            for (idx, model, raw) in rows {
+            for AgyRow { idx, meta, t } in rows {
+                let raw = meta.raw;
                 let n = ins.execute(params![
                     conv,
                     idx,
-                    mtime,
-                    model,
+                    t.unwrap_or(mtime),
+                    meta.model,
+                    meta.label,
                     project,
                     raw.f1.map(|v| v as i64),
                     raw.f2.map(|v| v as i64),
