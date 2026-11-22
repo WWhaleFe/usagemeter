@@ -203,19 +203,21 @@ fn change(app: &AppHandle, f: impl FnOnce(&mut AppState)) {
     {
         let st = crate::shared(app);
         let mut st = st.lock().unwrap();
-        let prev_auto = st.main.auto_check_update;
+        let prev_auto = crate::update::wants_check(&st.main);
         f(&mut st);
-        auto_update_enabled = !prev_auto && st.main.auto_check_update;
+        auto_update_enabled = !prev_auto && crate::update::wants_check(&st.main);
         st.rebuild_snapshots();
         st.save();
     }
     crate::ipc::changed(app);
-    if auto_update_enabled && !cfg!(feature = "store") { check_update(app); }
+    if auto_update_enabled { check_update(app); }
 }
 
 /// 메뉴 클릭 처리.
 pub fn on_event(app: &AppHandle, id: &str) {
-    if cfg!(feature = "store") && (id.starts_with("update:") || id.starts_with("report:") || id == "support") { return; }
+    // Store판: 신고·후원은 없다. 업데이트는 Windows Store판만 확인·설치(Store에서 받음)를 쓴다.
+    let store_update_ok = crate::update::STORE_WIN && matches!(id, "update:check" | "update:install");
+    if cfg!(feature = "store") && ((id.starts_with("update:") && !store_update_ok) || id.starts_with("report:") || id == "support") { return; }
     tracing::info!("메뉴 선택: {id}");
     match id {
         "refresh" => {
@@ -247,6 +249,8 @@ pub fn on_event(app: &AppHandle, id: &str) {
             }
         }
         "update:check" => check_update(app),
+        #[cfg(all(windows, feature = "store"))]
+        "update:install" => crate::store_update::install(app, true),
         "update:page" => {
             let page = match &crate::shared(app).lock().unwrap().update {
                 UpdateState::Available { page, .. } => page.clone(),
@@ -329,10 +333,24 @@ fn fit_all(app: &AppHandle) {
 
 /// 업데이트 확인(별도 스레드). 끝나면 메뉴를 다시 만든다.
 pub fn check_update(app: &AppHandle) {
-    if cfg!(feature = "store") { return; }
+    if !crate::update::ENABLED { return; }
     crate::shared(app).lock().unwrap().update = UpdateState::Checking;
     rebuild(app);
+    crate::ipc::changed(app);
     let app = app.clone();
+    #[cfg(all(windows, feature = "store"))]
+    std::thread::spawn(move || {
+        let (r, latest) = crate::store_update::check(&app);
+        {
+            let st = crate::shared(&app);
+            let mut st = st.lock().unwrap();
+            st.update = r.clone();
+            if latest.is_some() { st.latest_version = latest; }
+        }
+        crate::ipc::changed(&app);
+        crate::store_update::after_check(&app, &r);
+    });
+    #[cfg(not(all(windows, feature = "store")))]
     std::thread::spawn(move || {
         let r = crate::update::check();
         if let UpdateState::Available { version, .. } = &r { crate::notifications::update(&app, version); }

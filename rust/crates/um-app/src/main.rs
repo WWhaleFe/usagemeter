@@ -18,6 +18,8 @@ mod notifications;
 mod overlay;
 mod panels;
 mod state;
+#[cfg(all(windows, feature = "store"))]
+mod store_update;
 mod symbols;
 #[cfg(target_os = "macos")]
 mod tray_title;
@@ -672,15 +674,17 @@ fn main() {
             if !headless() {
                 export::start(app.handle().clone());
             }
-            // 업데이트 자동 확인: 시작 때 + 24시간마다(설정으로 끔, Store판 제외). (Swift UpdateChecker.swift:88-98)
-            if !cfg!(feature = "store") && !headless() {
+            // 업데이트 자동 확인: 시작 때 + 24시간마다(설정으로 끔). (Swift UpdateChecker.swift:88-98)
+            // Windows Store판은 6시간마다 Store에 묻는다(Store는 하루 10번까지만 새로 확인한다). macOS Store판은 없음.
+            if update::ENABLED && !headless() {
                 let h = app.handle().clone();
+                let every = if update::STORE_WIN { 6 * 3600 } else { 24 * 3600 };
                 std::thread::spawn(move || {
                     loop {
-                        if shared(&h).lock().unwrap().main.auto_check_update {
+                        if update::wants_check(&shared(&h).lock().unwrap().main) {
                             menu::check_update(&h);
                         }
-                        std::thread::sleep(Duration::from_secs(24 * 3600));
+                        std::thread::sleep(Duration::from_secs(every));
                     }
                 });
             }

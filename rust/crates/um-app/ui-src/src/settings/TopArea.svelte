@@ -12,6 +12,20 @@
     : u.state === 'upToDate' ? '✓ ' + t('update.upToDate')
     : u.state === 'available' ? '🔵 ' + tf('update.available', 'v' + (u.version ?? ''))
     : u.state === 'failed' ? '⚠️ ' + t('update.failed') : '');
+  // Windows Store판: 현재·최신 버전과 Store 설치 상태.
+  const available = $derived(u.state === 'available');
+  const installing = $derived(u.download === 'downloading');
+  const latest = $derived(
+    available ? (u.version ? 'v' + u.version : t('update.newVersion'))
+    : u.latest ? 'v' + u.latest : t('update.latestUnknown'));
+  const storeStatus = $derived(
+    u.state === 'checking' ? t('update.checking')
+    : u.state === 'upToDate' ? t('update.upToDate')
+    : available ? t('update.availableNoVersion')
+    : u.state === 'failed' ? t('update.failed') : '');
+  const storeNote = $derived(
+    u.download === 'failed' ? t('update.installFail')
+    : u.download === 'done' ? t('update.installDone') : t('update.storeHint'));
   const dl = $derived(({ downloading: 'update.downloading', done: 'update.downloaded', failed: 'update.downloadFail' } as Record<string, string>)[u.download] ?? 'update.download');
   const editing = $derived(s.editing ?? s.displays.find((d) => d.main)?.id ?? '');
   const edDisp = $derived(s.displays.find((d) => d.id === editing));
@@ -42,6 +56,21 @@
       </div>
       <span class="caption">{t('update.installHint')}</span>
       <div class="auto"><Toggle label={t('update.auto')} checked={!!s.main.autoCheckUpdate} onchange={(v) => set('main', { autoCheckUpdate: v })} /></div>
+    {:else if s.platform === 'win'}
+      <hr />
+      <div class="ver">
+        <span class="k">{t('update.current')}</span>
+        <span class="v num">v{s.version}</span>
+        <button disabled={u.state === 'checking' || installing} onclick={() => act('checkUpdate')}>{t('update.check')}</button>
+        <span class="k">{t('update.latest')}</span>
+        <span class="v"><span class="num" class:new={available}>{latest}</span>{#if storeStatus}<span class="caption">{storeStatus}</span>{/if}</span>
+        <button class="primary" disabled={!available || installing} onclick={() => act('installUpdate')}>{installing ? t('update.installing') : t('update.install')}</button>
+      </div>
+      <div class="opts">
+        <Toggle label={t('update.autoInstall')} checked={s.main.autoInstallUpdate ?? true} onchange={(v) => set('main', { autoInstallUpdate: v })} />
+        <Toggle label={t('update.notify')} checked={!!s.main.autoCheckUpdate} onchange={(v) => set('main', { autoCheckUpdate: v })} />
+        <span class="caption note" class:warn={u.download === 'failed'}>{storeNote}</span>
+      </div>
     {/if}
   </Section>
   {#if s.displays.length > 1}
@@ -71,4 +100,14 @@
   .auto { font-size: 11px; }
   .auto :global(.toggle.mac) { line-height: 13px; min-height: 14px; }
   .analytics { display: inline-flex; align-items: center; gap: 8px; }
+  /* Store판 버전 표: 이름 | 값 | 버튼 세 열, 두 버튼은 같은 폭. */
+  .ver { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; column-gap: 12px; row-gap: 8px; align-items: center; }
+  .ver .k { color: var(--fg2); }
+  .ver .v { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+  .ver .v .caption { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ver button { width: 100%; white-space: nowrap; }
+  .num { font-variant-numeric: tabular-nums; font-weight: 500; }
+  .num.new { color: var(--accent); }
+  .opts { display: flex; align-items: center; gap: 24px; margin-top: 12px; }
+  .note { margin-left: auto; min-width: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

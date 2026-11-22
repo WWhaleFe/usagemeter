@@ -40,6 +40,16 @@ pub fn current_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
+/// Windows Store판: GitHub 내려받기 대신 Microsoft Store에서 받아 설치한다(`store_update`).
+pub const STORE_WIN: bool = cfg!(all(windows, feature = "store"));
+/// 이 빌드에 업데이트 확인이 있는지. macOS Store판만 없다.
+pub const ENABLED: bool = !cfg!(feature = "store") || STORE_WIN;
+
+/// 자동 확인을 돌릴지: 새 버전 알림이 켜져 있거나, Windows Store판에서 자동 업데이트가 켜져 있을 때.
+pub fn wants_check(m: &um_core::settings::Settings) -> bool {
+    ENABLED && (m.auto_check_update || (STORE_WIN && m.auto_install_update))
+}
+
 /// Homebrew 등으로 번들이 교체되면 종료 후 다시 연다(Swift UpdateChecker.swift:62-85).
 #[cfg(all(target_os = "macos", not(feature = "store")))]
 pub fn watch_bundle_replacement(app: &tauri::AppHandle) {

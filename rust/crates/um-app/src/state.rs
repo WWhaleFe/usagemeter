@@ -39,6 +39,8 @@ pub struct AppState {
     pub default_snapshot: Option<um_core::settings::SettingsSnapshot>,
     pub update: crate::update::UpdateState,
     pub download: crate::update::DownloadState,
+    /// 화면에 보일 최신 버전(Windows Store판). 확인 전이면 None.
+    pub latest_version: Option<String>,
 }
 
 impl AppState {
@@ -61,6 +63,7 @@ impl AppState {
             default_snapshot: None,
             update: Default::default(),
             download: Default::default(),
+            latest_version: None,
         }
     }
 

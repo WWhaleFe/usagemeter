@@ -180,6 +180,8 @@ pub struct Settings {
     pub notify_enabled: bool,
     pub notify_thresholds: BTreeSet<u32>,
     pub auto_check_update: bool,
+    /// Store판(Windows): 새 버전을 Store에서 자동으로 설치한다. `auto_check_update`는 새 버전 알림.
+    pub auto_install_update: bool,
     pub sub_item_split_ids: BTreeSet<String>,
     pub sub_item_colors: BTreeMap<String, Rgba>,
     pub sub_item_bar_hidden: BTreeSet<String>,
@@ -350,6 +352,7 @@ impl Settings {
             self.notify_thresholds = t.iter().filter_map(|v| u32::try_from(*v).ok()).collect();
         }
         self.auto_check_update = s.auto_check_update.unwrap_or(true);
+        self.auto_install_update = s.auto_install_update.unwrap_or(true);
         self.menu_line_enabled = s.menu_line_enabled.unwrap_or(false);
         self.menu_line_height = s.menu_line_height.unwrap_or(25.0);
         self.dock_line_enabled = s.dock_line_enabled.unwrap_or(false);
@@ -473,6 +476,7 @@ impl Settings {
             notify_enabled: Some(self.notify_enabled),
             notify_thresholds: Some(self.notify_thresholds.iter().map(|v| i64::from(*v)).collect()),
             auto_check_update: Some(self.auto_check_update),
+            auto_install_update: Some(self.auto_install_update),
             menu_line_enabled: Some(self.menu_line_enabled),
             menu_line_height: Some(self.menu_line_height),
             dock_line_enabled: Some(self.dock_line_enabled),

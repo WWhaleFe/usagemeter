@@ -159,6 +159,7 @@ impl Default for Settings {
             notify_enabled: false,
             notify_thresholds: [75, 90, 95].into(),
             auto_check_update: true,
+            auto_install_update: true,
             menu_line_enabled: false,
             menu_line_height: 25.0,
             dock_line_enabled: false,

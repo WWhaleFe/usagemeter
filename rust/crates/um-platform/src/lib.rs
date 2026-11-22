@@ -6,6 +6,7 @@
 pub mod dialog;
 pub mod display;
 pub mod mouse;
+pub mod store;
 pub mod toast;
 pub mod webview_proxy;
 

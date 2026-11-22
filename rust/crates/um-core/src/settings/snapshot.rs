@@ -95,6 +95,9 @@ pub struct SettingsSnapshot {
     pub notify_thresholds: Option<Vec<i64>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auto_check_update: Option<bool>,
+    /// Store판: 새 패키지를 Store에서 자동으로 받아 설치(Windows).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto_install_update: Option<bool>,
     // 화면 분할(파티션) - 가로 경계선.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub menu_line_enabled: Option<bool>,

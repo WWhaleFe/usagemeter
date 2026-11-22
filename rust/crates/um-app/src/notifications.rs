@@ -19,12 +19,13 @@ pub fn usage(app: &AppHandle, id: &str, snap: &UsageSnapshot) {
 }
 
 pub fn update(app: &AppHandle, version: &str) {
-    if cfg!(feature = "store") { return; }
+    if !crate::update::ENABLED { return; }
     let st = crate::shared(app);
     let mut st = st.lock().unwrap();
     let key = format!("update|{version}");
     if st.sent_notifications.contains(&key) { return; }
-    let body = tf("update.available", st.main.language, &format!("v{version}"));
+    let lang = st.main.language;
+    let body = if version.is_empty() { tr("update.availableNoVersion", lang) } else { tf("update.available", lang, &format!("v{version}")) };
     if fire(app, &key, "UsageMeter", &body) {
         st.sent_notifications.insert(key);
         st.save();

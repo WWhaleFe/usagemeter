@@ -913,5 +913,65 @@
     "5시간 항목은 선 탭의 AI 선 색을 그대로 씁니다.",
     "The 5-hour item always uses the AI line color from the Line tab.",
     "5時間の項目は線タブのAI線の色をそのまま使います。"
+  ],
+  "update.current": [
+    "현재 버전",
+    "Current version",
+    "現在のバージョン"
+  ],
+  "update.latest": [
+    "최신 버전",
+    "Latest version",
+    "最新バージョン"
+  ],
+  "update.latestUnknown": [
+    "확인 전",
+    "Not checked yet",
+    "未確認"
+  ],
+  "update.newVersion": [
+    "새 버전",
+    "New version",
+    "新バージョン"
+  ],
+  "update.availableNoVersion": [
+    "새 버전이 있습니다",
+    "A new version is available",
+    "新しいバージョンがあります"
+  ],
+  "update.autoInstall": [
+    "자동 업데이트",
+    "Update automatically",
+    "自動アップデート"
+  ],
+  "update.notify": [
+    "새 버전 알림",
+    "Notify about new versions",
+    "新バージョンを通知"
+  ],
+  "update.install": [
+    "지금 업데이트",
+    "Update now",
+    "今すぐアップデート"
+  ],
+  "update.installing": [
+    "업데이트하는 중…",
+    "Updating…",
+    "アップデート中…"
+  ],
+  "update.installFail": [
+    "업데이트하지 못해 Store 페이지를 열었습니다",
+    "Couldn't update, so the Store page was opened",
+    "アップデートできなかったため Store のページを開きました"
+  ],
+  "update.installDone": [
+    "설치했습니다. 곧 다시 열립니다",
+    "Installed, reopening shortly",
+    "インストールしました。まもなく再び開きます"
+  ],
+  "update.storeHint": [
+    "Microsoft Store에서 설치한 뒤 앱을 다시 엽니다",
+    "Installs from the Microsoft Store, then reopens the app",
+    "Microsoft Store からインストールし、アプリを再び開きます"
   ]
 }
