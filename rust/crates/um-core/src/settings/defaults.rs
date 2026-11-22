@@ -82,6 +82,10 @@ fn corner_map(tl: f64, tr: f64, br: f64, bl: f64) -> BTreeMap<BorderCorner, f64>
     .into()
 }
 
+/// 처음 설치 때 모서리 곡률. Windows 화면은 모서리가 각져 있어 곡률 없이 시작한다.
+const TOP_RADIUS: f64 = if cfg!(windows) { 0.0 } else { 22.0 };
+const DOCK_RADIUS: f64 = if cfg!(windows) { 0.0 } else { 12.0 };
+
 impl Default for Settings {
     fn default() -> Self {
         let first = PROVIDER_IDS[0].to_string();
@@ -93,9 +97,9 @@ impl Default for Settings {
             extend_end_corner: false,
             start_corner_above: false,
             edges: BorderEdge::ALL.into_iter().collect(),
-            corner_radii: corner_map(22.0, 22.0, 0.0, 0.0),
-            menu_zone_radii: corner_map(22.0, 22.0, 0.0, 0.0),
-            dock_zone_radii: corner_map(12.0, 12.0, 0.0, 0.0),
+            corner_radii: corner_map(TOP_RADIUS, TOP_RADIUS, 0.0, 0.0),
+            menu_zone_radii: corner_map(TOP_RADIUS, TOP_RADIUS, 0.0, 0.0),
+            dock_zone_radii: corner_map(DOCK_RADIUS, DOCK_RADIUS, 0.0, 0.0),
             link_menu_main_radii: true,
             link_main_dock_radii: true,
             no_overlap_lines: false,
