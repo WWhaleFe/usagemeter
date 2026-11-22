@@ -15,6 +15,8 @@
   // Windows Store판: 현재·최신 버전과 Store 설치 상태.
   const available = $derived(u.state === 'available');
   const installing = $derived(u.download === 'downloading');
+  // 최신 버전이 지금 설치된 버전과 같으면 받을 것이 없다(확인 전에는 눌러서 확인·설치할 수 있다).
+  const current = $derived(!available && (u.state === 'upToDate' || u.latest === s.version));
   const latest = $derived(
     available ? (u.version ? 'v' + u.version : t('update.newVersion'))
     : u.latest ? 'v' + u.latest : t('update.latestUnknown'));
@@ -65,7 +67,7 @@
         <button disabled={u.state === 'checking' || installing} onclick={() => act('checkUpdate')}>{t('update.check')}</button>
         <span class="k">{t('update.latest')}</span>
         <span class="v"><span class="num" class:new={available}>{latest}</span>{#if storeStatus}<span class="caption">{storeStatus}</span>{/if}</span>
-        <button class="primary" disabled={u.state === 'checking' || installing} onclick={() => act('installUpdate')}>{installing ? t('update.installing') : t('update.install')}</button>
+        <button class="primary" disabled={current || u.state === 'checking' || installing} onclick={() => act('installUpdate')}>{installing ? t('update.installing') : t('update.install')}</button>
       </div>
       <div class="opts">
         <Toggle label={t('update.autoInstall')} checked={s.main.autoInstallUpdate ?? true} onchange={(v) => set('main', { autoInstallUpdate: v })} />

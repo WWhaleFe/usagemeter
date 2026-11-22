@@ -35,7 +35,9 @@ pub fn check(app: &AppHandle) -> (UpdateState, Option<String>) {
         Ok(true) => {
             // GitHub에 아직 공개 릴리스가 없으면 번호 없이 "새 버전"으로 보인다.
             let version = github.clone().filter(|v| um_core::update::is_newer(v, current_version())).unwrap_or_default();
-            (UpdateState::Available { version, page: STORE_PAGE.into(), asset: None }, github)
+            // 최신 버전 칸에는 지금보다 새 번호만 둔다(같은 번호면 버튼이 꺼져 보이지 않게).
+            let latest = (!version.is_empty()).then(|| version.clone());
+            (UpdateState::Available { version, page: STORE_PAGE.into(), asset: None }, latest)
         }
         // Store에 아직 반영되지 않은 GitHub 릴리스는 받을 수 없으니 지금 버전을 최신으로 본다.
         Ok(false) => (UpdateState::UpToDate, Some(current_version().to_string())),
