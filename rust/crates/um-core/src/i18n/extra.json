@@ -978,5 +978,40 @@
     "Store 앱 자동 업데이트가 꺼져 있거나 데이터 제한 네트워크입니다",
     "Store app updates are off or the network is metered",
     "Store のアプリ自動更新がオフか、従量制ネットワークです"
+  ],
+  "update.copyCommand": [
+    "업데이트 명령 복사",
+    "Copy Update Command",
+    "アップデートコマンドをコピー"
+  ],
+  "update.copiedTitle": [
+    "업데이트 명령을 복사했습니다",
+    "Update command copied",
+    "アップデートコマンドをコピーしました"
+  ],
+  "update.copyFailedTitle": [
+    "복사하지 못했습니다",
+    "Couldn't copy",
+    "コピーできませんでした"
+  ],
+  "update.copiedBody": [
+    "터미널을 열고 붙여 넣은(⌘V) 뒤 Return 키를 눌러 실행하세요.",
+    "Open Terminal, paste it (⌘V) and press Return.",
+    "ターミナルを開いて貼り付け(⌘V)、Returnキーを押して実行してください。"
+  ],
+  "update.copyFailedBody": [
+    "아래 명령을 직접 선택해 터미널에 입력하세요.",
+    "Select the command below and enter it in Terminal.",
+    "下のコマンドを選択してターミナルに入力してください。"
+  ],
+  "update.copiedFallback": [
+    "이 명령으로 업데이트되지 않으면 릴리스 페이지를 참고하세요.",
+    "If this doesn't update the app, see the releases page.",
+    "このコマンドでアップデートできない場合は、リリースページを参照してください。"
+  ],
+  "update.ok": [
+    "확인",
+    "OK",
+    "OK"
   ]
 }

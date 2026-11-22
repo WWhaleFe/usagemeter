@@ -531,6 +531,12 @@ pub fn ui_action(app: AppHandle, action: String, arg: Value) -> Result<Value, St
         "openReleases" => crate::menu::on_event(&app, "update:page"),
         "openMail" => crate::menu::on_event(&app, "report:mail"),
         "copyEmail" => crate::menu::on_event(&app, "report:copy"),
+        // Homebrew 업데이트 명령을 클립보드로. 화면은 결과(ok)를 보고 안내 팝업을 띄운다.
+        #[cfg(target_os = "macos")]
+        "copyUpdateCommand" => {
+            let ok = arboard::Clipboard::new().and_then(|mut c| c.set_text(crate::update::BREW_UPGRADE)).is_ok();
+            return Ok(json!({"ok": ok, "command": crate::update::BREW_UPGRADE}));
+        }
         "openUrl" => {
             let url = s("url").ok_or("url")?;
             if url.starts_with("https://") || url.starts_with("mailto:") {

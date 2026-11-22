@@ -5,6 +5,7 @@
   import Toggle from '../components/Toggle.svelte';
   import Section from '../components/Section.svelte';
   import Icon from '../analytics/Icon.svelte';
+  import UpdateCommandDialog from '../components/UpdateCommandDialog.svelte';
   const s = $derived(ui.s!);
   const u = $derived(s.update);
   const status = $derived(
@@ -30,6 +31,11 @@
     : u.download === 'failed' ? t('update.installFail')
     : u.download === 'done' ? t('update.installDone') : t('update.storeHint'));
   const dl = $derived(({ downloading: 'update.downloading', done: 'update.downloaded', failed: 'update.downloadFail' } as Record<string, string>)[u.download] ?? 'update.download');
+  // macOS(GitHub판): Homebrew 업데이트 명령 복사 후 안내 팝업.
+  let copyResult = $state<{ ok: boolean; command: string } | null>(null);
+  async function copyCommand() {
+    copyResult = (await act('copyUpdateCommand')) as { ok: boolean; command: string };
+  }
   const editing = $derived(s.editing ?? s.displays.find((d) => d.main)?.id ?? '');
   const edDisp = $derived(s.displays.find((d) => d.id === editing));
   function label(d: (typeof s.displays)[number]) {
@@ -57,7 +63,10 @@
         <button class="primary" disabled={u.download === 'downloading'} onclick={() => act('download')}>{t(dl)}</button>
         <button onclick={() => act('openReleases')}>{t('update.openPage')}</button>
       </div>
-      <span class="caption">{t('update.installHint')}</span>
+      <div class="row hint">
+        <span class="caption grow">{t('update.installHint')}</span>
+        {#if s.platform === 'mac'}<button onclick={copyCommand}>{t('update.copyCommand')}</button>{/if}
+      </div>
       <div class="auto"><Toggle label={t('update.auto')} checked={!!s.main.autoCheckUpdate} onchange={(v) => set('main', { autoCheckUpdate: v })} /></div>
     {:else if s.platform === 'win'}
       <hr />
@@ -91,6 +100,10 @@
   {/if}
 </div>
 
+{#if copyResult && s.platform === 'mac'}
+  <UpdateCommandDialog command={copyResult.command} copied={copyResult.ok} onclose={() => (copyResult = null)} />
+{/if}
+
 <style>
   .row { flex-wrap: wrap; }
   .mac-top { margin: 0 8px; flex: none; }
@@ -100,6 +113,8 @@
   .update strong { font-size: 12px; white-space: nowrap; }
   .update button { white-space: nowrap; flex: none; }
   .update .caption { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hint .caption { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hint button { flex: none; white-space: nowrap; }
   .auto { font-size: 11px; }
   .auto :global(.toggle.mac) { line-height: 13px; min-height: 14px; }
   .analytics { display: inline-flex; align-items: center; gap: 8px; }

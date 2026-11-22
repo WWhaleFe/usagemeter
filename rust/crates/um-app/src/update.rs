@@ -36,6 +36,10 @@ pub enum DownloadState {
     Failed,
 }
 
+/// Homebrew로 설치한 macOS판의 업데이트 명령(설정 창 "업데이트 명령 복사").
+#[cfg(target_os = "macos")]
+pub const BREW_UPGRADE: &str = "brew update && brew upgrade --cask usagemeter";
+
 pub fn current_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
