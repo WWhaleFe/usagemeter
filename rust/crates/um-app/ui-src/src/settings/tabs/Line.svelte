@@ -5,6 +5,7 @@
   import Section from '../../components/Section.svelte';
   import Toggle from '../../components/Toggle.svelte';
   import Slider from '../../components/Slider.svelte';
+  import ColorPicker from '../../components/ColorPicker.svelte';
   const s = $derived(ui.s!);
   const providers = $derived(settingsProviders(s));
   const b = $derived(s.border);
@@ -48,7 +49,7 @@
       {#if s.platform === 'mac'}
         <button class="color-well" title={t('color.custom')} aria-label={tf('color.lineColor', p.name)} onclick={() => act('pickColor', { id: p.id })}><span style:background={p.color} style:opacity={colors[p.id]?.[3] ?? 1}></span></button>
       {:else}
-        <input class="color-well" type="color" aria-label={tf('color.lineColor', p.name)} value={p.color} onchange={(e) => setColor(p.id, (e.currentTarget as HTMLInputElement).value)} />
+        <ColorPicker label={tf('color.lineColor', p.name)} value={p.color} onpick={(h) => setColor(p.id, h)} />
       {/if}
       <span class="swatches">
         {#each s.brandColors as c (c.name)}
@@ -63,7 +64,6 @@
 
 <style>
   .name { width: 70px; font-weight: 600; }
-  input[type="color"] { width: 36px; height: 24px; padding: 0; border: 1px solid var(--control-stroke); border-radius: var(--r-control); background: none; }
   .swatches { display: inline-flex; gap: 6px; margin-left: 6px; }
   .sw { width: 18px; height: 18px; min-height: 0; padding: 0; border-radius: 50%; border: 1px solid var(--control-stroke); }
   .sw.on { outline: 2px solid var(--accent); outline-offset: 1px; }

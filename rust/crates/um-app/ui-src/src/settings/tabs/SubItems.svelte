@@ -3,6 +3,7 @@
   import { ui, settingsProviders, t, set, act, fromHex } from '../../lib/api.svelte';
   import Section from '../../components/Section.svelte';
   import Toggle from '../../components/Toggle.svelte';
+  import ColorPicker from '../../components/ColorPicker.svelte';
   const s = $derived(ui.s!);
   const providers = $derived(settingsProviders(s));
   const m = $derived(s.main);
@@ -42,7 +43,7 @@
             {#if s.platform === 'mac'}
               <button class="color-well" disabled={!split || locked} title={locked ? t('subItems.followsAi') : ''} aria-label={it.name} onclick={() => act('pickColor', { id: p.id, item: it.key })}><span style:background={it.color}></span></button>
             {:else}
-              <input class="color-well" type="color" value={it.color} disabled={!split || locked} title={locked ? t('subItems.followsAi') : ''} aria-label={it.name} onchange={(e) => setColor(it.key, e.currentTarget.value)} />
+              <ColorPicker value={it.color} disabled={!split || locked} title={locked ? t('subItems.followsAi') : ''} label={it.name} onpick={(h) => setColor(it.key, h)} />
             {/if}
             <span class="name grow" title={it.name}>{it.name}</span>
             <span class="bar" style:background={it.color + '2e'} aria-hidden="true"><span style:background={it.color} style:width="{pct}%"></span></span>
@@ -66,7 +67,6 @@
   .desc { display: block; margin-bottom: 10px; }
   .item { display: flex; flex-direction: column; gap: 2px; padding: 4px 0; }
   .item + .item { border-top: 1px solid var(--surface-stroke); }
-  input[type="color"] { width: 32px; height: 22px; padding: 0; border: 1px solid var(--control-stroke); border-radius: var(--r-control); background: none; flex: none; }
   .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
   .bar { width: 70px; height: 6px; border-radius: 3px; overflow: hidden; flex: none; }
   .bar span { display: block; height: 100%; border-radius: 3px; }
