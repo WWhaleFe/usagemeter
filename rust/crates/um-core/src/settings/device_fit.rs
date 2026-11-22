@@ -84,6 +84,17 @@ pub fn adapt_to_screen_change(s: &mut Settings, old_w: f64, new_w: f64, notch: O
 mod tests {
     use super::*;
 
+    /// macOS 기본 곡률(위 22, 독 12). Windows 기본값은 곡률이 0이라 비례 계산을 볼 수 없다.
+    fn mac_radii() -> Settings {
+        let mut s = Settings::default();
+        for c in [BorderCorner::TopLeft, BorderCorner::TopRight] {
+            s.corner_radii.insert(c, 22.0);
+            s.menu_zone_radii.insert(c, 22.0);
+            s.dock_zone_radii.insert(c, 12.0);
+        }
+        s
+    }
+
     const NOTCH: NotchInfo = NotchInfo { width: 200.0, height: 32.0 };
 
     #[test]
@@ -120,14 +131,14 @@ mod tests {
 
     #[test]
     fn 해상도_변경_비례() {
-        let mut s = Settings::default();
+        let mut s = mac_radii();
         adapt_to_screen_change(&mut s, 1000.0, 1500.0, None);
         assert!(!s.notch_enabled);
         assert_eq!(s.radius(BorderCorner::TopLeft), 33.0);
         assert_eq!(s.dock_zone_radii[&BorderCorner::TopLeft], 18.0);
         assert_eq!(s.notch_radius(NotchCorner::InnerLeft), 18.0);
         // 상한: 22 x 2 = 44(구역 80 이내), 노치 12 x 2 = 24
-        let mut t = Settings::default();
+        let mut t = mac_radii();
         adapt_to_screen_change(&mut t, 1000.0, 5000.0, Some(NOTCH));
         assert!(t.notch_enabled);
         assert_eq!(t.radius(BorderCorner::TopLeft), 44.0);
@@ -140,7 +151,7 @@ mod tests {
 
     #[test]
     fn 해상도_변화_1퍼센트_이하는_무시() {
-        let mut s = Settings::default();
+        let mut s = mac_radii();
         adapt_to_screen_change(&mut s, 1000.0, 1010.0, None);
         assert_eq!(s.radius(BorderCorner::TopLeft), 22.0);
         // 이전 폭을 모르면 곡률 유지, 미연결(폭 0)이면 아무것도 안 함.

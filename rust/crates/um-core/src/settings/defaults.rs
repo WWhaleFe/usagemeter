@@ -83,8 +83,8 @@ fn corner_map(tl: f64, tr: f64, br: f64, bl: f64) -> BTreeMap<BorderCorner, f64>
 }
 
 /// 처음 설치 때 모서리 곡률. Windows 화면은 모서리가 각져 있어 곡률 없이 시작한다.
-const TOP_RADIUS: f64 = if cfg!(windows) { 0.0 } else { 22.0 };
-const DOCK_RADIUS: f64 = if cfg!(windows) { 0.0 } else { 12.0 };
+pub(crate) const TOP_RADIUS: f64 = if cfg!(windows) { 0.0 } else { 22.0 };
+pub(crate) const DOCK_RADIUS: f64 = if cfg!(windows) { 0.0 } else { 12.0 };
 
 impl Default for Settings {
     fn default() -> Self {

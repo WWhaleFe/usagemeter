@@ -633,9 +633,12 @@ mod tests {
         assert_eq!(d.notch_height, 33.0);
         assert_eq!(d.notch_radius(NotchCorner::OuterLeft), 5.0);
         assert_eq!(d.notch_radius(NotchCorner::InnerRight), 12.0);
-        assert_eq!(d.radius(BorderCorner::TopLeft), 22.0);
+        // Windows는 처음 설치 때 곡률 없음, macOS는 Swift와 같은 22·12.
+        let (top, dock) = if cfg!(windows) { (0.0, 0.0) } else { (22.0, 12.0) };
+        assert_eq!((super::super::defaults::TOP_RADIUS, super::super::defaults::DOCK_RADIUS), (top, dock));
+        assert_eq!(d.radius(BorderCorner::TopLeft), top);
         assert_eq!(d.radius(BorderCorner::BottomRight), 0.0);
-        assert_eq!(d.dock_zone_radii[&BorderCorner::TopLeft], 12.0);
+        assert_eq!(d.dock_zone_radii[&BorderCorner::TopLeft], dock);
         assert_eq!(d.language, AppLanguage::English);
         assert_eq!(d.notify_thresholds, [75, 90, 95].into());
         assert_eq!(d.hover_corner_size, 80.0);
