@@ -960,9 +960,9 @@
     "アップデート中…"
   ],
   "update.installFail": [
-    "업데이트하지 못했습니다. 잠시 뒤 다시 시도해 주세요",
-    "Couldn't update. Try again in a moment",
-    "アップデートできませんでした。しばらくしてからお試しください"
+    "업데이트하지 못해 Store 페이지를 열었습니다",
+    "Couldn't update, so the Store page was opened",
+    "アップデートできなかったため Store のページを開きました"
   ],
   "update.installDone": [
     "설치했습니다. 곧 다시 열립니다",
