@@ -543,7 +543,12 @@ mod tests {
 
     #[test]
     fn strip_extent_default_settings() {
-        let s = Settings::default(); // 두께 2, 위 곡률 22, 아래 0, 노치 켜짐(깊이 33)
+        // 두께 2, 위 곡률 22, 아래 0, 노치 켜짐(깊이 33). Windows 기본 곡률은 0이라 22를 직접 넣는다.
+        let mut s = Settings::default();
+        for c in [BorderCorner::TopLeft, BorderCorner::TopRight] {
+            s.corner_radii.insert(c, 22.0);
+            s.menu_zone_radii.insert(c, 22.0);
+        }
         assert_eq!(strip_extent(&s, StripSide::Left), 1.0 + 2.0 + 22.0 + 4.0);
         assert_eq!(strip_extent(&s, StripSide::Right), 29.0);
         assert_eq!(strip_extent(&s, StripSide::Top), 29.0 + 33.0);
