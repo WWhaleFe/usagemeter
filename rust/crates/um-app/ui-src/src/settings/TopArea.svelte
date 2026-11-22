@@ -24,7 +24,8 @@
     : available ? t('update.availableNoVersion')
     : u.state === 'failed' ? t('update.failed') : '');
   const storeNote = $derived(
-    u.download === 'failed' ? t('update.installFail')
+    u.blocked ? t('update.installBlocked')
+    : u.download === 'failed' ? t('update.installFail')
     : u.download === 'done' ? t('update.installDone') : t('update.storeHint'));
   const dl = $derived(({ downloading: 'update.downloading', done: 'update.downloaded', failed: 'update.downloadFail' } as Record<string, string>)[u.download] ?? 'update.download');
   const editing = $derived(s.editing ?? s.displays.find((d) => d.main)?.id ?? '');
@@ -64,12 +65,12 @@
         <button disabled={u.state === 'checking' || installing} onclick={() => act('checkUpdate')}>{t('update.check')}</button>
         <span class="k">{t('update.latest')}</span>
         <span class="v"><span class="num" class:new={available}>{latest}</span>{#if storeStatus}<span class="caption">{storeStatus}</span>{/if}</span>
-        <button class="primary" disabled={!available || installing} onclick={() => act('installUpdate')}>{installing ? t('update.installing') : t('update.install')}</button>
+        <button class="primary" disabled={u.state === 'checking' || installing} onclick={() => act('installUpdate')}>{installing ? t('update.installing') : t('update.install')}</button>
       </div>
       <div class="opts">
         <Toggle label={t('update.autoInstall')} checked={s.main.autoInstallUpdate ?? true} onchange={(v) => set('main', { autoInstallUpdate: v })} />
         <Toggle label={t('update.notify')} checked={!!s.main.autoCheckUpdate} onchange={(v) => set('main', { autoCheckUpdate: v })} />
-        <span class="caption note" class:warn={u.download === 'failed'}>{storeNote}</span>
+        <span class="caption note" class:warn={u.download === 'failed' || u.blocked}>{storeNote}</span>
       </div>
     {/if}
   </Section>

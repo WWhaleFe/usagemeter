@@ -1,13 +1,13 @@
 //! Windows Store판 업데이트. 새 버전이 있는지는 Microsoft Store에 묻고, 버전 번호는 GitHub
 //! `usagemeter-windows`의 최신 공개 릴리스에서 읽는다(Store API는 새 버전 번호를 주지 않는다).
-//! 설치는 Store에서 조용히 받아 하고, 안 되면 Store 확인 창, 그것도 안 되면 Store 상품 페이지를 연다.
+//! 설치는 자동 업데이트와 '지금 업데이트'가 같은 길을 쓴다: Store에 확인하고, 새 패키지를 조용히 받아 설치한 뒤 앱을 다시 연다.
 
 use tauri::{AppHandle, Manager};
 use um_platform::store::{self, Install};
 
 use crate::update::{DownloadState, UpdateState, current_version};
 
-/// Store 상품 페이지(앱 안 설치가 막혔을 때만 연다).
+/// Store 상품 페이지(확인 결과의 페이지 주소로만 쓴다).
 pub const STORE_PAGE: &str = "ms-windows-store://pdp/?productid=9P0K09D9VQNM";
 
 /// Store 확인 창의 주인 창. 열린 창이 없으면 0(창을 띄우지 않는 확인·조용한 설치는 그래도 된다).
@@ -46,20 +46,22 @@ pub fn check(app: &AppHandle) -> (UpdateState, Option<String>) {
     }
 }
 
-/// Store에서 받아 설치한다. `manual`(설정 창 버튼)이면 조용히 안 될 때 확인 창·상품 페이지까지 간다.
-pub fn install(app: &AppHandle, manual: bool) {
+/// Store에서 조용히 받아 설치한다(자동 업데이트와 '지금 업데이트' 공통). 설치되면 Store가 앱을 닫고 다시 연다.
+pub fn install(app: &AppHandle) {
     {
         let st = crate::shared(app);
         let mut st = st.lock().unwrap();
         if st.download == DownloadState::Downloading { return; }
         st.download = DownloadState::Downloading;
+        st.install_blocked = false;
     }
     crate::ipc::changed(app);
     let app = app.clone();
     std::thread::spawn(move || {
         store::restart_after_update();
-        let r = store::install(owner(&app), manual);
+        let r = store::install(owner(&app), false);
         tracing::info!("Store 업데이트 설치: {r:?}");
+        let mut blocked = false;
         let next = match r {
             // 보통은 그 전에 Store가 앱을 닫고, 설치가 끝나면 다시 연다.
             Ok(Install::Completed) => DownloadState::Done(Default::default()),
@@ -67,29 +69,37 @@ pub fn install(app: &AppHandle, manual: bool) {
                 crate::shared(&app).lock().unwrap().update = UpdateState::UpToDate;
                 DownloadState::Idle
             }
-            Ok(Install::Canceled | Install::NeedsPrompt) => DownloadState::Idle,
-            Ok(Install::Failed) | Err(_) => {
-                if manual { let _ = open::that(STORE_PAGE); }
-                DownloadState::Failed
+            // Store의 앱 자동 업데이트가 꺼져 있거나 데이터 통신 제한 네트워크라 조용히 설치할 수 없다.
+            Ok(Install::NeedsPrompt) => {
+                blocked = true;
+                DownloadState::Idle
             }
+            Ok(Install::Canceled) => DownloadState::Idle,
+            Ok(Install::Failed) | Err(_) => DownloadState::Failed,
         };
-        crate::shared(&app).lock().unwrap().download = next;
+        {
+            let st = crate::shared(&app);
+            let mut st = st.lock().unwrap();
+            st.download = next;
+            st.install_blocked = blocked;
+        }
         crate::ipc::changed(&app);
     });
 }
 
 /// 확인 결과를 반영한다: 새 버전이면 알림과 자동 설치(각각 설정이 켜져 있을 때).
-pub fn after_check(app: &AppHandle, state: &UpdateState) {
+/// `now`('지금 업데이트')면 자동 업데이트 설정과 관계없이 바로 설치한다.
+pub fn after_check(app: &AppHandle, state: &UpdateState, now: bool) {
     let UpdateState::Available { version, .. } = state else { return };
     let (notify, auto) = {
         let st = crate::shared(app);
         let st = st.lock().unwrap();
         (st.main.auto_check_update, st.main.auto_install_update)
     };
-    if notify {
+    if notify && !now {
         crate::notifications::update(app, version);
     }
-    if auto {
-        install(app, false);
+    if auto || now {
+        install(app);
     }
 }

@@ -41,6 +41,8 @@ pub struct AppState {
     pub download: crate::update::DownloadState,
     /// 화면에 보일 최신 버전(Windows Store판). 확인 전이면 None.
     pub latest_version: Option<String>,
+    /// Windows Store판: Store 설정 때문에 조용히 설치하지 못했다.
+    pub install_blocked: bool,
 }
 
 impl AppState {
@@ -64,6 +66,7 @@ impl AppState {
             update: Default::default(),
             download: Default::default(),
             latest_version: None,
+            install_blocked: false,
         }
     }
 

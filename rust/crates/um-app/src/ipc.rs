@@ -183,7 +183,7 @@ fn update_value(st: &AppState) -> Value {
         DownloadState::Done(_) => "done",
         DownloadState::Failed => "failed",
     };
-    json!({"state": state, "version": version, "download": dl, "latest": st.latest_version})
+    json!({"state": state, "version": version, "download": dl, "latest": st.latest_version, "blocked": st.install_blocked})
 }
 
 fn autostart_value(app: &AppHandle) -> Value {

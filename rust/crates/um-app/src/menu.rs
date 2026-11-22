@@ -250,7 +250,7 @@ pub fn on_event(app: &AppHandle, id: &str) {
         }
         "update:check" => check_update(app),
         #[cfg(all(windows, feature = "store"))]
-        "update:install" => crate::store_update::install(app, true),
+        "update:install" => check_update_with(app, true),
         "update:page" => {
             let page = match &crate::shared(app).lock().unwrap().update {
                 UpdateState::Available { page, .. } => page.clone(),
@@ -333,7 +333,14 @@ fn fit_all(app: &AppHandle) {
 
 /// 업데이트 확인(별도 스레드). 끝나면 메뉴를 다시 만든다.
 pub fn check_update(app: &AppHandle) {
+    check_update_with(app, false);
+}
+
+/// `install_now`: Windows Store판 '지금 업데이트'. 자동 업데이트와 같은 확인·설치를 지금 실행한다.
+fn check_update_with(app: &AppHandle, install_now: bool) {
     if !crate::update::ENABLED { return; }
+    #[cfg(not(all(windows, feature = "store")))]
+    let _ = install_now;
     crate::shared(app).lock().unwrap().update = UpdateState::Checking;
     rebuild(app);
     crate::ipc::changed(app);
@@ -348,7 +355,7 @@ pub fn check_update(app: &AppHandle) {
             if latest.is_some() { st.latest_version = latest; }
         }
         crate::ipc::changed(&app);
-        crate::store_update::after_check(&app, &r);
+        crate::store_update::after_check(&app, &r, install_now);
     });
     #[cfg(not(all(windows, feature = "store")))]
     std::thread::spawn(move || {

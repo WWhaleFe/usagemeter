@@ -20,7 +20,7 @@ export interface UiState {
   presets: { id: string; name: string }[]; maxPresets: number; hasDefault: boolean;
   refreshPresets: number[]; effectiveRefresh: number;
   brandColors: { name: string; hex: string }[];
-  update: { state: string; version: string | null; download: string; latest?: string | null };
+  update: { state: string; version: string | null; download: string; latest?: string | null; blocked?: boolean };
   autostart: { available: boolean; enabled: boolean };
 }
 

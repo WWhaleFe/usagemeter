@@ -960,9 +960,9 @@
     "アップデート中…"
   ],
   "update.installFail": [
-    "업데이트하지 못해 Store 페이지를 열었습니다",
-    "Couldn't update, so the Store page was opened",
-    "アップデートできなかったため Store のページを開きました"
+    "업데이트하지 못했습니다. 잠시 뒤 다시 시도해 주세요",
+    "Couldn't update. Try again in a moment",
+    "アップデートできませんでした。しばらくしてからお試しください"
   ],
   "update.installDone": [
     "설치했습니다. 곧 다시 열립니다",
@@ -973,5 +973,10 @@
     "Microsoft Store에서 설치한 뒤 앱을 다시 엽니다",
     "Installs from the Microsoft Store, then reopens the app",
     "Microsoft Store からインストールし、アプリを再び開きます"
+  ],
+  "update.installBlocked": [
+    "Store 앱 자동 업데이트가 꺼져 있거나 데이터 제한 네트워크입니다",
+    "Store app updates are off or the network is metered",
+    "Store のアプリ自動更新がオフか、従量制ネットワークです"
   ]
 }
