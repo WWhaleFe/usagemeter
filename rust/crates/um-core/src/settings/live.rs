@@ -171,6 +171,8 @@ pub struct Settings {
     /// 화면 분할의 메뉴바 아래 선·독 위 선에도 호버 정보를 띄울지(화면 가장자리 변 설정과 따로, 기본 꺼짐).
     pub hover_menu_line: bool,
     pub hover_dock_line: bool,
+    /// 호버 영역을 배치 영역과 같게: 실제로 선이 배치된 곳에서만 정보를 띄운다(변·꼭짓점 호버 설정 대신, 기본 꺼짐).
+    pub hover_follow_layout: bool,
     pub chart_hover_enabled: bool,
     pub menu_bar_hover_info_enabled: bool,
     pub hover_edges: BTreeSet<BorderEdge>,
@@ -393,6 +395,7 @@ impl Settings {
         self.hover_text_emphasis = s.hover_text_emphasis.or(s.hover_emphasis_enabled).unwrap_or(true);
         self.hover_menu_line = s.hover_menu_line.unwrap_or(false);
         self.hover_dock_line = s.hover_dock_line.unwrap_or(false);
+        self.hover_follow_layout = s.hover_follow_layout.unwrap_or(false);
         self.chart_hover_enabled = s.chart_hover_enabled.unwrap_or(true);
         self.hide_overlay_on_launch = s.hide_overlay_on_launch.unwrap_or(false);
         self.menu_bar_hover_info_enabled = s.menu_bar_hover_info_enabled.unwrap_or(true);
@@ -499,6 +502,7 @@ impl Settings {
             hover_text_emphasis: Some(self.hover_text_emphasis),
             hover_menu_line: Some(self.hover_menu_line),
             hover_dock_line: Some(self.hover_dock_line),
+            hover_follow_layout: Some(self.hover_follow_layout),
             chart_hover_enabled: Some(self.chart_hover_enabled),
             hide_overlay_on_launch: Some(self.hide_overlay_on_launch),
             menu_bar_hover_info_enabled: Some(self.menu_bar_hover_info_enabled),

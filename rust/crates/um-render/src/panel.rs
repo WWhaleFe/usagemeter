@@ -205,6 +205,29 @@ pub fn render_hover(lines: &[HoverLine], max_width: f32, theme: Theme, scale: f3
     Rendered { pixmap: pm, width: w, height: h }
 }
 
+// ---- 1-1. 모니터 식별 표시(설정 창 "식별하기") ----
+
+/// 모니터 가운데에 잠깐 띄우는 큰 번호와 이름. 좌우 32·상하 20 여백.
+pub fn render_identify(number: &str, name: &str, theme: Theme, scale: f32) -> Rendered {
+    const PAD_X: f32 = 32.0;
+    const PAD_Y: f32 = 20.0;
+    const NUM: f32 = 72.0;
+    const NAME: f32 = 18.0;
+    let num = [Span { text: number, color: theme.primary() }];
+    let nm = [Span { text: name, color: theme.secondary() }];
+    let a = text::measure(&num, NUM, W_BOLD, None);
+    let b = if name.is_empty() { text::TextSize { width: 0.0, height: 0.0 } } else { text::measure(&nm, NAME, W_SEMIBOLD, Some(560.0)) };
+    let gap = if name.is_empty() { 0.0 } else { 4.0 };
+    let w = a.width.max(b.width).max(96.0).ceil() + 2.0 * PAD_X;
+    let h = (a.height + gap + b.height).ceil() + 2.0 * PAD_Y;
+    let mut pm = canvas(w, h, scale);
+    text::draw(&mut pm, (w - a.width) / 2.0, PAD_Y, &num, NUM, W_BOLD, scale, None);
+    if !name.is_empty() {
+        text::draw(&mut pm, (w - b.width) / 2.0, PAD_Y + a.height + gap, &nm, NAME, W_SEMIBOLD, scale, Some(560.0));
+    }
+    Rendered { pixmap: pm, width: w, height: h }
+}
+
 // ---- 2. 정보 카드 (MenuInfoCardView.swift) ----
 
 pub struct CardLine {

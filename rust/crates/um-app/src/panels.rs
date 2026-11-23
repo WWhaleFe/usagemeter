@@ -311,6 +311,48 @@ fn show_hover_at(p: &mut Panels, st: &AppState, scale: f32, border: bool, place:
     }
 }
 
+thread_local! {
+    /// "식별하기"로 띄운 모니터별 번호 패널과 그 세대(다시 누르면 앞 타이머가 닫지 않게).
+    static IDENTIFY: RefCell<(u64, Vec<InfoPanel>)> = const { RefCell::new((0, Vec::new())) };
+}
+
+/// 설정 창 "식별하기": 연결된 모니터마다 가운데에 번호(설정 창 목록 순서)와 이름을 3초 동안 띄운다.
+/// `labels` = 화면 id → 설정 창이 보여 주는 이름. 메인 스레드에서 부른다.
+pub fn identify_displays(app: &AppHandle, labels: &std::collections::BTreeMap<String, String>) {
+    let th = theme(&crate::shared(app).lock().unwrap().main);
+    let mut panels = vec![];
+    for (i, d) in display::displays().iter().enumerate() {
+        let Ok(p) = InfoPanel::new(16.0) else { continue };
+        let scale = d.scale as f32;
+        let name = labels.get(&d.id).cloned().unwrap_or_else(|| d.name.clone());
+        let r = backdrop(panel::render_identify(&(i + 1).to_string(), &name, th, scale), th, scale, 16.0);
+        let (w, h) = (extent(r.width as f64, d.scale), extent(r.height as f64, d.scale));
+        let (left, top) = screen_top(d);
+        let (sw, sh) = (extent(d.width_pt, d.scale), extent(d.height_pt, d.scale));
+        let (x, y) = (left + (sw - w) / 2.0, top - (sh + h) / 2.0);
+        if p.show(r.pixmap.data(), r.pixmap.width(), r.pixmap.height(), scale as f64, x, y).is_ok() {
+            panels.push(p);
+        }
+    }
+    let generation = IDENTIFY.with(|v| {
+        let mut v = v.borrow_mut();
+        for p in &v.1 { p.hide(); }
+        v.0 += 1;
+        v.1 = panels;
+        v.0
+    });
+    let app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(3));
+        let _ = app.run_on_main_thread(move || IDENTIFY.with(|v| {
+            let mut v = v.borrow_mut();
+            if v.0 != generation { return; }
+            for p in &v.1 { p.hide(); }
+            v.1.clear();
+        }));
+    });
+}
+
 /// `line` = 호버한 선을 띠에 강조(선 강조 옵션). 글 강조만 켜져 있으면 후보만 골라 호버 글에 쓴다.
 fn set_emphasis(p: &mut Panels, hit: Option<(&str, f64, f64)>, line: bool) {
     let emphasis = crate::OVERLAY.with(|o| o.borrow_mut().hover_at(hit, line));

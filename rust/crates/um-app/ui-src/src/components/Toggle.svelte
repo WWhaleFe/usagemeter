@@ -1,10 +1,11 @@
 <script lang="ts">
   // 두 플랫폼이 Swift 기본 체크박스 모양을 함께 쓴다.
-  let { label, checked, disabled = false, onchange }: { label: string; checked: boolean; disabled?: boolean; onchange: (v: boolean) => void } = $props();
+  import InfoTip from './InfoTip.svelte';
+  let { label, checked, disabled = false, help = '', onchange }: { label: string; checked: boolean; disabled?: boolean; help?: string; onchange: (v: boolean) => void } = $props();
 </script>
 
 <label class="toggle mac" class:disabled>
-  <span class="text">{label}</span>
+  <span class="text">{label}{#if help}<InfoTip text={help} />{/if}</span>
   <input type="checkbox" {checked} {disabled} onchange={(e) => onchange((e.currentTarget as HTMLInputElement).checked)} />
 </label>
 

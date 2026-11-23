@@ -41,7 +41,7 @@
   }
 </script>
 
-<Section title={t('sec.zoneRadii')}>
+<Section title={t('sec.zoneRadii')} help={t('help.zoneRadii')}>
   {#each zones as z, i (z)}
     <div class="zone">
       {#if menuOn || dockOn}<h4>{t('zone.' + z)}</h4>{/if}
@@ -53,10 +53,10 @@
     </div>
     <!-- 곡률 연결: 경계선을 공유하는 이웃 영역과 맞닿은 꼭짓점을 함께 조절(Swift :661-668). -->
     {#if z === 'menuBar'}
-      <Toggle label={t('corner.linkMenuMain')} checked={b.linkMenuMainRadii ?? true} onchange={(v) => set('border', { linkMenuMainRadii: v })} />
+      <Toggle label={t('corner.linkMenuMain')} help={t('help.linkRadii')} checked={b.linkMenuMainRadii ?? true} onchange={(v) => set('border', { linkMenuMainRadii: v })} />
     {/if}
     {#if z === 'main' && dockOn}
-      <Toggle label={t('corner.linkMainDock')} checked={b.linkMainDockRadii ?? true} onchange={(v) => set('border', { linkMainDockRadii: v })} />
+      <Toggle label={t('corner.linkMainDock')} help={t('help.linkRadii')} checked={b.linkMainDockRadii ?? true} onchange={(v) => set('border', { linkMainDockRadii: v })} />
     {/if}
     {#if i < zones.length - 1}<hr />{/if}
   {/each}

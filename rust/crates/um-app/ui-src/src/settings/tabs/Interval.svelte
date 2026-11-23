@@ -8,7 +8,7 @@
   const m = $derived(s.main);
 </script>
 
-<Section title={t('sec.interval')}>
+<Section title={t('sec.interval')} help={t('help.interval')}>
   <div class="row" class:off={!!m.refreshUseCustom}>
     <span class="grow">{t('interval.preset')}</span>
     <select value={m.refreshPresetMinutes} disabled={m.refreshUseCustom} onchange={(e) => set('main', { refreshPresetMinutes: +(e.currentTarget as HTMLSelectElement).value })}>
@@ -16,7 +16,7 @@
     </select>
   </div>
   <hr />
-  <Toggle label={t('interval.useCustom')} checked={!!m.refreshUseCustom} onchange={(v) => set('main', { refreshUseCustom: v })} />
+  <Toggle label={t('interval.useCustom')} help={t('help.customInterval')} checked={!!m.refreshUseCustom} onchange={(v) => set('main', { refreshUseCustom: v })} />
   <Slider label={t('interval.customMin')} value={m.refreshCustomMinutes ?? 5} min={1} max={180} step={1} disabled={!m.refreshUseCustom} onchange={(v) => set('main', { refreshCustomMinutes: Math.round(v) })} />
   <span class="caption">{tn('interval.currentFmt', s.effectiveRefresh)}</span>
 </Section>

@@ -5,26 +5,27 @@
   import Section from '../../components/Section.svelte';
   import Toggle from '../../components/Toggle.svelte';
   import Slider from '../../components/Slider.svelte';
+  import InfoTip from '../../components/InfoTip.svelte';
   const win = $derived(ui.s?.platform === 'win');
   const b = $derived(ui.s!.border);
   const menuOn = $derived(!!b.menuLineEnabled);
   const dockOn = $derived(!!b.dockLineEnabled);
 </script>
 
-<Section title={t('sec.partition')}>
+<Section title={t('sec.partition')} help={t('help.partition')}>
   <PlatformFeature>
-  <Toggle label={t('part.menuLine')} checked={menuOn} onchange={(v) => set('border', { menuLineEnabled: v })} />
+  <Toggle label={t('part.menuLine')} help={t('help.menuLine')} checked={menuOn} onchange={(v) => set('border', { menuLineEnabled: v })} />
   <Slider label={t('part.menuHeight')} value={b.menuLineHeight ?? 25} min={5} max={200} unit="pt" disabled={!menuOn} onchange={(v) => set('border', { menuLineHeight: v })} />
   <hr />
   </PlatformFeature>
-  <Toggle label={t(win ? 'part.taskbarLine' : 'part.dockLine')} checked={dockOn} onchange={(v) => set('border', { dockLineEnabled: v })} />
+  <Toggle label={t(win ? 'part.taskbarLine' : 'part.dockLine')} help={t('help.dockLine')} checked={dockOn} onchange={(v) => set('border', { dockLineEnabled: v })} />
   {#if win}
     <span class="caption">{t('part.taskbarDesc')}</span>
   {:else}
   <span class="caption">{t('part.dockAuto')}</span>
   <Slider label={t(ui.s?.dockSide === 'left' || ui.s?.dockSide === 'right' ? 'part.dockWidth' : 'part.dockBoundaryHeight')} value={b.dockLineHeight ?? 70} min={5} max={400} unit="pt" disabled={!dockOn} onchange={(v) => set('border', { dockLineHeight: v })} />
   <!-- 화면 위에서 경계선을 직접 끌어 조정(선 위치 끌기 화면). -->
-  <div class="row"><button disabled={!menuOn && !dockOn} onclick={() => act('dragLines')}>{t('part.dragAdjust')}</button></div>
+  <div class="row"><button disabled={!menuOn && !dockOn} onclick={() => act('dragLines')}>{t('part.dragAdjust')}</button><InfoTip text={t('help.dragAdjust')} /></div>
   <span class="caption">{t('part.desc')}</span>
   {/if}
 </Section>

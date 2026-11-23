@@ -5,6 +5,7 @@
   import Section from '../../components/Section.svelte';
   import Toggle from '../../components/Toggle.svelte';
   import Slider from '../../components/Slider.svelte';
+  import InfoTip from '../../components/InfoTip.svelte';
   import ColorPicker from '../../components/ColorPicker.svelte';
   const s = $derived(ui.s!);
   const providers = $derived(settingsProviders(s));
@@ -21,28 +22,28 @@
   };
 </script>
 
-<Section title={t('sec.line')}>
-  <Slider label={t('line.thickness')} value={b.thickness ?? 2} min={1} max={15} step={0.5} unit="pt" onchange={(v) => set('border', { thickness: v })} />
-  <Slider label={t('line.opacity')} value={(1 - (b.lineOpacity ?? 1)) * 100} min={0} max={100} unit="%" onchange={(v) => set('border', { lineOpacity: 1 - v / 100 })} />
+<Section title={t('sec.line')} help={t('help.line')}>
+  <Slider label={t('line.thickness')} help={t('help.thickness')} value={b.thickness ?? 2} min={1} max={15} step={0.5} unit="pt" onchange={(v) => set('border', { thickness: v })} />
+  <Slider label={t('line.opacity')} help={t('help.opacity')} value={(1 - (b.lineOpacity ?? 1)) * 100} min={0} max={100} unit="%" onchange={(v) => set('border', { lineOpacity: 1 - v / 100 })} />
   <div class="row">
-    <label class="grow" for="bar-fill-mode">{t('line.barFillMode')}</label>
+    <label class="grow" for="bar-fill-mode">{t('line.barFillMode')}<InfoTip text={t('help.barFillMode')} /></label>
     <select id="bar-fill-mode" value={s.main.barFillMode ?? 'remaining'} onchange={(e) => set('main', { barFillMode: e.currentTarget.value })}>
       {#each ['remaining', 'used'] as mode (mode)}<option value={mode}>{t('line.barFill.' + mode)}</option>{/each}
     </select>
   </div>
-  <Toggle label={t('line.track')} checked={b.showTrack ?? true} onchange={(v) => set('border', { showTrack: v })} />
-  <Toggle label={t('line.hideOnLaunch')} checked={!!s.main.hideOverlayOnLaunch} onchange={(v) => set('main', { hideOverlayOnLaunch: v })} />
-  <Toggle label={t('line.fade')} checked={b.fadeEnabled ?? true} onchange={(v) => set('border', { fadeEnabled: v })} />
+  <Toggle label={t('line.track')} help={t('help.track')} checked={b.showTrack ?? true} onchange={(v) => set('border', { showTrack: v })} />
+  <Toggle label={t('line.hideOnLaunch')} help={t('help.hideOnLaunch')} checked={!!s.main.hideOverlayOnLaunch} onchange={(v) => set('main', { hideOverlayOnLaunch: v })} />
+  <Toggle label={t('line.fade')} help={t('help.fade')} checked={b.fadeEnabled ?? true} onchange={(v) => set('border', { fadeEnabled: v })} />
   <Slider label={t('line.fadeLen')} value={(b.fadeFraction ?? 0.012) * 100} min={0} max={20} unit="%" disabled={!b.fadeEnabled} onchange={(v) => set('border', { fadeFraction: v / 100 })} />
 </Section>
 
-<Section title={t('sec.overlap')}>
+<Section title={t('sec.overlap')} help={t('help.overlap')}>
   <span class="caption">{t('overlap.shortestDesc')}</span>
-  <Toggle label={t('lay.splitOverlap')} checked={!!b.splitOverlapLines} onchange={(v) => set('border', { splitOverlapLines: v })} />
+  <Toggle label={t('lay.splitOverlap')} help={t('help.splitOverlap')} checked={!!b.splitOverlapLines} onchange={(v) => set('border', { splitOverlapLines: v })} />
   <span class="caption">{t('overlap.splitDesc')}</span>
 </Section>
 
-<Section title={t('sec.aiColor')}>
+<Section title={t('sec.aiColor')} help={t('help.aiColor')}>
   {#each providers as p, i (p.id)}
     <div class="row">
       <span class="name">{tf('color.lineColor', p.name)}</span>
@@ -57,7 +58,7 @@
         {/each}
       </span>
     </div>
-    <Toggle label={t('line.showBorder')} checked={!hiddenIDs.includes(p.id)} onchange={(v) => set('main', { borderHiddenIDs: v ? hiddenIDs.filter((id) => id !== p.id) : [...hiddenIDs, p.id] })} />
+    <Toggle label={t('line.showBorder')} help={t('help.showBorder')} checked={!hiddenIDs.includes(p.id)} onchange={(v) => set('main', { borderHiddenIDs: v ? hiddenIDs.filter((id) => id !== p.id) : [...hiddenIDs, p.id] })} />
     {#if i < providers.length - 1}<hr />{/if}
   {/each}
 </Section>

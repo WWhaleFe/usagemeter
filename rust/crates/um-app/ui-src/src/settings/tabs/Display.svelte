@@ -13,6 +13,8 @@
   const corners = $derived<string[]>(m.hoverCorners ?? []);
   const thresholds = $derived<number[]>(m.notifyThresholds ?? [75, 90, 95]);
   const notifyOn = $derived(m.notifyEnabled ?? false);
+  // 배치 탭 "호버 영역을 배치 영역과 같게"가 켜지면 아래 변·꼭짓점 설정은 쓰이지 않는다.
+  const follow = $derived(!!m.hoverFollowLayout);
 
   // 배열 설정에서 원소 하나를 넣고 빼기(Swift memberBinding).
   function member<T>(list: T[], v: T, on: boolean): T[] {
@@ -31,17 +33,18 @@
   const cornerKeys = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
   import LocalLogsSection from '../LocalLogsSection.svelte';
   import Icon from '../../analytics/Icon.svelte';
+  import InfoTip from '../../components/InfoTip.svelte';
 </script>
 
-<Section title={t('lang.title')}>
+<Section title={t('lang.title')} help={t('help.lang')}>
   <Segmented options={langs} value={s.lang} onchange={(v) => act('lang', { code: v })} />
 </Section>
 
-<Section title={t('appearance.title')}>
+<Section title={t('appearance.title')} help={t('help.appearance')}>
   <Segmented options={appearances} value={m.appearance ?? 'system'} onchange={(v) => set('main', { appearance: v })} />
 </Section>
 
-<Section title={t('sec.providerOrder')}>
+<Section title={t('sec.providerOrder')} help={t('help.providerOrder')}>
   {#each order as id, i (id)}
     <div class="row order-row">
       <span class="grow">{i + 1}. {s.providers.find((p) => p.id === id)?.name}</span>
@@ -52,13 +55,14 @@
   <span class="caption">{t('order.desc')}</span>
 </Section>
 
-<Section title={t('sec.hover')}>
+<Section title={t('sec.hover')} help={t('help.hover')}>
   <Toggle label={t('hover.enable')} checked={hoverOn} onchange={(v) => set('main', { hoverInfoEnabled: v })} />
   <span class="caption">{t('hover.enableDesc')}</span>
-  <Toggle label={t('hover.emphasis')} checked={m.hoverEmphasisEnabled ?? true} disabled={!hoverOn} onchange={(v) => set('main', { hoverEmphasisEnabled: v })} />
-  <Toggle label={t('hover.textEmphasis')} checked={m.hoverTextEmphasis ?? true} disabled={!hoverOn} onchange={(v) => set('main', { hoverTextEmphasis: v })} />
-  <fieldset class="grp" disabled={!hoverOn}>
-    <legend>{t('hoverArea.edges')}</legend>
+  <Toggle label={t('hover.emphasis')} help={t('help.hoverEmphasis')} checked={m.hoverEmphasisEnabled ?? true} disabled={!hoverOn} onchange={(v) => set('main', { hoverEmphasisEnabled: v })} />
+  <Toggle label={t('hover.textEmphasis')} help={t('help.hoverTextEmphasis')} checked={m.hoverTextEmphasis ?? true} disabled={!hoverOn} onchange={(v) => set('main', { hoverTextEmphasis: v })} />
+  <fieldset class="grp" disabled={!hoverOn || follow}>
+    {#if follow}<span class="caption note">{t('hoverArea.followingLayout')}</span>{/if}
+    <legend>{t('hoverArea.edges')}<InfoTip text={t('help.hoverEdges')} /></legend>
     <div class="checks">
       {#each edgeKeys as e (e)}
         <label class="chk"><input type="checkbox" checked={edges.includes(e)} onchange={(ev) => set('main', { hoverEdges: member(edges, e, ev.currentTarget.checked) })} />{t('edge.' + e)}</label>
@@ -68,19 +72,19 @@
       {/if}
       <label class="chk"><input type="checkbox" checked={m.hoverDockLine ?? false} onchange={(ev) => set('main', { hoverDockLine: ev.currentTarget.checked })} />{t('hoverArea.dockLine')}</label>
     </div>
-    <legend>{t('hoverArea.corners')}</legend>
+    <legend>{t('hoverArea.corners')}<InfoTip text={t('help.hoverCorners')} /></legend>
     <div class="checks">
       {#each cornerKeys as c (c)}
         <label class="chk"><input type="checkbox" checked={corners.includes(c)} onchange={(ev) => set('main', { hoverCorners: member(corners, c, ev.currentTarget.checked) })} />{t('corner.' + c)}</label>
       {/each}
     </div>
-    <Slider label={t('hoverArea.cornerSize')} value={m.hoverCornerSize ?? 80} min={20} max={300} step={5} disabled={!hoverOn || corners.length === 0} onchange={(v) => set('main', { hoverCornerSize: v })} />
+    <Slider label={t('hoverArea.cornerSize')} value={m.hoverCornerSize ?? 80} min={20} max={300} step={5} disabled={!hoverOn || follow || corners.length === 0} onchange={(v) => set('main', { hoverCornerSize: v })} />
     <span class="caption">{t('hoverArea.desc')}</span>
   </fieldset>
 
 </Section>
 
-<Section title={t('sec.notify')}>
+<Section title={t('sec.notify')} help={t('help.notify')}>
   <Toggle label={t('notify.enable')} checked={notifyOn} onchange={(v) => set('main', { notifyEnabled: v })} />
   <div class="checks" class:off={!notifyOn}>
     {#each [75, 90, 95] as th (th)}
@@ -96,6 +100,7 @@
   .icon { min-width: 28px; padding: 2px 8px; font-size: 10px; }
   .grp { border: none; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
   .grp:disabled { opacity: 0.45; }
+  .grp:disabled .note { opacity: 1; color: var(--fg); }
   legend { padding: 0; font-weight: 500; margin-bottom: 2px; }
   .checks { display: flex; flex-wrap: wrap; gap: 6px 18px; }
   .checks.off { opacity: 0.45; }

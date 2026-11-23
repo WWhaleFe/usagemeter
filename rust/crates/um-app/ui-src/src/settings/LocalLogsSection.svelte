@@ -21,12 +21,12 @@
 </script>
 
 {#if ll}
-  <Section title={t('locallogs.title')}>
+  <Section title={t('locallogs.title')} help={t('help.localLogs')}>
     <span class="caption">{t('locallogs.desc')}</span>
     {#each ll.sources as s (s.id)}
       <Toggle label={t('locallogs.source.' + s.id) + (s.found ? '' : ' (-)')} checked={s.enabled} disabled={!s.found && !s.enabled} onchange={(v) => set('source', { id: s.id, enabled: v })} />
     {/each}
-    <Toggle label={t('locallogs.hideProjects')} checked={ll.hideProjects} onchange={(v) => set('hideProjects', { on: v })} />
+    <Toggle label={t('locallogs.hideProjects')} help={t('help.hideProjects')} checked={ll.hideProjects} onchange={(v) => set('hideProjects', { on: v })} />
     <div class="row">
       <span class="caption grow">{ll.scanning ? '…' : ll.lastScan ? tf('locallogs.lastScan', when(ll.lastScan)) : ''}</span>
       <button disabled={ll.events === 0} onclick={() => set('clear')}>{t('locallogs.clear')}</button>

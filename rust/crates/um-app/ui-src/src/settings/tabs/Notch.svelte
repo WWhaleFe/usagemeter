@@ -5,6 +5,7 @@
   import Section from '../../components/Section.svelte';
   import Toggle from '../../components/Toggle.svelte';
   import Slider from '../../components/Slider.svelte';
+  import InfoTip from '../../components/InfoTip.svelte';
   const s = $derived(ui.s!);
   const b = $derived(s.border);
   const on = $derived(!!b.notchEnabled);
@@ -14,7 +15,7 @@
 </script>
 
 <PlatformFeature>
-<Section title={t('sec.notch')}>
+<Section title={t('sec.notch')} help={t('help.notch')}>
   <Toggle label={t('notch.enable')} checked={on} onchange={(v) => set('border', { notchEnabled: v })} />
   <div class="details" class:off={!on}>
   <!-- 꺼지면 노치 세부 전부 비활성(Swift :688-698). -->
@@ -27,7 +28,7 @@
   {/each}
   </div>
   <!-- 이 화면의 노치를 읽어 크기를 채운다(없으면 끔). -->
-  <div class="row"><button onclick={() => act('detectNotch')}>{t('notch.detect')}</button></div>
+  <div class="row"><button onclick={() => act('detectNotch')}>{t('notch.detect')}</button><InfoTip text={t('help.notchDetect')} /></div>
 </Section>
 </PlatformFeature>
 

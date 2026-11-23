@@ -28,8 +28,8 @@
 
 {#each providers as p (p.id)}
   {@const split = splitIDs.includes(p.id)}
-  <Section title={p.name}>
-    <Toggle label={t('subItems.split')} checked={split} onchange={(v) => set('main', { subItemSplitIDs: member(splitIDs, p.id, v) })} />
+  <Section title={p.name} help={t('help.subItemOpts')}>
+    <Toggle label={t('subItems.split')} help={t('help.subItemSplit')} checked={split} onchange={(v) => set('main', { subItemSplitIDs: member(splitIDs, p.id, v) })} />
     {#if p.items.length === 0}
       <span class="caption">{t('subItems.noData')}</span>
     {:else}

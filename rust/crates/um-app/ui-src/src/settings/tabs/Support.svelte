@@ -20,7 +20,7 @@
 </script>
 
 <div class="center">
-  <Section title={t('report.title')}>
+  <Section title={t('report.title')} help={t('help.report')}>
     <div class="col">
       <p class="caption desc">{t('report.desc')}</p>
       <code class="mail">{EMAIL}</code>
@@ -31,7 +31,7 @@
     </div>
   </Section>
 
-  <Section title={t('support.moreTitle')}>
+  <Section title={t('support.moreTitle')} help={t('help.support')}>
     <div class="col">
       <p class="caption desc">{t('support.desc')}</p>
       <button class="heart" onclick={() => act('openUrl', { url: 'https://github.com/sponsors/WWhaleFe' })}>&#9829; {t('support.sponsors')}</button>

@@ -146,6 +146,8 @@ pub struct SettingsSnapshot {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hover_dock_line: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hover_follow_layout: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub chart_hover_enabled: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hide_overlay_on_launch: Option<bool>,

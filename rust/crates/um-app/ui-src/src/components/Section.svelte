@@ -1,11 +1,12 @@
 <script lang="ts">
   // 설정 묶음 상자(Swift `section(_:_)`).
   import type { Snippet } from 'svelte';
-  let { title = '', children }: { title?: string; children: Snippet } = $props();
+  import InfoTip from './InfoTip.svelte';
+  let { title = '', help = '', children }: { title?: string; help?: string; children: Snippet } = $props();
 </script>
 
 <section class="mac">
-  {#if title}<h3>{title}</h3>{/if}
+  {#if title}<h3>{title}{#if help}<InfoTip text={help} />{/if}</h3>{/if}
   <div class="body">{@render children()}</div>
 </section>
 

@@ -23,6 +23,8 @@ pub struct AppState {
     pub displays: BTreeMap<String, Settings>,
     pub main_display_id: Option<String>,
     display_widths: BTreeMap<String, f64>,
+    /// 화면 id → 모니터 모델 키(Windows EDID). 다른 단자에 꽂아 id가 바뀐 같은 모니터를 알아본다.
+    display_models: BTreeMap<String, String>,
     /// 지금 연결된 화면 id(화면 순서). `sync_displays`가 채운다.
     pub connected_displays: Vec<String>,
     pub disabled_displays: Vec<String>,
@@ -54,6 +56,7 @@ impl AppState {
             displays: BTreeMap::new(),
             main_display_id: None,
             display_widths: BTreeMap::new(),
+            display_models: BTreeMap::new(),
             connected_displays: Vec::new(),
             disabled_displays: vec![],
             snapshots: BTreeMap::new(),
@@ -190,6 +193,7 @@ impl AppState {
         {
             self.main_display_id = v["main"].as_str().map(String::from);
             self.display_widths = serde_json::from_value(v["widths"].clone()).unwrap_or_default();
+            self.display_models = serde_json::from_value(v["models"].clone()).unwrap_or_default();
             self.disabled_displays = v["disabled"]
                 .as_array()
                 .map(|a| {
@@ -221,13 +225,14 @@ impl AppState {
             let _ = std::fs::write(self.dir.join("known_items.json"), t);
         }
         let v =
-            serde_json::json!({ "main": self.main_display_id, "disabled": self.disabled_displays, "widths": self.display_widths });
+            serde_json::json!({ "main": self.main_display_id, "disabled": self.disabled_displays, "widths": self.display_widths, "models": self.display_models });
         let _ = std::fs::write(self.dir.join("displays.json"), v.to_string());
     }
 
     /// 첫 실행·새 화면 맞춤과 기존 화면 해상도 적응(Swift OverlaySettings.swift:985-1092).
     pub fn sync_displays(&mut self, ds: &[um_platform::display::DisplayInfo]) {
         use um_core::settings::{ScreenInfo, NotchInfo, device_fit, adapt_to_screen_change};
+        self.adopt_known_displays(&ds.iter().map(|d| (d.id.as_str(), d.legacy_id.as_deref(), d.model_key.as_deref())).collect::<Vec<_>>());
         if self.main_display_id.is_none() {
             self.main_display_id = ds.iter().find(|d| d.is_builtin).or_else(|| ds.first()).map(|d| d.id.clone());
         }
@@ -245,9 +250,48 @@ impl AppState {
             }
             s.apply_platform_rules(cfg!(windows));
             self.display_widths.insert(d.id.clone(), d.width_pt);
+            if let Some(m) = &d.model_key { self.display_models.insert(d.id.clone(), m.clone()); }
         }
         if !ds.is_empty() { let _ = std::fs::write(self.dir.join("display_fit_done"), "1"); }
         self.save();
+    }
+
+    /// 이 id로 저장된 화면 설정(주 화면·테두리·끔·폭)이 있는지.
+    fn display_known(&self, id: &str) -> bool {
+        self.main_display_id.as_deref() == Some(id) || self.displays.contains_key(id)
+            || self.disabled_displays.iter().any(|d| d == id) || self.display_widths.contains_key(id)
+    }
+
+    /// 처음 보는 id의 화면이 사실은 이미 설정한 모니터면 그 설정을 새 id로 옮긴다. 모니터를 뺐다 꽂거나
+    /// 단자를 바꿔도 테두리 설정·끔이 그대로 유지되고, 저장된 화면 목록이 늘어나지 않는다.
+    /// 찾는 순서: 이전 버전 id(Windows GDI 이름 `DISPLAY1`), 그다음 지금 연결되지 않은 같은 모델 키의 화면.
+    ///
+    /// `ds` = 연결된 화면의 (id, 이전 id, 모델 키).
+    fn adopt_known_displays(&mut self, ds: &[(&str, Option<&str>, Option<&str>)]) {
+        let connected: Vec<&str> = ds.iter().map(|d| d.0).collect();
+        for &(id, legacy, model) in ds {
+            if self.display_known(id) { continue; }
+            let free = |x: &str| !connected.contains(&x);
+            let legacy = legacy.filter(|l| free(l) && self.display_known(l)).map(String::from);
+            let by_model = || model.and_then(|m| {
+                self.display_models.iter().find(|(k, mk)| mk.as_str() == m && free(k) && self.display_known(k)).map(|(k, _)| k.clone())
+            });
+            if let Some(old) = legacy.or_else(by_model) {
+                tracing::info!("화면 설정 이어받기: {old} → {id}");
+                self.rename_display(&old, id);
+            }
+        }
+    }
+
+    fn rename_display(&mut self, old: &str, new: &str) {
+        if self.main_display_id.as_deref() == Some(old) { self.main_display_id = Some(new.to_string()); }
+        if let Some(s) = self.displays.remove(old) {
+            self.displays.insert(new.to_string(), s);
+            let _ = std::fs::remove_file(self.dir.join("displays").join(format!("{}.json", um_platform::display::file_id(old))));
+        }
+        for d in &mut self.disabled_displays { if d == old { *d = new.to_string(); } }
+        if let Some(w) = self.display_widths.remove(old) { self.display_widths.insert(new.to_string(), w); }
+        if let Some(m) = self.display_models.remove(old) { self.display_models.insert(new.to_string(), m); }
     }
 
     pub fn apply_snapshot(&mut self, id: &str, snap: UsageSnapshot) {
@@ -323,6 +367,32 @@ mod tests {
         std::fs::write(dir.join("known_items.json"), r#"{"claude":[["weekly",0.2]]}"#).unwrap();
         loaded.read_files();
         assert_eq!(loaded.providers["claude"].known_items[0].id, "weekly");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn 다시_연결한_모니터는_기존_설정을_이어받는다() {
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..").join("target").join("parity-tests").join(crate::menu::new_id());
+        std::fs::create_dir_all(dir.join("displays")).unwrap();
+        let mut st = AppState::new(dir.clone());
+        st.main_display_id = Some("DISPLAY1".into());
+        let side = Settings { thickness: 9.0, ..Settings::default() };
+        st.displays.insert("DISPLAY2".into(), side.clone());
+        st.disabled_displays.push("DISPLAY2".into());
+        // 이전 버전 id(GDI 이름)에서 새 장치 경로 id로.
+        st.adopt_known_displays(&[("A#1", Some("DISPLAY1"), Some("DEL-0001")), ("B#2", Some("DISPLAY2"), Some("DEL-0002"))]);
+        assert_eq!(st.main_display_id.as_deref(), Some("A#1"));
+        assert_eq!(st.displays.get("B#2").map(|s| s.thickness), Some(9.0));
+        assert!(!st.displays.contains_key("DISPLAY2"));
+        assert_eq!(st.disabled_displays, vec!["B#2".to_string()]);
+        st.display_models.insert("B#2".into(), "DEL-0002".into());
+        // 같은 모니터를 다른 단자에 꽂아 id가 바뀌어도 모델 키로 이어받는다.
+        st.adopt_known_displays(&[("A#1", None, Some("DEL-0001")), ("B#9", Some("DISPLAY7"), Some("DEL-0002"))]);
+        assert!(st.displays.contains_key("B#9") && !st.displays.contains_key("B#2"));
+        assert_eq!(st.disabled_displays, vec!["B#9".to_string()]);
+        // 처음 보는 모니터는 아무것도 이어받지 않는다.
+        st.adopt_known_displays(&[("A#1", None, Some("DEL-0001")), ("B#9", None, Some("DEL-0002")), ("C#3", Some("DISPLAY3"), Some("SAM-0003"))]);
+        assert!(!st.display_known("C#3"));
         std::fs::remove_dir_all(dir).unwrap();
     }
 

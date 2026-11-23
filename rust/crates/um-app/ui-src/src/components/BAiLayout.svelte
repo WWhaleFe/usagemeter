@@ -5,6 +5,7 @@
   import { ui, t, set } from '../lib/api.svelte';
   import type { LayoutProvider, Layout, SegCap } from './BTypes';
   import Toggle from './Toggle.svelte';
+  import InfoTip from './InfoTip.svelte';
   import { H_SEGS, ORDER, sideDock, segmentKey, capVector } from './BDiagram';
   import BSegDiagram from './BSegDiagram.svelte';
 
@@ -88,10 +89,10 @@
 
 <section class="box">
   <div class="left">
-    <h3>{p.name}</h3>
+    <h3>{p.name}<InfoTip text={t('help.aiLayout')} /></h3>
     {#each capGroups as group (group.vertical)}
       <div class="caps">
-        <span class="caption">{t(group.vertical ? 'lay.vCapsTitle' : 'lay.hCapsTitle')}</span>
+        <span class="caption">{t(group.vertical ? 'lay.vCapsTitle' : 'lay.hCapsTitle')}<InfoTip text={t('help.caps')} /></span>
         {#each group.segs as h (h)}
           <div class="caprow" role="group" aria-label={t(segmentKey(h, dockSide, menuOn))}>
             <span class="segname caption">{t(segmentKey(h, dockSide, menuOn))}</span>
@@ -110,18 +111,18 @@
     {/each}
     {#if p.chain}
       <!-- 열린 체인: 방향 반전(= clockwise). -->
-      <Toggle label={t('lay.reverse')} checked={l.clockwise} onchange={(v) => mutate({ clockwise: v })} />
+      <Toggle label={t('lay.reverse')} help={t('help.reverse')} checked={l.clockwise} onchange={(v) => mutate({ clockwise: v })} />
     {:else}
       <div class="row">
-        <span class="grow">{t('lay.anchor')}</span>
+        <span class="grow">{t('lay.anchor')}<InfoTip text={t('help.anchor')} /></span>
         <select value={l.anchorCorner} onchange={(e) => mutate({ anchorCorner: e.currentTarget.value })}>
           {#each CORNERS as c (c)}<option value={c}>{t('corner.' + c)}</option>{/each}
         </select>
       </div>
-      <Toggle label={t('lay.clockwise')} checked={l.clockwise} onchange={(v) => mutate({ clockwise: v })} />
+      <Toggle label={t('lay.clockwise')} help={t('help.clockwise')} checked={l.clockwise} onchange={(v) => mutate({ clockwise: v })} />
       {#if p.anchorSideKind !== 'hidden'}
         <div class="row">
-          <span class="grow">{t('lay.anchorSide')}</span>
+          <span class="grow">{t('lay.anchorSide')}<InfoTip text={t('help.anchorSide')} /></span>
           <select value={sideValue} onchange={(e) => mutate({ anchorSide: e.currentTarget.value })}>
             {#each sideOptions as o (o.v)}<option value={o.v}>{o.l}</option>{/each}
           </select>

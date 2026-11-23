@@ -11,7 +11,7 @@
   }
 </script>
 
-<Section title={tn('sec.presets', s.maxPresets)}>
+<Section title={tn('sec.presets', s.maxPresets)} help={t('help.presets')}>
   {#each s.presets as p (p.id)}
     <div class="row">
       <button class="grow name" onclick={() => act('presetLoad', { id: p.id })}>{p.name}</button>

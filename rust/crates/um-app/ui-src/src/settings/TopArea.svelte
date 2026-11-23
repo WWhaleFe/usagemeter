@@ -5,6 +5,7 @@
   import Toggle from '../components/Toggle.svelte';
   import Section from '../components/Section.svelte';
   import Icon from '../analytics/Icon.svelte';
+  import InfoTip from '../components/InfoTip.svelte';
   import UpdateCommandDialog from '../components/UpdateCommandDialog.svelte';
   const s = $derived(ui.s!);
   const u = $derived(s.update);
@@ -38,15 +39,17 @@
   }
   const editing = $derived(s.editing ?? s.displays.find((d) => d.main)?.id ?? '');
   const edDisp = $derived(s.displays.find((d) => d.id === editing));
+  // 모니터 이름(Windows는 EDID 이름). 이름을 모르면 내장/일반 디스플레이로 부른다.
+  const nameOf = (d: (typeof s.displays)[number]) => d.name || t(d.builtin ? 'display.builtin' : 'display.unnamed');
+  // 목록 번호 = "식별하기"가 각 모니터에 띄우는 번호.
   function label(d: (typeof s.displays)[number]) {
-    const same = s.displays.filter((x) => x.name === d.name);
-    const n = same.length > 1 ? ` (${same.indexOf(d) + 1})` : '';
-    return d.name + n + (d.primary ? ` - ${t('display.primary')}` : '');
+    return `${s.displays.indexOf(d) + 1}. ${nameOf(d)}` + (d.primary ? ` - ${t('display.primary')}` : '');
   }
+  const identify = () => act('identifyDisplays', { labels: Object.fromEntries(s.displays.map((d) => [d.id, nameOf(d) + (d.primary ? ` - ${t('display.primary')}` : '')])) });
 </script>
 
 <div class="mac-top">
-  <Section title={t('sec.baseState')}>
+  <Section title={t('sec.baseState')} help={t('help.baseState')}>
     <div class="row">
       <button onclick={() => act('defaultSave')}>{t('base.save')}</button>
       <button disabled={!s.hasDefault} onclick={() => act('defaultReset')}>{t('base.reset')}</button>
@@ -56,7 +59,7 @@
     {#if !s.store}
       <hr />
       <div class="row update">
-        <strong>UsageMeter {tf('update.version', s.version)}</strong>
+        <strong>UsageMeter {tf('update.version', s.version)}</strong><InfoTip text={t('help.update')} />
         {#if status}<span class="caption">{status}</span>{/if}
         <span class="grow"></span>
         <button disabled={u.state === 'checking'} onclick={() => act('checkUpdate')}>{t('update.check')}</button>
@@ -67,11 +70,11 @@
         <span class="caption grow">{t('update.installHint')}</span>
         {#if s.platform === 'mac'}<button onclick={copyCommand}>{t('update.copyCommand')}</button>{/if}
       </div>
-      <div class="auto"><Toggle label={t('update.auto')} checked={!!s.main.autoCheckUpdate} onchange={(v) => set('main', { autoCheckUpdate: v })} /></div>
+      <div class="auto"><Toggle label={t('update.auto')} help={t('help.updateAuto')} checked={!!s.main.autoCheckUpdate} onchange={(v) => set('main', { autoCheckUpdate: v })} /></div>
     {:else if s.platform === 'win'}
       <hr />
       <div class="ver">
-        <span class="k">{t('update.current')}</span>
+        <span class="k">{t('update.current')}<InfoTip text={t('help.updateStore')} /></span>
         <span class="v num">v{s.version}</span>
         <button disabled={u.state === 'checking' || installing} onclick={() => act('checkUpdate')}>{t('update.check')}</button>
         <span class="k">{t('update.latest')}</span>
@@ -79,23 +82,24 @@
         <button class="primary" disabled={current || u.state === 'checking' || installing} onclick={() => act('installUpdate')}>{installing ? t('update.installing') : t('update.install')}</button>
       </div>
       <div class="opts">
-        <Toggle label={t('update.autoInstall')} checked={s.main.autoInstallUpdate ?? true} onchange={(v) => set('main', { autoInstallUpdate: v })} />
-        <Toggle label={t('update.notify')} checked={!!s.main.autoCheckUpdate} onchange={(v) => set('main', { autoCheckUpdate: v })} />
+        <Toggle label={t('update.autoInstall')} help={t('help.updateAutoInstall')} checked={s.main.autoInstallUpdate ?? true} onchange={(v) => set('main', { autoInstallUpdate: v })} />
+        <Toggle label={t('update.notify')} help={t('help.updateNotify')} checked={!!s.main.autoCheckUpdate} onchange={(v) => set('main', { autoCheckUpdate: v })} />
         <span class="caption note" class:warn={u.download === 'failed' || u.blocked}>{storeNote}</span>
       </div>
     {/if}
   </Section>
   {#if s.displays.length > 1}
-    <Section title={t('sec.displays')}>
+    <Section title={t('sec.displays')} help={t('help.displays')}>
       <div class="row">
         <span>{t('display.editing')}</span>
         <select value={editing} onchange={(e) => act('selectDisplay', { id: e.currentTarget.value })}>
           {#each s.displays as d (d.id)}<option value={d.id}>{label(d)}</option>{/each}
         </select>
+        <button onclick={identify}>{t('display.identify')}</button><InfoTip text={t('help.identify')} />
         <span class="grow"></span>
-        {#if edDisp}<Toggle label={t('display.show')} checked={edDisp.enabled} onchange={(v) => act('displayEnabled', { id: edDisp.id, enabled: v })} />{/if}
+        {#if edDisp}<Toggle label={t('display.show')} help={t('help.displayShow')} checked={edDisp.enabled} onchange={(v) => act('displayEnabled', { id: edDisp.id, enabled: v })} />{/if}
       </div>
-      <div class="row"><span class="caption grow">{t('display.desc')}</span><button title={t('display.copyToOthersHelp')} onclick={() => act('copyToOthers')}>{t('display.copyToOthers')}</button></div>
+      <div class="row"><span class="caption grow">{t('display.desc')}</span><button title={t('display.copyToOthersHelp')} onclick={() => act('copyToOthers')}>{t('display.copyToOthers')}</button><InfoTip text={t('help.copyToOthers')} /></div>
     </Section>
   {/if}
 </div>

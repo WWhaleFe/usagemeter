@@ -62,9 +62,15 @@ impl Taskbar {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DisplayInfo {
     /// 안정적인 id. macOS = `CGDisplayCreateUUIDFromDisplayID` 문자열(Swift 버전과 같아 화면별 설정이 이어진다),
-    /// Windows = 모니터 장치 이름(TODO: DisplayConfig 경로로 바꿔 재연결에도 유지).
+    /// Windows = DisplayConfig의 모니터 장치 경로(제조사·모델·연결 단자). 뺐다 다시 꽂아도 같은 단자면 같다.
+    /// 경로를 못 읽으면 GDI 장치 이름(`DISPLAY1`)으로 대신한다.
     pub id: String,
+    /// 사람이 읽는 모니터 이름(Windows = EDID 이름, 예 "DELL U2720Q"). 모르면 빈 문자열(화면이 대신 이름을 붙인다).
     pub name: String,
+    /// Windows: 이전 버전이 쓰던 id(GDI 장치 이름). 기존 화면별 설정을 새 id로 옮길 때 쓴다.
+    pub legacy_id: Option<String>,
+    /// Windows: EDID 제조사·제품 코드(예 "DEL-A0B1"). 다른 단자에 꽂아 id가 바뀌어도 같은 모델이면 설정을 이어받는다.
+    pub model_key: Option<String>,
     /// 화면 크기(pt).
     pub width_pt: f64,
     pub height_pt: f64,
@@ -125,7 +131,7 @@ impl DisplayInfo {
 
     #[cfg(test)]
     pub(crate) fn for_test(origin: (f64, f64), w: f64, h: f64, scale: f64) -> Self {
-        Self { id: "t".into(), name: "t".into(), width_pt: w, height_pt: h, scale, is_builtin: false, is_primary: true, notch: None, taskbar: None, origin }
+        Self { id: "t".into(), name: "t".into(), legacy_id: None, model_key: None, width_pt: w, height_pt: h, scale, is_builtin: false, is_primary: true, notch: None, taskbar: None, origin }
     }
 }
 
@@ -137,6 +143,14 @@ pub fn file_id(id: &str) -> String {
     }).collect();
     let name = name.trim_end_matches(['.', ' ']);
     if name.is_empty() { "display".into() } else { name.to_string() }
+}
+
+/// DisplayConfig 장치 경로(`\\?\DISPLAY#DEL41B1#5&2a3b&0&UID4352#{e6f07b5f-...}`)에서 화면 id를 만든다.
+/// 앞의 `\\?\`와 뒤의 인터페이스 GUID를 떼고, 파일 이름에 못 쓰는 글자를 바꾼다. 경로가 비면 None.
+pub fn stable_id(path: &str) -> Option<String> {
+    let p = path.trim().trim_start_matches(r"\\?\");
+    let p = match p.rfind("#{") { Some(i) => &p[..i], None => p };
+    (!p.is_empty()).then(|| file_id(&p.to_ascii_uppercase()))
 }
 
 /// 연결된 화면 목록(첫 항목 = 주 화면). macOS는 메인 스레드에서만.
@@ -196,6 +210,8 @@ mod imp {
             out.push(DisplayInfo {
                 id,
                 name: sc.localizedName().to_string(),
+                legacy_id: None,
+                model_key: None,
                 width_pt: f.size.width,
                 height_pt: f.size.height,
                 scale: sc.backingScaleFactor(),
@@ -214,7 +230,7 @@ mod imp {
 
 #[cfg(windows)]
 mod imp {
-    use super::{DisplayInfo, Taskbar, file_id};
+    use super::{DisplayInfo, Taskbar, file_id, stable_id};
     use windows::Win32::Foundation::{LPARAM, RECT};
     use windows::Win32::Graphics::Gdi::{EnumDisplayMonitors, GetMonitorInfoW, HDC, HMONITOR, MONITORINFOEXW, MonitorFromWindow, MONITOR_DEFAULTTONEAREST};
     use windows::Win32::UI::WindowsAndMessaging::{FindWindowExW, GetWindowRect};
@@ -247,7 +263,55 @@ mod imp {
         None
     }
 
+    /// DisplayConfig로 읽은 모니터 하나: GDI 장치 이름(`\\.\DISPLAY1`) → (장치 경로, 이름, 모델 키, 내장 여부).
+    struct Target { path: String, name: String, model: Option<String>, builtin: bool }
+
+    fn wide(v: &[u16]) -> String {
+        String::from_utf16_lossy(&v[..v.iter().position(|&c| c == 0).unwrap_or(v.len())])
+    }
+
+    fn targets() -> Vec<(String, Target)> {
+        use windows::Win32::Devices::Display::*;
+        use windows::Win32::Foundation::ERROR_SUCCESS;
+        let (mut np, mut nm) = (0u32, 0u32);
+        if unsafe { GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &mut np, &mut nm) } != ERROR_SUCCESS { return vec![]; }
+        let mut paths = vec![DISPLAYCONFIG_PATH_INFO::default(); np as usize];
+        let mut modes = vec![DISPLAYCONFIG_MODE_INFO::default(); nm as usize];
+        if unsafe { QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &mut np, paths.as_mut_ptr(), &mut nm, modes.as_mut_ptr(), None) } != ERROR_SUCCESS { return vec![]; }
+        paths.truncate(np as usize);
+        let mut out = vec![];
+        for p in &paths {
+            let mut src = DISPLAYCONFIG_SOURCE_DEVICE_NAME::default();
+            src.header.r#type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+            src.header.size = size_of::<DISPLAYCONFIG_SOURCE_DEVICE_NAME>() as u32;
+            src.header.adapterId = p.sourceInfo.adapterId;
+            src.header.id = p.sourceInfo.id;
+            if unsafe { DisplayConfigGetDeviceInfo(&mut src.header) } != 0 { continue; }
+            let mut tgt = DISPLAYCONFIG_TARGET_DEVICE_NAME::default();
+            tgt.header.r#type = DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME;
+            tgt.header.size = size_of::<DISPLAYCONFIG_TARGET_DEVICE_NAME>() as u32;
+            tgt.header.adapterId = p.targetInfo.adapterId;
+            tgt.header.id = p.targetInfo.id;
+            if unsafe { DisplayConfigGetDeviceInfo(&mut tgt.header) } != 0 { continue; }
+            let tech = tgt.outputTechnology;
+            let builtin = tech == DISPLAYCONFIG_OUTPUT_TECHNOLOGY_INTERNAL
+                || tech == DISPLAYCONFIG_OUTPUT_TECHNOLOGY_DISPLAYPORT_EMBEDDED
+                || tech == DISPLAYCONFIG_OUTPUT_TECHNOLOGY_UDI_EMBEDDED;
+            // flags 비트 1 = edidIdsValid.
+            let model = (unsafe { tgt.flags.Anonymous.value } & 0x2 != 0).then(|| {
+                let m = tgt.edidManufactureId.swap_bytes();
+                let ch = |sh: u16| (b'A' - 1 + ((m >> sh) & 0x1f) as u8) as char;
+                format!("{}{}{}-{:04X}", ch(10), ch(5), ch(0), tgt.edidProductCodeId)
+            });
+            out.push((wide(&src.viewGdiDeviceName), Target {
+                path: wide(&tgt.monitorDevicePath), name: wide(&tgt.monitorFriendlyDeviceName), model, builtin,
+            }));
+        }
+        out
+    }
+
     pub fn displays() -> Vec<DisplayInfo> {
+        let targets = targets();
         let mut mons: Vec<HMONITOR> = Vec::new();
         unsafe {
             let _ = EnumDisplayMonitors(None, None, Some(collect), LPARAM(&mut mons as *mut _ as isize));
@@ -271,14 +335,19 @@ mod imp {
                 Some(t) if t.thickness * scale > 2.0 => Some(t),
                 _ => hidden_taskbar(m, r, scale).or(reserved),
             };
-            let name = String::from_utf16_lossy(&mi.szDevice).trim_end_matches('\0').to_string();
+            let gdi = String::from_utf16_lossy(&mi.szDevice).trim_end_matches('\0').to_string();
+            // 복제(미러) 화면은 GDI 이름 하나에 경로가 여럿이다. 첫 경로를 쓴다.
+            let target = targets.iter().find(|(g, _)| g.eq_ignore_ascii_case(&gdi)).map(|(_, t)| t);
+            let id = target.and_then(|t| stable_id(&t.path)).unwrap_or_else(|| file_id(&gdi));
             out.push(DisplayInfo {
-                id: file_id(&name),
-                name,
+                legacy_id: Some(file_id(&gdi)).filter(|l| *l != id),
+                model_key: target.and_then(|t| t.model.clone()),
+                is_builtin: target.is_some_and(|t| t.builtin),
+                id,
+                name: target.map(|t| t.name.trim().to_string()).unwrap_or_default(),
                 width_pt: (r.right - r.left) as f64 / scale,
                 height_pt: (r.bottom - r.top) as f64 / scale,
                 scale,
-                is_builtin: false,
                 is_primary: mi.monitorInfo.dwFlags & MONITORINFOF_PRIMARY != 0,
                 notch: None,
                 taskbar,
@@ -355,6 +424,9 @@ mod tests {
     #[test]
     fn 화면_id는_안전한_파일_이름() {
         assert_eq!(file_id(r"\\.\DISPLAY1"), "DISPLAY1");
+        assert_eq!(stable_id(r"\\?\DISPLAY#DELA0B1#5&2b3e1a4&0&UID4353#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}").as_deref(),
+            Some("DISPLAY#DELA0B1#5&2B3E1A4&0&UID4353"));
+        assert_eq!(stable_id(""), None);
         assert_eq!(file_id("a/b:c*?\"<>|"), "a_b_c______");
         let uuid = "A1B2C3D4-1234-5678-90AB-CDEF12345678";
         assert_eq!(file_id(uuid), uuid);

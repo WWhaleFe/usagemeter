@@ -150,6 +150,7 @@ impl Default for Settings {
             hover_text_emphasis: true,
             hover_menu_line: false,
             hover_dock_line: false,
+            hover_follow_layout: false,
             chart_hover_enabled: true,
             menu_bar_hover_info_enabled: true,
             hover_edges: BorderEdge::ALL.into_iter().collect(),

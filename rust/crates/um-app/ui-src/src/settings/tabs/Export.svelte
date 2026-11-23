@@ -28,7 +28,7 @@
 </script>
 
 {#if c}
-  <Section title={t('export.nowTitle')}>
+  <Section title={t('export.nowTitle')} help={t('help.exportNow')}>
     <p class="caption desc">{t('export.nowDesc')}</p>
     <div class="form">
       <span class="label">{t('export.range')}</span>
@@ -55,7 +55,7 @@
     <div class="indent"><ExportResult button={false} /></div>
   </Section>
 
-  <Section title={t('export.autoTitle')}>
+  <Section title={t('export.autoTitle')} help={t('help.exportAuto')}>
     <Toggle label={t('export.autoEnable')} checked={c.auto} onchange={(v) => setExport({ auto: v })} />
     <div class="form" class:off={!c.auto}>
       <span class="label">{t('export.folder')}</span>

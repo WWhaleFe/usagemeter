@@ -17,7 +17,9 @@
 </script>
 
 <div class="box">
-  <Toggle label={t('lay.noOverlap')} checked={!!b.noOverlapLines} onchange={noOverlap} />
+  <Toggle label={t('lay.noOverlap')} help={t('help.noOverlap')} checked={!!b.noOverlapLines} onchange={noOverlap} />
+  <!-- 전역 호버 설정: 배치된 선 위에서만 호버 정보(표시 탭의 변·꼭짓점 호버 영역 대신). -->
+  <Toggle label={t('lay.hoverFollowLayout')} help={t('help.hoverFollowLayout')} checked={!!s.main.hoverFollowLayout} disabled={s.main.hoverInfoEnabled === false} onchange={(v) => set('main', { hoverFollowLayout: v })} />
 </div>
 {#each providers as p (p.id)}
   <BAiLayout p={p as LayoutProvider} />

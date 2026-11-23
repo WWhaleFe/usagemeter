@@ -7,7 +7,7 @@
   const providers = $derived(settingsProviders(s));
 </script>
 
-<Section title={t('sec.accounts')}>
+<Section title={t('sec.accounts')} help={t('help.accounts')}>
   {#each providers as p, i (p.id)}
     <div class="row">
       <span class="dot" class:on={p.loggedIn} aria-hidden="true"></span>
@@ -26,8 +26,8 @@
 </Section>
 
 <Section title={t('sec.loginOpts')}>
-  <Toggle label={t('login.keep')} checked={!!s.main.keepLoggedIn} onchange={(v) => set('main', { keepLoggedIn: v })} />
-  <Toggle label={t('login.autostart')} checked={s.autostart.enabled} disabled={!s.autostart.available} onchange={(v) => act('autostart', { enabled: v })} />
+  <Toggle label={t('login.keep')} help={t('help.keepLogin')} checked={!!s.main.keepLoggedIn} onchange={(v) => set('main', { keepLoggedIn: v })} />
+  <Toggle label={t('login.autostart')} help={t('help.autostart')} checked={s.autostart.enabled} disabled={!s.autostart.available} onchange={(v) => act('autostart', { enabled: v })} />
   {#if !s.autostart.available}<span class="caption">{t('login.autostartNote')}</span>{/if}
 </Section>
 

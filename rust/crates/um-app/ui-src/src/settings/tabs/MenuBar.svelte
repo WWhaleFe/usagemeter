@@ -3,6 +3,7 @@
   import { ui, settingsProviders, t, tf, tn, set } from '../../lib/api.svelte';
   import Section from '../../components/Section.svelte';
   import Toggle from '../../components/Toggle.svelte';
+  import InfoTip from '../../components/InfoTip.svelte';
   const s = $derived(ui.s!);
   const m = $derived(s.main);
   const providers = $derived(settingsProviders(s));
@@ -19,7 +20,7 @@
   const infoDefault: Record<string, boolean> = { menuShow5h: true, menuShowWeekly: true, menuShowOpus: true, menuShowReset: true, menuShowCountdown: true };
 </script>
 
-<Section title={t('sec.menuIcon')}>
+<Section title={t('sec.menuIcon')} help={t('help.menuIcon')}>
   <div class="row">
     <label class="grow" for="icon-ai">{t('disp.iconBaseAI')}</label>
     <select id="icon-ai" value={m.menuBarIconID ?? s.providers[0]?.id} onchange={(e) => set('main', { menuBarIconID: e.currentTarget.value })}>
@@ -27,18 +28,18 @@
     </select>
   </div>
   <span class="caption">{t('disp.iconDesc')}</span>
-  <Toggle label={t('menuHover.enable')} checked={m.menuBarHoverInfoEnabled ?? true} onchange={(v) => set('main', { menuBarHoverInfoEnabled: v })} />
+  <Toggle label={t('menuHover.enable')} help={t('help.menuHover')} checked={m.menuBarHoverInfoEnabled ?? true} onchange={(v) => set('main', { menuBarHoverInfoEnabled: v })} />
   <span class="caption">{t('menuHover.enableDesc')}</span>
 </Section>
 
-<Section title={t('tray.clickMode')}>
+<Section title={t('tray.clickMode')} help={t('help.clickMode')}>
   <select aria-label={t('tray.clickMode')} value={m.trayClickMode ?? 'split'} onchange={(e) => set('main', { trayClickMode: e.currentTarget.value })}>
     {#each ['split', 'swapped', 'together'] as mode (mode)}<option value={mode}>{t('tray.' + mode)}</option>{/each}
   </select>
 </Section>
 
 {#if s.platform === 'mac'}
-<Section title={t('sec.menuPercent')}>
+<Section title={t('sec.menuPercent')} help={t('help.menuPercent')}>
   {#each providers as p (p.id)}
     <Toggle label={tf('disp.showPercent', p.name)} checked={percentIDs.includes(p.id)} onchange={(v) => set('main', { menuBarPercentIDs: member(percentIDs, p.id, v) })} />
   {/each}
@@ -46,19 +47,19 @@
 </Section>
 {/if}
 
-<Section title={t('sec.dropdownInfo')}>
+<Section title={t('sec.dropdownInfo')} help={t('help.dropdownInfo')}>
   <div class="grid">
     {#each infoRows as [key, field] (field)}
       <Toggle label={t(key)} checked={m[field] ?? infoDefault[field] ?? false} onchange={(v) => set('main', { [field]: v })} />
     {/each}
   </div>
   <div class="row" class:off={!chartOn}>
-    <label class="grow" for="chart-hours">{t('chart.range')}</label>
+    <label class="grow" for="chart-hours">{t('chart.range')}<InfoTip text={t('help.chartRange')} /></label>
     <select id="chart-hours" value={m.chartHours ?? 24} disabled={!chartOn} onchange={(e) => set('main', { chartHours: +e.currentTarget.value })}>
       {#each [6, 12, 24] as h (h)}<option value={h}>{tn('chart.hoursFmt', h)}</option>{/each}
     </select>
   </div>
-  <Toggle label={t('chartHover.enable')} checked={m.chartHoverEnabled ?? true} disabled={!chartOn} onchange={(v) => set('main', { chartHoverEnabled: v })} />
+  <Toggle label={t('chartHover.enable')} help={t('help.chartHover')} checked={m.chartHoverEnabled ?? true} disabled={!chartOn} onchange={(v) => set('main', { chartHoverEnabled: v })} />
 </Section>
 
 

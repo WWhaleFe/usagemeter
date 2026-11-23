@@ -59,11 +59,12 @@ fn snapshot_value(s: &Settings) -> Value {
 }
 
 /// Windows에서 작업 표시줄 문구로 바꿔 보여 줄 Dock 관련 키(`win.<키>`가 i18n에 있어야 한다).
-const WIN_TERMS: [&str; 25] = [
+const WIN_TERMS: [&str; 28] = [
     "tab.menuBar", "sec.menuIcon", "menuHover.enable", "menuHover.enableDesc", "tray.clickMode", "disp.iconDesc", "disp.iconUsedDesc", "notify.desc", "display.desc",
     "login.autostart", "corner.linkMainDock", "part.dockHeight", "part.dockLine", "preset.dockWrap",
     "seg.hDock", "seg.lDock", "seg.rDock", "zone.dock", "hoverArea.dockLine",
     "part.dockBoundaryHeight", "part.dockWidth", "seg.dockVertical", "seg.dockTop", "seg.dockBottom", "seg.dockOuter",
+    "help.menuIcon", "help.dockLine", "help.partition",
 ];
 
 /// 화면이 그릴 값 전부. 창이 늦게 뜨는 원인을 찾을 수 있게 오래 걸리면 기록한다.
@@ -393,6 +394,12 @@ pub fn ui_action(app: AppHandle, action: String, arg: Value) -> Result<Value, St
                     st.disabled_displays.push(id.clone());
                 }
             });
+        }
+        "identifyDisplays" => {
+            let labels: std::collections::BTreeMap<String, String> = arg.get("labels").cloned()
+                .and_then(|v| serde_json::from_value(v).ok()).unwrap_or_default();
+            let h = app.clone();
+            let _ = app.run_on_main_thread(move || crate::panels::identify_displays(&h, &labels));
         }
         "copyToOthers" => {
             let edit = editing_id(&app, &crate::shared(&app).lock().unwrap());

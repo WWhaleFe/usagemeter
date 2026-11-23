@@ -1,8 +1,9 @@
 <script lang="ts">
   // 슬라이더 + 숫자 칸 + 화살표(Swift LabeledSlider, SettingsView.swift:1162-1201).
   // 레이블 위, 눈금 슬라이더와 숫자 칸 및 세로 스테퍼 아래로 배치한다.
-  let { label, value, min, max, step = 1, unit = '', disabled = false, onchange }:
-    { label: string; value: number; min: number; max: number; step?: number; unit?: string; disabled?: boolean; onchange: (v: number) => void } = $props();
+  import InfoTip from './InfoTip.svelte';
+  let { label, value, min, max, step = 1, unit = '', disabled = false, help = '', onchange }:
+    { label: string; value: number; min: number; max: number; step?: number; unit?: string; disabled?: boolean; help?: string; onchange: (v: number) => void } = $props();
   const sliderId = $props.id();
   const clampValue = (v: number) => Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : value;
   function arrow(e: KeyboardEvent) {
@@ -13,7 +14,7 @@
 </script>
 
 <div class="mac-slider" class:disabled role="group" aria-label={label}>
-  <label class="label" for={sliderId}>{label}</label>
+  <label class="label" for={sliderId}>{label}{#if help}<InfoTip text={help} />{/if}</label>
   <div class="controls">
     <input id={sliderId} class="track" type="range" onkeydown={arrow} {min} {max} {step} {value} {disabled} style:--ticks={Math.round((max - min) / step)} aria-label={label} oninput={(e) => onchange(+e.currentTarget.value)} />
     <input class="num" type="number" onkeydown={arrow} {min} {max} step="any" value={value.toFixed(1).replace(/\.0$/, '')} {disabled} aria-label={label} onchange={(e) => onchange(clampValue(+e.currentTarget.value))} />

@@ -61,6 +61,7 @@ pub fn border_hover_hit(display: &Settings, main: &Settings, w: f64, h: f64, x: 
 /// 방향 변환 뒤 화면 좌표에서 옵션을 적용한다. 메뉴바는 위에 고정하고 Dock 경계는 해당 축으로 검사한다.
 #[allow(clippy::too_many_arguments)]
 pub fn border_hover_hit_positioned(display: &Settings, main: &Settings, w: f64, h: f64, x: f64, y: f64, side: BorderEdge) -> bool {
+    if main.hover_info_enabled && main.hover_follow_layout { return layout_hover_hit(display, main, w, h, x, y, side); }
     if side == BorderEdge::Bottom { return border_hover_hit(display, main, w, h, x, y); }
     if !main.hover_info_enabled { return false; }
     let th = display.thickness.max(6.0) + 7.0;
@@ -87,6 +88,25 @@ pub fn border_hover_hit_positioned(display: &Settings, main: &Settings, w: f64, 
             ((line.part == SegPart::HMenu || (display.menu_line_enabled && matches!(side, BorderEdge::Left | BorderEdge::Right) && line.part == SegPart::LDock)) && main.hover_menu_line)
                 || (line.part == SegPart::HDock && main.hover_dock_line)
         })
+    })
+}
+
+/// 호버 영역 = 배치 영역(`hover_follow_layout`): 보이는 AI의 선이 실제로 배치된 직선 근처에서만 띄운다.
+/// 표시 탭의 변·꼭짓점·경계선 호버 설정은 쓰지 않는다. 선이 없는 변과 꼭짓점, 같은 변이라도 배치되지 않은 구간은 반응하지 않는다.
+#[allow(clippy::too_many_arguments)]
+pub fn layout_hover_hit(display: &Settings, main: &Settings, w: f64, h: f64, x: f64, y: f64, side: BorderEdge) -> bool {
+    if !main.hover_info_enabled { return false; }
+    let th = display.thickness.max(6.0) + 7.0;
+    let near = |a: (f64, f64), b: (f64, f64)| {
+        let (dx, dy) = (b.0 - a.0, b.1 - a.1);
+        let len2 = dx * dx + dy * dy;
+        let t = if len2 > 0.0 { (((x - a.0) * dx + (y - a.1) * dy) / len2).clamp(0.0, 1.0) } else { 0.0 };
+        (x - a.0 - t * dx).hypot(y - a.1 - t * dy) <= th
+    };
+    let mut ctx = seg_ctx(display);
+    ctx.side = side;
+    PROVIDER_IDS.iter().filter(|id| !main.border_hidden_ids.contains(**id)).any(|id| {
+        crate::dock::positioned_lines(display, &segs_for(&ctx, id), w, h, side).iter().any(|l| near(l.a, l.b))
     })
 }
 
@@ -147,6 +167,35 @@ mod tests {
         s.border_hidden_ids = PROVIDER_IDS.iter().map(|id| id.to_string()).collect();
         assert!(!border_hover_hit(&s, &s, 1000.0, 800.0, 500.0, 797.0));
         assert!(!border_hover_hit(&s, &s, 1000.0, 800.0, 2.0, 400.0));
+    }
+
+    #[test]
+    fn 배치_영역만_호버() {
+        // 메뉴바·독 경계선을 켜고 codex는 본문 왼쪽(lMain)만 → 왼쪽 변의 메뉴바 옆·독 옆 구간은 반응하지 않는다.
+        let mut s = Settings { menu_line_enabled: true, dock_line_enabled: true, menu_line_height: 30.0, dock_line_height: 90.0,
+            hover_follow_layout: true, ..Settings::default() };
+        s.provider_layouts.get_mut("claude").unwrap().segments = Some([SegPart::HTop].into());
+        s.provider_layouts.get_mut("gemini").unwrap().segments = Some([SegPart::HBottom].into());
+        s.provider_layouts.get_mut("codex").unwrap().segments = Some([SegPart::LMain].into());
+        let (w, h) = (1000.0, 800.0);
+        let hit = |s: &Settings, x, y| border_hover_hit_positioned(s, s, w, h, x, y, BorderEdge::Bottom);
+        assert!(hit(&s, 500.0, 3.0), "위 변");
+        assert!(hit(&s, 2.0, 400.0), "왼쪽 본문 구간");
+        assert!(!hit(&s, 2.0, 16.0), "왼쪽 메뉴바 구간(위 변 선에서도 멂)");
+        assert!(!hit(&s, 2.0, 760.0), "왼쪽 독 구간");
+        assert!(!hit(&s, 998.0, 400.0), "오른쪽 변은 배치 없음");
+        // 표시 탭의 변 설정을 꺼도 배치된 선은 반응한다.
+        s.hover_edges.clear();
+        assert!(hit(&s, 500.0, 3.0));
+        // 끄면 기존처럼 변 설정을 따른다.
+        s.hover_follow_layout = false;
+        assert!(!hit(&s, 500.0, 3.0));
+        s.hover_edges = BorderEdge::ALL.into_iter().collect();
+        assert!(hit(&s, 2.0, 760.0), "기존 방식은 왼쪽 변 전체");
+        // 숨긴 AI의 선은 배치돼 있어도 반응하지 않는다.
+        s.hover_follow_layout = true;
+        s.border_hidden_ids.insert("codex".into());
+        assert!(!hit(&s, 2.0, 400.0));
     }
 
     #[test]
