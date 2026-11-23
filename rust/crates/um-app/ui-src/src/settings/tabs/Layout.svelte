@@ -19,13 +19,13 @@
 <div class="box">
   <Toggle label={t('lay.noOverlap')} help={t('help.noOverlap')} checked={!!b.noOverlapLines} onchange={noOverlap} />
   <!-- 전역 호버 설정: 배치된 선 위에서만 호버 정보(표시 탭의 변·꼭짓점 호버 영역 대신). -->
-  <Toggle label={t('lay.hoverFollowLayout')} help={t('help.hoverFollowLayout')} checked={!!s.main.hoverFollowLayout} disabled={s.main.hoverInfoEnabled === false} onchange={(v) => set('main', { hoverFollowLayout: v })} />
+  <Toggle label={t('lay.hoverFollowLayout')} help={t('help.hoverFollowLayout')} checked={s.main.hoverFollowLayout ?? true} disabled={s.main.hoverInfoEnabled === false} onchange={(v) => set('main', { hoverFollowLayout: v })} />
 </div>
 {#each providers as p (p.id)}
   <BAiLayout p={p as LayoutProvider} />
 {/each}
 
 <style>
-  .box { margin: 0 0 10px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--surface-stroke); border-radius: var(--r-card); }
+  .box { display: flex; flex-direction: column; gap: 10px; margin: 0 0 10px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--surface-stroke); border-radius: var(--r-card); }
   :global(:root[data-skin="macos"]) .box { padding: 12px; margin-bottom: 12px; border: 0; }
 </style>

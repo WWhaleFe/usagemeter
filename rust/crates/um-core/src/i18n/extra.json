@@ -1455,9 +1455,9 @@
     "ホバー領域を配置領域に合わせる（線が配置された場所でのみ情報を表示）"
   ],
   "hoverArea.followingLayout": [
-    "배치 탭의 '호버 영역을 배치 영역과 같게'가 켜져 있어, 아래 변·꼭짓점 설정 대신 선이 배치된 곳에서만 정보가 뜹니다.",
-    "\"Match hover area to layout area\" is on in the Layout tab, so info appears only where lines are placed, instead of following the edge and corner settings below.",
-    "「配置」タブの「ホバー領域を配置領域に合わせる」が有効になっているため、下の辺・角の設定ではなく線が配置されている場所でのみ情報が表示されます。"
+    "'호버 영역을 배치 영역과 같게'가 켜져 있어, 아래 변·꼭짓점 설정 대신 선이 배치된 곳에서만 정보가 뜹니다. 배치 탭의 같은 옵션과 함께 바뀝니다.",
+    "\"Match hover area to layout area\" is on, so info appears only where lines are placed instead of following the edge and corner settings below. It is the same option as in the Layout tab.",
+    "「ホバー領域を配置領域に合わせる」がオンのため、下の辺・角の設定ではなく線が配置された場所でのみ情報が表示されます。「配置」タブの同じオプションと連動します。"
   ],
   "display.identify": [
     "식별하기",

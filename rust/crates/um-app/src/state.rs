@@ -100,6 +100,12 @@ impl AppState {
         for s in st.displays.values_mut() {
             s.apply_platform_rules(cfg!(windows));
         }
+        // 2.2.1: "호버 영역을 배치 영역과 같게"를 기본으로 켠다. 2.2.0이 꺼짐으로 저장해 둔 값도 한 번만 켠다.
+        let follow_mark = dir.join("hover_follow_default_on");
+        if !follow_mark.exists() {
+            st.main.hover_follow_layout = true;
+            let _ = std::fs::write(&follow_mark, "1");
+        }
         st.hide_overlay = st.main.hide_overlay_on_launch;
         st.history = HistoryDb::open(dir.join("history.db"))
             .map_err(|e| tracing::warn!("이력 DB 열기 실패: {e}"))

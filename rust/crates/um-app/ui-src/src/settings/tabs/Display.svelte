@@ -14,7 +14,7 @@
   const thresholds = $derived<number[]>(m.notifyThresholds ?? [75, 90, 95]);
   const notifyOn = $derived(m.notifyEnabled ?? false);
   // 배치 탭 "호버 영역을 배치 영역과 같게"가 켜지면 아래 변·꼭짓점 설정은 쓰이지 않는다.
-  const follow = $derived(!!m.hoverFollowLayout);
+  const follow = $derived(m.hoverFollowLayout ?? true);
 
   // 배열 설정에서 원소 하나를 넣고 빼기(Swift memberBinding).
   function member<T>(list: T[], v: T, on: boolean): T[] {
@@ -60,6 +60,8 @@
   <span class="caption">{t('hover.enableDesc')}</span>
   <Toggle label={t('hover.emphasis')} help={t('help.hoverEmphasis')} checked={m.hoverEmphasisEnabled ?? true} disabled={!hoverOn} onchange={(v) => set('main', { hoverEmphasisEnabled: v })} />
   <Toggle label={t('hover.textEmphasis')} help={t('help.hoverTextEmphasis')} checked={m.hoverTextEmphasis ?? true} disabled={!hoverOn} onchange={(v) => set('main', { hoverTextEmphasis: v })} />
+  <!-- 배치 탭의 같은 옵션과 한 설정(main.hoverFollowLayout)을 함께 쓴다. -->
+  <Toggle label={t('lay.hoverFollowLayout')} help={t('help.hoverFollowLayout')} checked={follow} disabled={!hoverOn} onchange={(v) => set('main', { hoverFollowLayout: v })} />
   <fieldset class="grp" disabled={!hoverOn || follow}>
     {#if follow}<span class="caption note">{t('hoverArea.followingLayout')}</span>{/if}
     <legend>{t('hoverArea.edges')}<InfoTip text={t('help.hoverEdges')} /></legend>

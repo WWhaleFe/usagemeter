@@ -118,7 +118,7 @@ mod tests {
     fn 방향별_내부_경계선과_실제_화면_변_옵션() {
         for menu_on in [false, true] {
             let mut s = Settings { menu_line_enabled: menu_on, menu_line_height: 25.0,
-                dock_line_enabled: true, dock_line_height: 70.0, ..Default::default() };
+                dock_line_enabled: true, dock_line_height: 70.0, hover_follow_layout: false, ..Default::default() };
             s.provider_layouts.get_mut("claude").unwrap().segments = Some([SegPart::HDock].into());
             s.border_hidden_ids.extend(["gemini".into(), "codex".into()]);
             s.hover_edges.clear();
@@ -172,8 +172,9 @@ mod tests {
     #[test]
     fn 배치_영역만_호버() {
         // 메뉴바·독 경계선을 켜고 codex는 본문 왼쪽(lMain)만 → 왼쪽 변의 메뉴바 옆·독 옆 구간은 반응하지 않는다.
-        let mut s = Settings { menu_line_enabled: true, dock_line_enabled: true, menu_line_height: 30.0, dock_line_height: 90.0,
-            hover_follow_layout: true, ..Settings::default() };
+        // 2.2.1부터 기본값이 켜짐이다.
+        assert!(Settings::default().hover_follow_layout);
+        let mut s = Settings { menu_line_enabled: true, dock_line_enabled: true, menu_line_height: 30.0, dock_line_height: 90.0, ..Settings::default() };
         s.provider_layouts.get_mut("claude").unwrap().segments = Some([SegPart::HTop].into());
         s.provider_layouts.get_mut("gemini").unwrap().segments = Some([SegPart::HBottom].into());
         s.provider_layouts.get_mut("codex").unwrap().segments = Some([SegPart::LMain].into());
