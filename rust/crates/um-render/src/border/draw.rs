@@ -172,14 +172,27 @@ pub fn render(scene: &BorderScene, origin: (f64, f64), size_pt: (f64, f64), scal
 pub fn render_emphasized(scene: &BorderScene, origin: (f64, f64), size_pt: (f64, f64), scale: f64, emphasis: Option<usize>) -> Pixmap {
     let pw = ((size_pt.0 * scale).ceil() as u32).max(1);
     let ph = ((size_pt.1 * scale).ceil() as u32).max(1);
+    render_px(scene, (origin.0 * scale, origin.1 * scale), (pw, ph), scale, emphasis)
+}
+
+/// 띠 창 하나(`rect` = 화면 안 pt 사각형)만 그린다. 화면 전체를 그린 뒤 `crop_strip`으로 자른 것과
+/// 같은 픽셀 격자(정수 픽셀 원점)를 써서 이웃 띠와 이음매가 맞는다. 전체 화면 버퍼(5K면 62.5 MB)를
+/// 잡지 않아 다시 그릴 때마다 생기던 큰 임시 메모리를 없앤다.
+pub fn render_strip(scene: &BorderScene, rect: [f64; 4], scale: f64, emphasis: Option<usize>) -> Pixmap {
+    let [x, y, w, h] = rect.map(|v| (v * scale).round());
+    render_px(scene, (x, y), ((w as u32).max(1), (h as u32).max(1)), scale, emphasis)
+}
+
+/// `origin_px`(픽셀)만큼 옮긴 장면을 `pw`×`ph` 픽셀 버퍼에 그린다.
+fn render_px(scene: &BorderScene, origin_px: (f64, f64), (pw, ph): (u32, u32), scale: f64, emphasis: Option<usize>) -> Pixmap {
     let pm = Pixmap::new(pw, ph).expect("pixmap size");
     let transform = Transform::from_row(
         scale as f32,
         0.0,
         0.0,
         scale as f32,
-        (-origin.0 * scale) as f32,
-        (-origin.1 * scale) as f32,
+        (-origin_px.0) as f32,
+        (-origin_px.1) as f32,
     );
     let measures = scene.items.iter().map(|it| Measure::new(&it.path)).collect();
     let mut p = Painter { scene, measures, pm, transform, emphasis: false, width_scale: 1.0 };

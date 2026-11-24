@@ -49,3 +49,8 @@ objc2 = { workspace = true }
 objc2-app-kit = { workspace = true, features = ["NSColorPanel", "NSColor", "NSColorSpace"] }
 objc2-foundation = { workspace = true, features = ["NSURLRequest", "NSURL", "NSString"] }
 objc2-web-kit = { workspace = true, features = ["WKWebView", "WKNavigation"] }
+
+[target.'cfg(windows)'.dependencies]
+# 숨은 WebView2의 메모리 목표 수준을 낮추는 데만 쓴다(Tauri가 이미 쓰는 같은 버전).
+webview2-com = "0.39.1"
+windows-core = "0.62"

@@ -508,7 +508,7 @@ pub fn read_cookies(
             .build();
             // 동시에 두 조회가 같은 창을 만들려 하면 늦은 쪽은 먼저 만든 창을 쓴다.
             match built.ok().or_else(|| keep.then(|| app.get_webview_window(&label)).flatten()) {
-                Some(w) => { tracing::info!("쿠키 저장소 창 생성 완료"); w }
+                Some(w) => { tracing::info!("쿠키 저장소 창 생성 완료"); low_memory(&w); w }
                 None => { tracing::warn!("쿠키 저장소 창 생성 실패"); return Err(()); }
             }
         }
@@ -521,6 +521,24 @@ pub fn read_cookies(
     if !keep { let _ = w.destroy(); }
     out
 }
+
+/// Windows: 계속 살려 두는 숨은 웹뷰는 WebView2에 메모리를 적게 쓰라고 알린다(MemoryUsageTargetLevel = Low).
+/// 보이지 않는 about:blank 창이라 동작은 그대로이고, 렌더러가 캐시·작업 메모리를 덜 잡는다.
+#[cfg(windows)]
+fn low_memory(w: &WebviewWindow) {
+    let _ = w.with_webview(|pw| unsafe {
+        use webview2_com::Microsoft::Web::WebView2::Win32::{COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW, ICoreWebView2_19};
+        use windows_core::Interface;
+        let Ok(core) = pw.controller().CoreWebView2() else { return };
+        match core.cast::<ICoreWebView2_19>() {
+            Ok(v) => { let _ = v.SetMemoryUsageTargetLevel(COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW); }
+            Err(_) => tracing::info!("WebView2가 낮은 메모리 목표를 지원하지 않음(런타임이 오래됨)"),
+        }
+    });
+}
+
+#[cfg(not(windows))]
+fn low_memory(_: &WebviewWindow) {}
 
 fn cookies_for(w: &WebviewWindow, spec: &ProviderSpec) -> Result<Cookies, ()> {
     w

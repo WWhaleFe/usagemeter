@@ -5384,6 +5384,8 @@ dependencies = [
  "um-platform",
  "um-providers",
  "um-render",
+ "webview2-com",
+ "windows-core",
 ]
 
 [[package]]

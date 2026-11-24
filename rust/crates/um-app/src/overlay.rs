@@ -105,9 +105,9 @@ impl Overlay {
                     }
                 }
             }
-            let full = border::render(&scene, (0.0, 0.0), scene.screen, d.scale);
+            // 띠마다 그 영역만 그린다(화면 전체 버퍼를 잡지 않는다).
             for (w, r) in entry.iter() {
-                let pm = border::crop_strip(&full, *r, d.scale);
+                let pm = border::render_strip(&scene, *r, d.scale, None);
                 if let Err(e) = w.present(pm.data(), pm.width(), pm.height(), d.scale) {
                     tracing::warn!("띠 그리기 실패: {e}");
                 }
@@ -163,9 +163,8 @@ impl Overlay {
         let Some((scene, _, scale)) = self.scenes.get(id) else { return };
         let selected = self.hover.as_ref().filter(|h| self.hover_draw && h.0 == id).map(|h| h.1[h.2]);
         if let Some(strips) = self.strips.get(id) {
-            let full = border::render_emphasized(scene, (0.0, 0.0), scene.screen, *scale, selected);
             for (w, r) in strips {
-                let pm = border::crop_strip(&full, *r, *scale);
+                let pm = border::render_strip(scene, *r, *scale, selected);
                 if let Err(e) = w.present(pm.data(), pm.width(), pm.height(), *scale) {
                     tracing::warn!("강조 띠 그리기 실패: {e}");
                 }
@@ -226,6 +225,32 @@ mod tests {
                     let mut zoom=tiny_skia::Pixmap::new(768,768).unwrap();
                     zoom.draw_pixmap(0,0,small.as_ref(),&Default::default(),tiny_skia::Transform::from_scale(8.0,8.0),None);
                     zoom.save_png(dir.join(format!("{name}-{corner}-8x.png"))).unwrap();
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn 띠만_그려도_전체를_잘라낸_것과_같다() {
+        // 배율·모서리·분할을 바꿔 가며 띠별 렌더링이 전체 렌더링 후 자르기와 (반올림 오차 안에서) 같은지.
+        for (scale, w, h) in [(2.0, 1512.0, 982.0), (1.25, 1536.0, 864.0), (1.5, 2560.0, 1440.0)] {
+            let mut s = um_core::settings::Settings { thickness: 7.5, menu_line_enabled: true, dock_line_enabled: true, ..Default::default() };
+            s.apply_platform_rules(false);
+            let scene = border::build_paths(&BorderInput { settings: &s, screen_w: w, screen_h: h, bands: vec![
+                ProviderBand { id: "claude".into(), ratio: 0.63, color: [0.9, 0.4, 0.2, 1.0], parts: vec![] },
+                ProviderBand { id: "gemini".into(), ratio: 0.27, color: [0.2, 0.5, 0.9, 1.0], parts: vec![] },
+                ProviderBand { id: "codex".into(), ratio: 0.81, color: [0.3, 0.8, 0.4, 1.0], parts: vec![] },
+            ] });
+            for emphasis in [None, Some(0)] {
+                let full = border::render_emphasized(&scene, (0.0, 0.0), scene.screen, scale, emphasis);
+                for r in border::strip_layout(&s, w, h, StripSide::Bottom, scale) {
+                    let a = border::crop_strip(&full, r, scale);
+                    let b = border::render_strip(&scene, r, scale, emphasis);
+                    assert_eq!((a.width(), a.height()), (b.width(), b.height()));
+                    // 좌표가 큰 f32 계산의 반올림 차이로 가장자리 AA 픽셀 몇 개만(백만 바이트당 수 개) 8/255 안쪽으로 다를 수 있다.
+                    let worst = a.data().iter().zip(b.data()).map(|(x, y)| x.abs_diff(*y)).max().unwrap_or(0);
+                    let differ = a.data().iter().zip(b.data()).filter(|(x, y)| x != y).count();
+                    assert!(worst <= 8 && differ * 10_000 <= a.data().len(), "scale {scale} 띠 {r:?}: 최대 차이 {worst}, 다른 바이트 {differ}/{}", a.data().len());
                 }
             }
         }

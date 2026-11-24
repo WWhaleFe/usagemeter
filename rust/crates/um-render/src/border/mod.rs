@@ -16,7 +16,7 @@ use um_core::settings::Settings;
 use um_core::types::{BorderCorner, Rgba, ScreenZone, SegPart};
 
 pub use strips::{crop_strip, strip_layout};
-pub use draw::{render, render_emphasized};
+pub use draw::{render, render_emphasized, render_strip};
 pub use hover::HoverGeometry;
 pub use items::{provider_color, sub_item_bar_parts, sub_item_color};
 pub use shape::{Built, ChainShape, Rec};
