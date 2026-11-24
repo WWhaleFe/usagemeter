@@ -20,7 +20,7 @@ pub use mac::overlay::OverlayStrip;
 #[cfg(target_os = "macos")]
 pub use mac::panel::InfoPanel;
 #[cfg(windows)]
-pub use win::overlay::OverlayStrip;
+pub use win::overlay::{OverlayStrip, keep_strips_on_top, raise_strips};
 #[cfg(windows)]
 pub use win::panel::InfoPanel;
 

@@ -13,8 +13,10 @@ pub struct InfoPanel {
 
 impl InfoPanel {
     pub fn new(_corner: f64) -> Result<Self, PlatformError> {
+        let strip = OverlayStrip::new(StripFrame { x: 0.0, y: 0.0, w: 1.0, h: 1.0 })?;
+        strip.mark_panel();
         Ok(Self {
-            strip: RefCell::new(OverlayStrip::new(StripFrame { x: 0.0, y: 0.0, w: 1.0, h: 1.0 })?),
+            strip: RefCell::new(strip),
             frame: Cell::new((0.0, 0.0, 1.0, 1.0)), visible: Cell::new(false),
         })
     }

@@ -609,6 +609,9 @@ fn main() {
                     .build(app)?;
                 panels::init(app.handle());
             }
+            // 작업 표시줄이 앞으로 오면 테두리 띠를 다시 그 위로 올린다.
+            #[cfg(windows)]
+            um_platform::keep_strips_on_top();
             shared_state.lock().unwrap().sync_displays(&um_platform::display::displays());
             agy_activity::start(app.handle());
             redraw(app.handle());
@@ -695,6 +698,9 @@ fn main() {
                     std::thread::sleep(Duration::from_secs(3));
                     let h2 = h.clone();
                     let _ = h.run_on_main_thread(move || {
+                        // 훅이 놓친 경우(예: 다른 항상 위 창)에도 3초 안에 다시 맨 앞으로.
+                        #[cfg(windows)]
+                        um_platform::raise_strips();
                         if OVERLAY.with(|o| o.borrow_mut().check_displays()) {
                             shared(&h2).lock().unwrap().sync_displays(&um_platform::display::displays());
                             panels::refresh_displays();
