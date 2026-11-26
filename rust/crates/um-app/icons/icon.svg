@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+<defs><filter id="tsh" x="-10%" y="-10%" width="120%" height="125%">
+  <feGaussianBlur in="SourceAlpha" stdDeviation="10" result="b"/><feOffset in="b" dy="10" result="o"/>
+  <feFlood flood-color="#000" flood-opacity="0.22"/><feComposite in2="o" operator="in" result="s"/>
+  <feMerge><feMergeNode in="s"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+<g filter="url(#tsh)"><svg x="100" y="100" width="824" height="824" viewBox="0 0 1024 1024">
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F0F1F3"/><stop offset="1" stop-color="#E4E6EA"/></linearGradient>
+  <filter id="sh" x="-40%" y="-40%" width="180%" height="180%">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="55" result="b1"/><feOffset in="b1" dy="36" result="o1"/>
+    <feFlood flood-color="#2A3140" flood-opacity="0.18"/><feComposite in2="o1" operator="in" result="c1"/>
+    <feGaussianBlur in="SourceAlpha" stdDeviation="7" result="b2"/><feOffset in="b2" dy="6" result="o2"/>
+    <feFlood flood-color="#2A3140" flood-opacity="0.08"/><feComposite in2="o2" operator="in" result="c2"/>
+    <feMerge><feMergeNode in="c1"/><feMergeNode in="c2"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <clipPath id="bc"><rect x="336" y="176" width="488" height="488" rx="86"/></clipPath>
+  <clipPath id="tile"><rect width="1024" height="1024" rx="230"/></clipPath>
+</defs>
+<g clip-path="url(#tile)">
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <g clip-path="url(#bc)" stroke="#CDD0D6" stroke-width="10"><line x1="-170" y1="670" x2="330" y2="170"/><line x1="-130" y1="670" x2="370" y2="170"/><line x1="-90" y1="670" x2="410" y2="170"/><line x1="-50" y1="670" x2="450" y2="170"/><line x1="-10" y1="670" x2="490" y2="170"/><line x1="30" y1="670" x2="530" y2="170"/><line x1="70" y1="670" x2="570" y2="170"/><line x1="110" y1="670" x2="610" y2="170"/><line x1="150" y1="670" x2="650" y2="170"/><line x1="190" y1="670" x2="690" y2="170"/><line x1="230" y1="670" x2="730" y2="170"/><line x1="270" y1="670" x2="770" y2="170"/><line x1="310" y1="670" x2="810" y2="170"/><line x1="350" y1="670" x2="850" y2="170"/><line x1="390" y1="670" x2="890" y2="170"/><line x1="430" y1="670" x2="930" y2="170"/><line x1="470" y1="670" x2="970" y2="170"/><line x1="510" y1="670" x2="1010" y2="170"/><line x1="550" y1="670" x2="1050" y2="170"/><line x1="590" y1="670" x2="1090" y2="170"/><line x1="630" y1="670" x2="1130" y2="170"/><line x1="670" y1="670" x2="1170" y2="170"/><line x1="710" y1="670" x2="1210" y2="170"/><line x1="750" y1="670" x2="1250" y2="170"/><line x1="790" y1="670" x2="1290" y2="170"/></g>
+  <rect x="334" y="174" width="492" height="492" rx="88" fill="none" stroke="#A4A9B1" stroke-width="8" stroke-linecap="round" stroke-dasharray="16 20"/>
+  <rect x="194" y="304" width="540" height="540" rx="104" fill="#FBFBFC" filter="url(#sh)"/>
+  <path d="M290,410 H566 Q638,410 638,482 V588" fill="none" stroke="#1B1C1F" stroke-width="44" stroke-linecap="round"/>
+  <circle cx="638" cy="676" r="34" fill="#D4F53C"/>
+</g></svg></g>
+</svg>
