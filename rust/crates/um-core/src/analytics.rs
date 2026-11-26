@@ -75,7 +75,6 @@ pub fn stats(s: &Series, now: f64) -> SeriesStats {
     let (mut resets, mut hits) = (0u32, 0u32);
     let mut windows: Vec<f64> = Vec::new();
     let mut seg_min = pts.first().map_or(1.0, |p| p.r);
-    let mut last_reset_at: Option<f64> = None;
     for i in 1..pts.len() {
         let r = pts[i].r;
         if r - pts[i - 1].r >= RESET_JUMP {
@@ -83,7 +82,6 @@ pub fn stats(s: &Series, now: f64) -> SeriesStats {
             resets += 1;
             windows.push(1.0 - seg_min);
             seg_min = r;
-            last_reset_at = Some(pts[i].t);
         } else {
             seg_min = seg_min.min(r);
         }
@@ -91,17 +89,7 @@ pub fn stats(s: &Series, now: f64) -> SeriesStats {
             hits += 1;
         }
     }
-    // 소진 속도: 최근 3시간 중 마지막 리셋 이후 구간의 기울기.
-    let from = (now - 3.0 * 3600.0).max(last_reset_at.unwrap_or(f64::NEG_INFINITY));
-
-    let mut rate = None;
-    if let Some(a) = pts.iter().find(|p| p.t >= from) {
-        let b = pts.iter().rfind(|p| p.t >= from).unwrap_or(a);
-        let dt = (b.t - a.t) / 3600.0;
-        if dt > 0.05 && a.r - b.r > MIN_DROP {
-            rate = Some((a.r - b.r) / dt);
-        }
-    }
+    let rate = recent_rate(pts, now);
     SeriesStats {
         current: pts.last().map(|p| p.r),
         consumed: s.consumed(),
@@ -111,6 +99,45 @@ pub fn stats(s: &Series, now: f64) -> SeriesStats {
         limit_hits: hits,
         rate_per_hour: rate,
     }
+}
+
+/// 마지막 리셋(잔여율이 `RESET_JUMP` 이상 오른 점) 시각. 없으면 None.
+fn last_reset(pts: &[Point]) -> Option<f64> {
+    pts.windows(2).rev().find(|w| w[1].r - w[0].r >= RESET_JUMP).map(|w| w[1].t)
+}
+
+/// `from` 이후 첫 점과 마지막 점의 기울기(시간당 하락). 구간이 3분 이하거나 줄지 않았으면 None.
+fn slope_from(pts: &[Point], from: f64) -> Option<f64> {
+    let a = pts.iter().find(|p| p.t >= from)?;
+    let b = pts.last()?;
+    let dt = (b.t - a.t) / 3600.0;
+    (dt > 0.05 && a.r - b.r > MIN_DROP).then(|| (a.r - b.r) / dt)
+}
+
+/// 최근 소진 속도: 최근 3시간 중 마지막 리셋 이후 구간의 기울기. 5시간 창처럼 짧은 창에 쓴다.
+/// `now` 이후 점은 없다고 본다.
+pub fn recent_rate(pts: &[Point], now: f64) -> Option<f64> {
+    let from = (now - 3.0 * 3600.0).max(last_reset(pts).unwrap_or(f64::NEG_INFINITY));
+    slope_from(pts, from)
+}
+
+/// 긴 창(주간)에서 평균 속도를 잴 최소 구간(시간). 이보다 짧으면 최근 속도로 잰다.
+pub const LONG_RATE_MIN_HOURS: f64 = 6.0;
+
+/// 긴 창(주간)의 소진 속도: 이번 창이 시작된 뒤(`window_start` 또는 마지막 리셋 중 늦은 쪽)의 평균 기울기.
+/// 3시간 기울기는 주간 창에서 몇 시간 몰아 쓴 것을 일주일 내내 그렇게 쓴다고 늘려 잡아 크게 흔들린다.
+/// 창 시작 뒤 지난 시간이 `LONG_RATE_MIN_HOURS`보다 짧으면 `recent_rate`로 잰다.
+pub fn window_rate(pts: &[Point], now: f64, window_start: Option<f64>) -> Option<f64> {
+    let start = match (window_start, last_reset(pts)) {
+        (Some(a), Some(b)) => a.max(b),
+        (a, b) => a.or(b).or_else(|| pts.first().map(|p| p.t))?,
+    };
+    let first = pts.iter().find(|p| p.t >= start)?;
+    let last = pts.last()?;
+    if (last.t - first.t) / 3600.0 < LONG_RATE_MIN_HOURS {
+        return recent_rate(pts, now);
+    }
+    slope_from(pts, start)
 }
 
 /// 선 차트용 다운샘플: 기간을 `buckets`칸으로 나눠 칸마다 가장 낮은·높은 점만 남긴다.
@@ -452,6 +479,28 @@ mod tests {
         // 마지막 리셋(200) 이후 구간 길이 200초 = 0.0556h > 0.05h
         let want = (1.0 - 0.01) / (200.0 / 3600.0);
         assert!((st.rate_per_hour.unwrap() - want).abs() < 1e-9);
+    }
+
+    #[test]
+    fn window_rate_averages_since_window_start() {
+        let h = 3600.0;
+        // 창 시작(0)부터 48시간에 걸쳐 0.96 -> 0.48: 평균 시간당 0.01.
+        // 마지막 3시간에 몰아 쓴 0.06(시간당 0.02)은 평균에 묻혀야 한다.
+        let pts = vec![p(0.0, 1.0), p(1.0 * h, 0.96), p(45.0 * h, 0.54), p(48.0 * h, 0.48)];
+        let now = 48.0 * h;
+        assert!((recent_rate(&pts, now).unwrap() - 0.02).abs() < 1e-12);
+        let w = window_rate(&pts, now, Some(1.0 * h)).unwrap();
+        assert!((w - 0.48 / 47.0).abs() < 1e-12);
+        // 창 시작을 모르면 마지막 리셋, 그것도 없으면 첫 점부터.
+        assert!((window_rate(&pts, now, None).unwrap() - 0.52 / 48.0).abs() < 1e-12);
+        // 리셋이 있으면 그 뒤만 본다.
+        let pts2 = vec![p(0.0, 0.2), p(1.0 * h, 1.0), p(11.0 * h, 0.9)];
+        assert!((window_rate(&pts2, 11.0 * h, None).unwrap() - 0.01).abs() < 1e-12);
+        // 창 시작 뒤 6시간이 안 되면 최근 속도로.
+        let pts3 = vec![p(0.0, 1.0), p(2.0 * h, 0.9)];
+        assert!((window_rate(&pts3, 2.0 * h, Some(0.0)).unwrap() - 0.05).abs() < 1e-12);
+        // 줄지 않았으면 None.
+        assert_eq!(window_rate(&[p(0.0, 0.5), p(10.0 * h, 0.5)], 10.0 * h, Some(0.0)), None);
     }
 
     #[test]

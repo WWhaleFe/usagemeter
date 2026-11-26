@@ -195,7 +195,7 @@ fn collect(app: &AppHandle, since: f64) -> Vec<Row> {
         let name = spec::spec(id).map(|s| s.name).unwrap_or("AI").to_string();
         let items = item_series(&st, id, since);
         if let Some(s) = ai.iter().find(|s| &s.provider == id) {
-            out.push(Row { provider: id.clone(), provider_name: name.clone(), s: S { provider: s.provider.clone(), item: None, name: s.name.clone(), color: s.color.clone(), rgba: s.rgba, series: s.series.clone(), reset_at: s.reset_at } });
+            out.push(Row { provider: id.clone(), provider_name: name.clone(), s: S { provider: s.provider.clone(), item: None, name: s.name.clone(), color: s.color.clone(), rgba: s.rgba, series: s.series.clone(), reset_at: s.reset_at, window_rate: s.window_rate } });
         }
         out.extend(items.into_iter().map(|s| Row { provider: id.clone(), provider_name: name.clone(), s }));
     }
@@ -260,7 +260,7 @@ fn render<Tz: TimeZone>(tz: &Tz, rows: &[Row], range: &str, since: f64, now: f64
 where
     Tz::Offset: std::fmt::Display,
 {
-    let stats: Vec<a::SeriesStats> = rows.iter().map(|r| a::stats(&r.s.series, now)).collect();
+    let stats: Vec<a::SeriesStats> = rows.iter().map(|r| r.s.stats(now)).collect();
     let etas: Vec<(String, String)> = rows
         .iter()
         .zip(&stats)
@@ -640,7 +640,7 @@ mod tests {
         let rows = vec![Row {
             provider: "claude".into(),
             provider_name: "Claude".into(),
-            s: S { provider: "claude".into(), item: Some("5h".into()), name: "5시간".into(), color: "#d97757".into(), rgba: [0.85, 0.47, 0.34, 1.0], series, reset_at: None },
+            s: S { provider: "claude".into(), item: Some("5h".into()), name: "5시간".into(), color: "#d97757".into(), rgba: [0.85, 0.47, 0.34, 1.0], series, reset_at: None, window_rate: None },
         }];
         let now = t0 + 7200.0;
         let files = render(&tz, &rows, "day1", t0 - 3600.0, now, "both");

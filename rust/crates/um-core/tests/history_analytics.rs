@@ -538,3 +538,18 @@ fn pace_uses_three_hour_window() {
     assert!((p.rate_per_hour - 0.2).abs() < 1e-12);
     assert!((p.depletion - (now + 4.0 * 3600.0)).abs() < 1e-6);
 }
+
+#[test]
+fn pace_ignores_points_before_reset() {
+    let mut db = HistoryDb::open_in_memory().unwrap();
+    let none = Nested::new();
+    let base = 1.0e9;
+    // 0.10 -> 리셋 1.0 -> 1시간 뒤 0.80. 리셋 전 점(0.10)과 비교하면 "늘었다"고 보고 예측이 사라졌다.
+    for (t, v) in [(0.0, 0.10), (1800.0, 1.0), (5400.0, 0.80)] {
+        db.record(base + t, &r(&[("claude", v)]), &none, &none).unwrap();
+    }
+    let now = base + 5400.0;
+    let p = db.pace("claude", now).unwrap().unwrap();
+    assert!((p.rate_per_hour - 0.2).abs() < 1e-12);
+    assert!((p.depletion - (now + 4.0 * 3600.0)).abs() < 1e-6);
+}

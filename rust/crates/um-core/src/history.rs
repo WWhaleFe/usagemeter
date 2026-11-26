@@ -23,7 +23,7 @@ use rusqlite::{Connection, OptionalExtension, Transaction, params};
 use serde::Deserialize;
 use serde::de::{self, DeserializeSeed, Deserializer, SeqAccess, Visitor};
 
-use crate::analytics::{Event, MIN_DROP, Point};
+use crate::analytics::{Event, MIN_DROP, Point, recent_rate};
 
 /// 35일 보관(분석 대시보드 한 달 뷰용). (Swift `maxAge`)
 pub const MAX_AGE_SECS: f64 = 35.0 * 24.0 * 3600.0;
@@ -473,22 +473,14 @@ impl HistoryDb {
     }
 
     /// 최근 추세로 소진 예측. 잔여가 감소 중일 때만 값을 준다. (Swift `pace`)
+    /// 최근 3시간 중 마지막 리셋 이후 구간만 본다. 리셋 전 점과 비교하면 리셋 직후 몇 시간 동안 예측이 비거나 낙관적으로 나온다.
     pub fn pace(&self, provider: &str, now: f64) -> Result<Option<PaceInfo>> {
-        let s = self.series(provider, now - 3.0 * 3600.0)?; // 최근 3시간 추세
-        let (Some(first), Some(last)) = (s.first(), s.last()) else {
+        let s = self.series(provider, now - 3.0 * 3600.0)?;
+        let (Some(rate), Some(last)) = (recent_rate(&s, now), s.last()) else {
             return Ok(None);
         };
-        let dt_hours = (last.t - first.t) / 3600.0;
-        if dt_hours <= 0.05 {
-            return Ok(None);
-        }
-        let rate = (first.r - last.r) / dt_hours; // 양수면 소진 중
-        if rate <= MIN_DROP {
-            return Ok(None);
-        }
-        let hours_to_empty = last.r / rate;
         Ok(Some(PaceInfo {
-            depletion: now + hours_to_empty * 3600.0,
+            depletion: now + last.r / rate * 3600.0,
             rate_per_hour: rate,
         }))
     }

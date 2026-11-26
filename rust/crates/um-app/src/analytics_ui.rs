@@ -43,6 +43,22 @@ pub(crate) struct S {
     pub(crate) rgba: [f64; 4],
     pub(crate) series: Series,
     pub(crate) reset_at: Option<f64>,
+    /// 주간 항목의 소진 속도(이번 창 평균). Some이면 `stats`의 최근 3시간 속도 대신 쓴다.
+    pub(crate) window_rate: Option<Option<f64>>,
+}
+
+/// 주간 창 길이(초).
+const WEEK_SECS: f64 = 7.0 * 24.0 * 3600.0;
+
+impl S {
+    /// 요약 통계. 주간 항목은 소진 속도를 이번 창 평균으로 바꾼다.
+    pub(crate) fn stats(&self, now: f64) -> a::SeriesStats {
+        let mut st = stats(&self.series, now);
+        if let Some(r) = self.window_rate {
+            st.rate_per_hour = r;
+        }
+        st
+    }
 }
 
 /// 한 AI의 세부 항목 계열. 순서 = 지금 항목 → 이력에만 있는 항목(설정 탭·테두리와 같은 기본 색).
@@ -62,6 +78,13 @@ pub(crate) fn item_series(st: &AppState, id: &str, since: f64) -> Vec<S> {
             if pts.is_empty() {
                 return None;
             }
+            // 주간 항목: 분석 기간과 상관없이 이번 창 시작(리셋 7일 전)부터의 점으로 평균 속도를 잰다.
+            let window_rate = (!it.is_five_hour).then(|| {
+                let now = chrono::Utc::now().timestamp_millis() as f64 / 1000.0;
+                let start = it.reset_at.map(|d| d.timestamp() as f64 - WEEK_SECS);
+                let wpts = db.item_series(id, &it.id, start.unwrap_or(now - WEEK_SECS).min(since)).unwrap_or_default();
+                a::window_rate(&wpts, now, start)
+            });
             let kind = tr(if it.is_five_hour { "subItems.kind5h" } else { "subItems.kindWeekly" }, lang);
             let rgba = sub_item_color(&st.main, id, &it.id, &objs);
             Some(S {
@@ -72,6 +95,7 @@ pub(crate) fn item_series(st: &AppState, id: &str, since: f64) -> Vec<S> {
                 rgba,
                 series: Series { events: drops(&pts), points: pts },
                 reset_at: it.reset_at.map(|d| d.timestamp() as f64),
+                window_rate,
             })
         })
         .collect()
@@ -95,6 +119,7 @@ pub(crate) fn ai_series(st: &AppState, since: f64) -> Vec<S> {
                 rgba: provider_color(&st.main, id),
                 series: Series { points: pts, events: db.consumption_events(id, since).unwrap_or_default() },
                 reset_at: st.snapshots.get(id).and_then(|s| s.reset_at).map(|d| d.timestamp() as f64),
+                window_rate: None,
             })
         })
         .collect()
@@ -200,7 +225,7 @@ pub fn ui_analytics(app: AppHandle, range: String, scope: Option<String>, items:
             let rows: Vec<Value> = v
                 .iter()
                 .map(|s| {
-                    let stt = stats(&s.series, now);
+                    let stt = s.stats(now);
                     let eta = match eta(&stt, s.reset_at, now) {
                         Eta::Safe => json!({"kind": "safe"}),
                         Eta::At(t) => json!({"kind": "at", "t": t}),
